@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pango / HarfBuzz
+        run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download Swiss Ephemeris data
+        run: |
+          mkdir -p ephe
+          for f in sepl_18 semo_18 seas_18; do
+            curl -fsSL -o ephe/$f.se1 https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f.se1
+          done
+
+      - name: Selftest (textbook examples)
+        run: python jyotisha_calc.py --selftest
+
+      - name: Report G with visual QA
+        run: >
+          python jyotisha_report.py --report G --name Test --date 1990-05-15 --time 10:30
+          --lat 6.93 --lon 79.85 --place Colombo --out test_G.pdf --qa
+
+      - name: Report A1 with visual QA
+        run: >
+          python jyotisha_report.py --report A1 --name Test --date 1990-05-15 --time 10:30
+          --lat 6.93 --lon 79.85 --place Colombo --brand "Jyothisha Insight" --out test_A1.pdf --qa
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            test_*.pdf
+            test_*_qa/
