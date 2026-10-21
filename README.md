@@ -25,10 +25,10 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
   1-page summary (G), natal reports (A1–A3), annual chart (C1), marriage
   compatibility (D1) and horary (P1). Astrologers can add their own Sinhala
   notes to each section through a JSON file.
-- **Visual QA** (`--qa`): measures a rendered Sinhala probe string, renders every
-  page to PNG, and flags fallback fonts, overflow and blank pages. Sinhala
-  shaping failures raise no error anywhere in the stack, so they have to be
-  measured.
+- **Visual QA** (`--qa`): measures two rendered Sinhala probe strings (one
+  general, one dense in ු/ූ and ්‍ර), renders every page to PNG, and flags
+  fallback fonts, overflow and blank pages. Sinhala shaping failures raise no
+  error anywhere in the stack, so they have to be measured.
 
 ```
 birth data ─► jyotisha_calc ─► jyotisha_report (HTML/CSS) ─► WeasyPrint + Pango/HarfBuzz ─► PDF ─► --qa (PyMuPDF)
@@ -60,10 +60,15 @@ Problems solved while getting Sinhala rendering right:
   that adds a gap after ූ and the rakaransaya (්‍ර) in Noto Sans Sinhala v3.
   Nothing reports an error. It was found by comparing glyph advances in the PDF
   with a current HarfBuzz (`මූලික`: 3.42 em in the PDF vs 2.72 em expected),
-  and fixed by switching to a current Pango/HarfBuzz from MSYS2.
-- **Font URLs on Windows.** `file://` + `D:\path` makes Python read the drive as
-  the URL's host, so `@font-face` fails quietly and Pango falls back to a system
-  font. The QA step's font check caught this.
+  and fixed by switching to a current Pango/HarfBuzz from MSYS2. The original
+  QA probe missed it (about +4 %, inside its 5 % tolerance), so a second probe
+  built from the affected letter groups now guards against it.
+- **Font URLs on Windows.** `"file://" + "D:\path"` makes the drive letter the
+  URL's host, so `@font-face` failed quietly and Pango fell back to a system
+  font. The QA font check caught it; the fix is `Path.as_uri()` (`file:///D:/...`).
+- **Text encoding on Windows.** Files and console output used the locale code
+  page (cp1252), so a client with a Sinhala name crashed the `calc.json` write.
+  All text I/O between the two scripts is now explicitly UTF-8.
 - **Toolchain gaps.** pyswisseph has no Windows wheels for Python 3.12+, so it is
   built from source with MSVC.
 

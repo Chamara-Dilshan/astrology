@@ -10,6 +10,7 @@ import html
 import json
 import os
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BRAND = "Jyothisha Insight"
@@ -82,8 +83,8 @@ def build_html(prices):
 @page { size: A4; margin: 14mm 12mm 16mm 12mm;
   @bottom-left { content: "BRANDNAME"; font-family: "Noto Sans"; font-size: 7.5pt; color: #a08c6a; letter-spacing: .5px; }
   @bottom-right { content: "පිටුව " counter(page) " / " counter(pages); font-family: "Noto Sans Sinhala"; font-size: 8pt; color: #7a6f6f; } }
-@font-face { font-family: "Noto Sans Sinhala"; src: url("file://FONTDIR/NotoSansSinhala.ttf"); }
-@font-face { font-family: "Noto Sans"; src: url("file://FONTDIR/NotoSans.ttf"); }
+@font-face { font-family: "Noto Sans Sinhala"; src: url("FONTDIR/NotoSansSinhala.ttf"); }
+@font-face { font-family: "Noto Sans"; src: url("FONTDIR/NotoSans.ttf"); }
 body { font-family: "Noto Sans Sinhala", "Noto Sans", sans-serif; font-size: 9.4pt; color: #1e1a1a; line-height: 1.45; }
 .brandmark { font-family: "Noto Sans", sans-serif; font-size: 16pt; letter-spacing: 2.5px; color: #6b1010; font-weight: 700; text-transform: uppercase; text-align:center; }
 .brandline { width: 46mm; height: 2px; background: #c9a24d; margin: 6pt auto 4pt auto; }
@@ -146,7 +147,7 @@ ul { margin: 3pt 0 5pt 15pt; padding: 0; } li { margin: 1.5pt 0; }
     H.append(f'<div style="text-align:center; margin-top:12pt; padding-top:8pt; border-top:1px solid #e4dccb">'
              f'<div class="brandmark" style="font-size:11pt">{BRAND}</div><div class="brandtag" style="font-size:8pt">{BRAND_TAGLINE}</div>'
              + (f'<div class="muted">{html.escape(BRAND_CONTACT)}</div>' if BRAND_CONTACT else "") + "</div>")
-    fontdir = os.path.join(HERE, "fonts")
+    fontdir = Path(HERE, "fonts").as_uri()   # file:///D:/... on Windows ("file://" + path breaks there)
     return (f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8"><title>{BRAND} — මිල ලැයිස්තුව</title>'
             f'<style>{css.replace("FONTDIR", fontdir).replace("BRANDNAME", BRAND)}</style></head><body>'
             + "\n".join(H) + "</body></html>")

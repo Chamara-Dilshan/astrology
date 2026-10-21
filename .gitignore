@@ -19,5 +19,5 @@ ephe/
 # public sample output (fictional birth data)
 !docs/samples/*.pdf
 
-# script writes calc.json next to each PDF (locale-encoded on Windows)
+# intermediate calculation output, written next to each PDF
 calc.json

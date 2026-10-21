@@ -22,6 +22,7 @@ import struct
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 BRAND = "Jyothisha Insight"
@@ -147,10 +148,10 @@ def run_calc(a, dasha_from, dasha_to, workdir, extra=()):
     elif getattr(a, "report", "").startswith("B"):
         need = B_SPECS[a.report]["varga"]
         cmd[cmd.index("--vargas") + 1] = f"D9,D10,{need}" if need not in ("D9", "D10") else "D9,D10"
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=CHILD_ENV)
     if r.returncode != 0:
         sys.exit("jyotisha_calc.py failed:\n" + r.stderr[-2000:])
-    with open(jpath) as f:
+    with open(jpath, encoding="utf-8") as f:
         d = json.load(f)
     # matter analysis lines (printed by the engine, not in JSON)
     if "--matter" in cmd:
@@ -283,12 +284,12 @@ CSS = """
   @bottom-left { content: "BRANDNAME"; font-family: "Noto Sans"; font-size: 8pt; color: #a08c6a; letter-spacing: .5px; }
   @bottom-right { content: "පිටුව " counter(page) " / " counter(pages); font-family: "Noto Sans Sinhala"; font-size: 8.5pt; color: #7a6f6f; }
 }
-@font-face { font-family: "Noto Sans Sinhala"; src: url("file://FONTDIR/NotoSansSinhala.ttf"); }
-@font-face { font-family: "Noto Sans Sinhala"; src: url("file://FONTDIR/NotoSansSinhala-Bold.ttf"); font-weight: 700; }
-@font-face { font-family: "Noto Sans"; src: url("file://FONTDIR/NotoSans.ttf"); }
-@font-face { font-family: "Noto Sans"; src: url("file://FONTDIR/NotoSans-Bold.ttf"); font-weight: 700; }
-@font-face { font-family: "Noto Sans Symbols 2"; src: url("file://FONTDIR/NotoSansSymbols2.ttf"); }
-@font-face { font-family: "Noto Sans Math"; src: url("file://FONTDIR/NotoSansMath.ttf"); }
+@font-face { font-family: "Noto Sans Sinhala"; src: url("FONTDIR/NotoSansSinhala.ttf"); }
+@font-face { font-family: "Noto Sans Sinhala"; src: url("FONTDIR/NotoSansSinhala-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Noto Sans"; src: url("FONTDIR/NotoSans.ttf"); }
+@font-face { font-family: "Noto Sans"; src: url("FONTDIR/NotoSans-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Noto Sans Symbols 2"; src: url("FONTDIR/NotoSansSymbols2.ttf"); }
+@font-face { font-family: "Noto Sans Math"; src: url("FONTDIR/NotoSansMath.ttf"); }
 body { font-family: "Noto Sans Sinhala", "Noto Sans", "Noto Sans Symbols 2", "Noto Sans Math", sans-serif; font-size: 10.5pt; color: #1e1a1a; line-height: 1.55; }
 h1 { font-size: 22pt; color: #6b1010; margin: 0 0 4pt 0; font-weight: 700; }
 h2 { font-size: 14pt; color: #6b1010; border-bottom: 1.5px solid #c9a24d; padding-bottom: 3pt; margin: 18pt 0 8pt 0; page-break-after: avoid; }
@@ -2697,6 +2698,16 @@ def fontdir_global():
     return os.path.join(HERE, "fonts")
 
 
+def font_uri(fontdir=None):
+    """file:// URI of the fonts folder for @font-face. Path.as_uri() gives file:///D:/... on Windows;
+    plain "file://" + path would turn the drive letter into a URL host and the fonts would silently fail to load."""
+    return Path(fontdir or fontdir_global()).as_uri()
+
+
+# jyotisha_calc.py runs as a child process; make it print UTF-8 whatever the console code page is
+CHILD_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+
+
 # ---------------------------------------------------------------------------
 # Visual QA (--qa). Sinhala shaping failures produce NO error anywhere in the
 # stack, so the only defences are (a) measuring a rendered probe string and
@@ -2706,6 +2717,12 @@ QA_PROBE = "කේන්දරේ ගෝචර ශනිගේ සඩේ සත�
 QA_PROBE_PT = 12
 QA_PROBE_REF = 26.46    # rendered width / font-size with NotoSansSinhala v3.000 + HarfBuzz 8 (measured 2026-10-20)
 QA_PROBE_TOL = 0.05     # v2.002 font gives -16 %, a non-Sinhala fallback font gives -9.5 %
+# Second probe, dense in ු/ූ and the rakaransaya (්‍ර). An old HarfBuzz (e.g. the 2022 GTK3 runtime for
+# Windows) leaves ~0.7 em of extra space after each of these clusters: barely visible in QA_PROBE, but
+# a large width change here.
+QA_PROBE_MARKS = "මූලික ග්‍රහ ක්‍රමය පිටුව සම්පූර්ණ ප්‍රශ්න"
+QA_PROBE_MARKS_REF = 18.99  # same font + HarfBuzz 14.5 (measured 2026-10-22); old HarfBuzz est. +20 %
+QA_PROBES = ((QA_PROBE, QA_PROBE_REF), (QA_PROBE_MARKS, QA_PROBE_MARKS_REF))
 QA_ALLOWED_FONTS = ("Noto-Sans-Sinhala", "Noto-Sans-Sinhala-Bold", "Noto-Sans", "Noto-Sans-Bold", "Noto-Sans-Symbols-2", "Noto-Sans-Symbols-2-Bold", "Noto-Sans-Math", "Noto-Sans-Math-Bold",
                     "NotoSansSinhala", "NotoSansSinhala-Bold", "NotoSans", "NotoSans-Bold")
 
@@ -2724,21 +2741,21 @@ def _raw_spans(page):
                 yield s
 
 
-def shaping_probe(fontdir=None):
-    """Render QA_PROBE through the real CSS and compare its width with the known-good value.
-    Returns (ratio, ok). Collapsed vowel signs (old font) or a fallback font both change the width."""
+def shaping_probe(text=QA_PROBE, ref=QA_PROBE_REF, fontdir=None):
+    """Render a probe string through the real CSS and compare its width with the known-good value.
+    Returns (ratio, ok, font). Collapsed vowel signs (old font), mis-spaced marks (old HarfBuzz)
+    or a fallback font all change the width."""
     import pymupdf
     from weasyprint import HTML
-    fontdir = fontdir or fontdir_global()
-    css = CSS.replace("FONTDIR", fontdir).replace("BRANDNAME", "QA")
+    css = CSS.replace("FONTDIR", font_uri(fontdir)).replace("BRANDNAME", "QA")
     html = (f'<html><head><style>{css} @page{{size:220mm 40mm;margin:5mm}}</style></head>'
-            f'<body><p style="font-size:{QA_PROBE_PT}pt;white-space:nowrap">{QA_PROBE}</p></body></html>')
+            f'<body><p style="font-size:{QA_PROBE_PT}pt;white-space:nowrap">{text}</p></body></html>')
     pdf = HTML(string=html, base_url=HERE).write_pdf()
     page = pymupdf.open(stream=pdf, filetype="pdf")[0]
     for s in _text_spans(page):
         if abs(s["size"] - QA_PROBE_PT) < 0.5:
             ratio = (s["bbox"][2] - s["bbox"][0]) / s["size"]
-            return ratio, abs(ratio - QA_PROBE_REF) / QA_PROBE_REF <= QA_PROBE_TOL, s["font"]
+            return ratio, abs(ratio - ref) / ref <= QA_PROBE_TOL, s["font"]
     return 0.0, False, "?"
 
 
@@ -2793,13 +2810,15 @@ def qa_pdf(pdf_path, qa_dir=None, dpi=90, blank_ink=0.002):
 
 def run_qa(pdf_path, qa_dir=None):
     """Called from main() after write_pdf when --qa is given. Exit code 3 on any failure."""
-    ratio, ok, font = shaping_probe()
     lines = []
-    if ok:
-        lines.append(f"   shaping probe OK (width/pt {ratio:.2f}, ref {QA_PROBE_REF}, font {font})")
-    else:
-        lines.append(f"!! shaping probe FAIL — width/pt {ratio:.2f} vs ref {QA_PROBE_REF} (font {font}). "
-                     "ස්වර ලකුණු overlap වෙනවා හෝ සිංහල font එක load වී නැත. fonts/NotoSansSinhala.ttf v3.000+ ද බලන්න.")
+    for i, (text, ref) in enumerate(QA_PROBES, 1):
+        ratio, ok, font = shaping_probe(text, ref)
+        if ok:
+            lines.append(f"   shaping probe {i} OK (width/pt {ratio:.2f}, ref {ref}, font {font})")
+        else:
+            lines.append(f"!! shaping probe {i} FAIL — width/pt {ratio:.2f} vs ref {ref} (font {font}). "
+                         "ස්වර ලකුණු overlap වෙනවා / අකුරු අතර හිඩැස්, හෝ සිංහල font එක load වී නැත. "
+                         "fonts/NotoSansSinhala.ttf v3.000+ සහ Pango/HarfBuzz අනුවාදය බලන්න.")
     pngs, issues = qa_pdf(pdf_path, qa_dir)
     lines += issues
     fails = [x for x in lines if x.startswith("!!")]
@@ -2808,6 +2827,9 @@ def run_qa(pdf_path, qa_dir=None):
 
 
 def main():
+    # Sinhala on stdout/stderr must not depend on the console code page (cp1252 on Windows)
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
     check_fonts()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--report", default="A1", choices=["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C1", "C2", "C3", "C4", "C6", "D1", "D2", "D3", "E1", "M1", "N", "P1", "P2"],
@@ -2873,11 +2895,11 @@ def main():
                "--tz", a.tz, "--muhurta-hours", a.muhurta_hours, "--muhurta-top", str(a.muhurta_top)]
         if a.date and a.time:
             cmd += ["--date", a.date, "--time", a.time]
-        r = subprocess.run(cmd, capture_output=True, text=True)
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=CHILD_ENV)
         if r.returncode != 0:
             sys.exit("muhurta scan failed:\n" + r.stderr[-1500:])
         body = build_m1(a, notes, now_local, a.task, r.stdout)
-        css = CSS.replace("FONTDIR", fontdir_global()).replace("BRANDNAME", BRAND)
+        css = CSS.replace("FONTDIR", font_uri()).replace("BRANDNAME", BRAND)
         page = f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} M1</title>' \
                f'<style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
         if a.html:
@@ -2991,8 +3013,7 @@ def main():
         body = build_d3(d, parts, a, notes, now_local)
     else:
         body = build_p1(d, a, notes, now_local, a.shat_topic, a.matter)
-    fontdir = os.path.join(HERE, "fonts")
-    css = CSS.replace("FONTDIR", fontdir).replace("BRANDNAME", BRAND)
+    css = CSS.replace("FONTDIR", font_uri()).replace("BRANDNAME", BRAND)
     page = f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} {esc(a.report)}</title><style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
     if a.html:
         open(a.html, "w", encoding="utf-8").write(page)
