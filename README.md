@@ -73,6 +73,11 @@ Python 3.12+ · [pyswisseph](https://github.com/astrorigin/pyswisseph) ·
 [WeasyPrint](https://weasyprint.org) · Pango/HarfBuzz · [PyMuPDF](https://pymupdf.readthedocs.io) ·
 Noto Sans Sinhala (SIL OFL)
 
+## Licence
+
+Code: [AGPL-3.0](LICENSE), the same licence as pyswisseph and the Swiss Ephemeris.
+Fonts in `fonts/`: Noto, [SIL Open Font License 1.1](https://openfontlicense.org).
+
 ## Disclaimer
 
 Astrology reports are for reflection and entertainment. They are not medical,
