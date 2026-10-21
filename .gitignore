@@ -1,0 +1,23 @@
+.venv/
+clients/
+*.pdf
+*_qa/
+__pycache__/
+
+# never publish: copyrighted books, private samples, business docs
+Resources/
+Sample one/
+*.zip
+FB_CONTENT_PLAN.md
+FB_POSTS_01-16.md
+INTAKE_AND_POLICIES.md
+JYOTISHA_MASTER_PLAN.md
+
+# Swiss Ephemeris data is downloaded (see README / CI)
+ephe/
+
+# public sample output (fictional birth data)
+!docs/samples/*.pdf
+
+# script writes calc.json next to each PDF (locale-encoded on Windows)
+calc.json
