@@ -1,4 +1,5 @@
 weasyprint>=66
 pyswisseph>=2.10
-pymupdf>=1.24
+# 1.x: PyMuPDF 2.0 adds ~200 MB of required ML dependencies (onnxruntime, numpy, ...) we don't use
+pymupdf>=1.24,<2
 tzdata

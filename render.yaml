@@ -1,0 +1,10 @@
+# Render blueprint: New > Blueprint > pick this repo. Builds the Dockerfile and runs the web app.
+services:
+  - type: web
+    name: jyotisha-insight
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: MAX_PARALLEL
+        value: "1"

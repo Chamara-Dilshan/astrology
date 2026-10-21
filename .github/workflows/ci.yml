@@ -47,3 +47,31 @@ jobs:
           path: |
             test_*.pdf
             test_*_qa/
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t jyotisha .
+
+      - name: Selftest in container
+        run: docker run --rm jyotisha selftest
+
+      - name: Report A1 with visual QA in container
+        run: |
+          mkdir -p out && chmod 777 out
+          docker run --rm -v "$PWD/out:/out" jyotisha report --report A1 --name Test --date 1990-05-15 \
+            --time 10:30 --lat 6.93 --lon 79.85 --place Colombo --out /out/test_A1.pdf --qa
+
+      - name: Web app smoke test
+        run: |
+          docker run -d --name web -p 8000:8000 jyotisha
+          for i in $(seq 30); do curl -fs localhost:8000/healthz && break; sleep 1; done
+          curl -fs localhost:8000/ | grep -q "Jyothisha Insight"
+          curl -fs -o g.pdf -F name=Test -F birth_date=1990-05-15 -F birth_time=10:30 \
+            -F lat=6.93 -F lon=79.85 -F report=G localhost:8000/report
+          head -c 5 g.pdf | grep -q "%PDF-"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -F name=X -F birth_date=1990-05-15 \
+            -F birth_time=25:00 -F lat=6.9 -F lon=79.8 localhost:8000/report)" = 400

@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__
+clients
+Resources
+Sample one
+docs
+ephe
+*.zip
+*.pdf
+*_qa
+*.md
+env.ps1

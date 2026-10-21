@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jyothisha Insight · ජන්ම පත්‍රය</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6ee; --card: #fffdf8; --ink: #1e1a1a; --muted: #6f6566; --line: #e4dccb;
+    --brand: #6b1010; --brand-ink: #ffffff; --gold: #c9a55a; --focus: #b07a1a; --err: #a12020;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171314; --card: #211c1d; --ink: #f1ebe6; --muted: #b3a8a4; --line: #3a3233;
+            --brand: #c9a55a; --brand-ink: #171314; --gold: #c9a55a; --focus: #e2c27a; --err: #ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.55 "Noto Sans Sinhala", "Noto Sans", system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { text-align: center; margin-bottom: 24px; }
+  .mark { font: 700 15px "Noto Sans", sans-serif; letter-spacing: 2.5px; color: var(--brand); text-transform: uppercase; }
+  .rule { width: 120px; height: 2px; background: var(--gold); margin: 10px auto 12px; }
+  h1 { font-size: 26px; margin: 0; color: var(--brand); }
+  .sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+  form { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  label { display: block; font-weight: 700; font-size: 14px; margin: 14px 0 6px; }
+  label:first-child { margin-top: 0; }
+  .hint { font-weight: 400; color: var(--muted); }
+  input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+                  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .check { display: flex; gap: 8px; align-items: center; font-weight: 400; margin-top: 14px; }
+  .check input { width: auto; }
+  button { margin-top: 20px; width: 100%; font: 700 16px inherit; font-family: inherit; padding: 12px;
+           border: 0; border-radius: 8px; background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+  button[disabled] { opacity: .6; cursor: progress; }
+  #status { min-height: 1.5em; margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  #status.err { color: var(--err); }
+  footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
+  footer a { color: inherit; }
+  @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark">Jyothisha Insight</div>
+    <div class="rule"></div>
+    <h1>ඔබේ ජන්ම පත්‍රය</h1>
+    <p class="sub">Your Vedic birth chart as a Sinhala PDF · Lahiri ayanamsa · Swiss Ephemeris</p>
+  </header>
+
+  <form id="f" method="post" action="/report">
+    <label for="name">නම <span class="hint">· Name</span></label>
+    <input id="name" name="name" maxlength="60" required autocomplete="off">
+
+    <div class="row">
+      <div>
+        <label for="birth_date">උපන් දිනය <span class="hint">· Date</span></label>
+        <input id="birth_date" name="birth_date" type="date" min="1800-01-01" max="2399-12-31" required>
+      </div>
+      <div>
+        <label for="birth_time">උපන් වේලාව <span class="hint">· Time</span></label>
+        <input id="birth_time" name="birth_time" type="time" required>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="approx"> වේලාව නිශ්චිත නැත · time is approximate</label>
+    <input type="hidden" name="time_exact" id="time_exact" value="yes">
+
+    <label for="placesel">උපන් ස්ථානය <span class="hint">· Place</span></label>
+    <select id="placesel"></select>
+    <input type="hidden" name="place" id="place">
+    <div class="row">
+      <div>
+        <label for="lat">Latitude <span class="hint">(N +)</span></label>
+        <input id="lat" name="lat" type="number" step="0.0001" min="-66" max="66" required>
+      </div>
+      <div>
+        <label for="lon">Longitude <span class="hint">(E +)</span></label>
+        <input id="lon" name="lon" type="number" step="0.0001" min="-180" max="180" required>
+      </div>
+    </div>
+    <label for="tz">Time zone</label>
+    <input id="tz" name="tz" value="Asia/Colombo" required>
+
+    <label for="report">වාර්තාව <span class="hint">· Report</span></label>
+    <select id="report" name="report">{{REPORT_OPTIONS}}</select>
+
+    <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
+    <p id="status" role="status" aria-live="polite"></p>
+  </form>
+
+  <footer>
+    Birth data is used only to make your PDF and is not stored.<br>
+    For reflection only; not medical, legal or financial advice.<br>
+    <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
+  </footer>
+</main>
+<script>
+const PLACES = {{PLACES_JSON}};
+const sel = document.getElementById("placesel"), lat = document.getElementById("lat"),
+      lon = document.getElementById("lon"), place = document.getElementById("place");
+for (const [n] of PLACES) sel.add(new Option(n, n));
+sel.add(new Option("Other (enter coordinates)", ""));
+function pick() {
+  const p = PLACES.find(([n]) => n === sel.value);
+  place.value = p ? p[0] : "";
+  if (p) { lat.value = p[1]; lon.value = p[2]; } else { lat.value = ""; lon.value = ""; lat.focus(); }
+}
+sel.addEventListener("change", pick);
+sel.value = "Colombo"; pick();
+document.getElementById("approx").addEventListener("change", e => {
+  document.getElementById("time_exact").value = e.target.checked ? "approx" : "yes";
+});
+
+const form = document.getElementById("f"), go = document.getElementById("go"), status = document.getElementById("status");
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  go.disabled = true; status.className = ""; status.textContent = "Calculating the chart and rendering the PDF… (up to a minute)";
+  try {
+    const r = await fetch("/report", { method: "POST", body: new FormData(form) });
+    if (!r.ok) {
+      let msg = r.statusText;
+      try {
+        const d = (await r.json()).detail;
+        msg = Array.isArray(d) ? d.map(x => `${x.loc.at(-1)}: ${x.msg}`).join("; ") : (d || msg);
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    const name = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name ? name[1] : "report.pdf" });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    status.textContent = "Done — your PDF has downloaded.";
+  } catch (err) {
+    status.className = "err"; status.textContent = "Error: " + err.message;
+  } finally { go.disabled = false; }
+});
+</script>
+</body>
+</html>

@@ -31,10 +31,38 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
   error anywhere in the stack, so they have to be measured.
 
 ```
-birth data ─► jyotisha_calc ─► jyotisha_report (HTML/CSS) ─► WeasyPrint + Pango/HarfBuzz ─► PDF ─► --qa (PyMuPDF)
+web form / CLI ─► jyotisha_calc ─► jyotisha_report (HTML/CSS) ─► WeasyPrint + Pango/HarfBuzz ─► PDF ─► --qa (PyMuPDF)
 ```
 
-## Quick start (Linux / macOS)
+## Quick start with Docker
+
+```bash
+docker build -t jyotisha .
+docker run --rm jyotisha selftest
+docker run --rm -v "$PWD/out:/out" jyotisha report --report A1 --name Sample --date 1990-05-15 \
+  --time 10:30 --lat 6.93 --lon 79.85 --place Colombo --out /out/sample_A1.pdf --qa
+```
+
+The image bundles Pango/HarfBuzz, the Noto fonts and the ephemeris data, so
+there is nothing else to install.
+
+## Web app
+
+```bash
+docker run --rm -p 8000:8000 jyotisha        # then open http://localhost:8000
+```
+
+A one-page form (name, date, time, place) that returns the PDF; see `web/`.
+Picking a town fills in its coordinates, which stay editable. Each request runs
+in a temporary folder that is deleted afterwards, so no birth data is stored.
+Reports run at most `MAX_PARALLEL` at a time (default 2), each limited to
+`REPORT_TIMEOUT` seconds.
+
+**Deploy:** `render.yaml` is a [Render](https://render.com) blueprint (Docker,
+free plan). In Render choose New → Blueprint and select this repo. Any host
+that runs a Dockerfile and sets `PORT` works the same way.
+
+## Quick start without Docker (Linux / macOS)
 
 ```bash
 sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b   # macOS: brew install pango
@@ -74,13 +102,15 @@ Problems solved while getting Sinhala rendering right:
 
 ## Stack
 
-Python 3.12+ · [pyswisseph](https://github.com/astrorigin/pyswisseph) ·
+Python 3.12+ · FastAPI · Docker · [pyswisseph](https://github.com/astrorigin/pyswisseph) ·
 [WeasyPrint](https://weasyprint.org) · Pango/HarfBuzz · [PyMuPDF](https://pymupdf.readthedocs.io) ·
 Noto Sans Sinhala (SIL OFL)
 
 ## Licence
 
 Code: [AGPL-3.0](LICENSE), the same licence as pyswisseph and the Swiss Ephemeris.
+If you run a modified version as a public web service, the AGPL requires you to
+offer its source to users; the web app's footer links to the source for this reason.
 Fonts in `fonts/`: Noto, [SIL Open Font License 1.1](https://openfontlicense.org).
 
 ## Disclaimer
