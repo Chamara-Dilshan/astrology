@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 from datetime import datetime
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -36,8 +37,8 @@ GRID = {11: (0, 0), 0: (1, 0), 1: (2, 0), 2: (3, 0), 10: (0, 1), 3: (3, 1), 9: (
 
 BASE_CSS = """
 @page { size: 1200px 1200px; margin: 0; }
-@font-face { font-family: "NSS"; src: url("file://FONTDIR/NotoSansSinhala.ttf"); }
-@font-face { font-family: "NS"; src: url("file://FONTDIR/NotoSans.ttf"); }
+@font-face { font-family: "NSS"; src: url("FONTDIR/NotoSansSinhala.ttf"); }
+@font-face { font-family: "NS"; src: url("FONTDIR/NotoSans.ttf"); }
 * { box-sizing: border-box; }
 body { margin: 0; width: 1200px; height: 1200px; background: #fbf7ea; font-family: "NSS","NS",sans-serif; color: #1e1a1a;
        padding: 54px 54px 90px 54px; position: relative; }
@@ -83,7 +84,7 @@ def chart_html(labels, title, sub="", size=760, house_numbers_from=None):
 
 
 def render(body, path, w=1200, h=1200, extra_css=""):
-    css = BASE_CSS.replace("FONTDIR", os.path.join(HERE, "fonts")).replace("1200px 1200px", f"{w}px {h}px")
+    css = BASE_CSS.replace("FONTDIR", Path(HERE, "fonts").as_uri()).replace("1200px 1200px", f"{w}px {h}px")
     css = css.replace("width: 1200px; height: 1200px;", f"width: {w}px; height: {h}px;")
     html = (f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8">'
             f'<style>{css}{extra_css}</style></head><body>{body}<div class="wm">Jyothisha Insight</div></body></html>')

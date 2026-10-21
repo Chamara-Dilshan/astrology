@@ -6,9 +6,7 @@
   from source (no Windows wheels for 3.12+)
 - MSYS2 Pango for WeasyPrint: `pacman -S mingw-w64-ucrt-x86_64-pango` (in C:\msys64).
   NOT the 2022 GTK3 runtime (uninstalled): its old HarfBuzz leaves gaps after
-  මූ / ්‍ර, --qa does not catch it, and its DLLs clash with MSYS2's
-- `FONTCONFIG_FILE` -> `fonts.conf` (the script's file://D:\... font URLs don't
-  resolve on Windows; fonts.conf lets Pango find ./fonts by family name)
+  මූ / ්‍ර (--qa shaping probe 2 fails on it), and its DLLs clash with MSYS2's
 - `fonts/` with 6 files directly inside: NotoSansSinhala.ttf (v3.000+),
   NotoSansSinhala-Bold.ttf, NotoSans.ttf, NotoSans-Bold.ttf,
   NotoSansSymbols2.ttf, NotoSansMath.ttf
@@ -18,8 +16,7 @@
 ```powershell
 . .\env.ps1
 ```
-Activates `.venv` and sets PYTHONIOENCODING, FONTCONFIG_FILE,
-WEASYPRINT_DLL_DIRECTORIES.
+Activates `.venv` and sets WEASYPRINT_DLL_DIRECTORIES.
 
 ## Setup from scratch
 ```powershell
@@ -43,8 +40,10 @@ python jyotisha_report.py --report A1 --name Test --date 1990-05-15 --time 10:30
 ```
 
 ## --qa
-Adds a check after the PDF is written: prints `QA: PASS`/`QA: FAIL` and
-renders page PNGs to `<out>_qa/` (e.g. `test_A1_qa/page-01.png`).
+Adds a check after the PDF is written: two Sinhala shaping probes, page PNGs
+in `<out>_qa/` (e.g. `test_A1_qa/page-01.png`) and font/overflow/blank checks.
+Prints `QA: PASS`/`QA: FAIL` on stderr (exit 3 on failure). PowerShell 5.1
+shows stderr as red "NativeCommandError" text; that alone is not a failure.
 
 ## Astrologer notes
 - Keep per-client files in `clients/<client>/notes.json` (git-ignored); pass `--notes clients/<client>/notes.json`

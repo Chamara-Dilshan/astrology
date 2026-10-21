@@ -3179,6 +3179,9 @@ def selftest():
 # Main
 # --------------------------------------------------------------------------
 def main():
+    # Sinhala/° in the output must not depend on the console code page (cp1252 on Windows)
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Jyotisha chart calculator (Lahiri, whole-sign, mean nodes)")
     ap.add_argument("--name", default="Native")
     ap.add_argument("--date", help="YYYY-MM-DD (local)")
@@ -3922,7 +3925,7 @@ def main():
         for code, r in result_planets.items():
             lab = PLANET_NAME[code][:5] + (" R" if r["retro"] and code not in ("Ra", "Ke") else "")
             pl.setdefault(r["sign_idx"], []).append(lab)
-        with open(args.svg, "w") as f:
+        with open(args.svg, "w", encoding="utf-8") as f:
             f.write(south_indian_svg(pl, f"D1 · {args.name}"))
         print(f"\nSVG written: {args.svg}")
     if args.svg_vargas:
@@ -3935,7 +3938,7 @@ def main():
                 lab = PLANET_NAME[code][:5] + (" R" if r["retro"] and code not in ("Ra", "Ke") else "")
                 pl.setdefault(varga_sign(pos[code]["lon"], div), []).append(lab)
             fn = f"{stem}_{v}.svg"
-            with open(fn, "w") as f:
+            with open(fn, "w", encoding="utf-8") as f:
                 f.write(south_indian_svg(pl, f"{v} · {args.name}"))
             print(f"SVG written: {fn}")
 
@@ -3960,7 +3963,7 @@ def main():
             "special_lagnas": {k: {"sign": SIGNS[sign_of(spl[k])], "lon": round(spl[k], 4)} for k in ("HL", "GL", "SL") if k in spl},
             "hora": hora_txt, **extra_out,
         }
-        with open(args.json, "w") as f:
+        with open(args.json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1, ensure_ascii=False)
         print(f"JSON written: {args.json}")
 
