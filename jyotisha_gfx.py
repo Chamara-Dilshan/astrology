@@ -18,7 +18,6 @@
 """
 import argparse
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -88,11 +87,11 @@ def render(body, path, w=1200, h=1200, extra_css=""):
     css = css.replace("width: 1200px; height: 1200px;", f"width: {w}px; height: {h}px;")
     html = (f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8">'
             f'<style>{css}{extra_css}</style></head><body>{body}<div class="wm">Jyothisha Insight</div></body></html>')
+    import pymupdf
     from weasyprint import HTML
-    pdf = path.replace(".png", ".pdf")
-    HTML(string=html, base_url=HERE).write_pdf(pdf)
-    subprocess.run(["pdftoppm", "-r", "96", "-png", "-singlefile", pdf, path[:-4]], check=True)
-    os.remove(pdf)
+    pdf = HTML(string=html, base_url=HERE).write_pdf()
+    # 96 dpi = 1 CSS px per pixel, so a 1200px page becomes a 1200×1200 PNG
+    pymupdf.open(stream=pdf, filetype="pdf")[0].get_pixmap(dpi=96, alpha=False).save(path)
     print("  " + os.path.basename(path))
 
 
@@ -232,24 +231,70 @@ def g_post14(out, report_pdf):
     if not os.path.exists(report_pdf):
         print(f"  (skip post14 — {report_pdf} නැත)")
         return
+    import pymupdf
     from PIL import Image, ImageFilter
-    tmp = os.path.join(out, "_rp")
-    subprocess.run(["pdftoppm", "-r", "110", "-f", "1", "-l", "6", "-png", report_pdf, tmp], check=True)
-    # blur the personal fields: cover name/birth line, and the birth-data table values on page 2
-    boxes = {1: [(0.15, 0.235, 0.85, 0.325)],
-             2: [(0.33, 0.395, 0.96, 0.58)]}
-    for i in range(1, 7):
-        p = f"{tmp}-{i:02d}.png" if os.path.exists(f"{tmp}-{i:02d}.png") else f"{tmp}-{i}.png"
-        if not os.path.exists(p):
+    dpi = 110
+    doc = pymupdf.open(report_pdf)
+    pages = range(min(6, len(doc)))
+    secrets = _personal_values(doc)
+    if not secrets:
+        sys.exit(f"post14: no birth-data table found in {report_pdf}; refusing to publish unblurred pages")
+    for i in pages:
+        page = doc[i]
+        pm = page.get_pixmap(dpi=dpi, alpha=False)
+        im = Image.frombytes("RGB", (pm.width, pm.height), pm.samples)
+        k = dpi / 72
+        for s in _spans(page):
+            if any(v in s["text"] for v in secrets):
+                x0, y0, x1, y1 = s["bbox"]
+                box = (int(x0 * k) - 6, int(y0 * k) - 4, int(x1 * k) + 6, int(y1 * k) + 4)
+                im.paste(im.crop(box).filter(ImageFilter.GaussianBlur(14)), box)
+        im.save(os.path.join(out, f"post14_report_page{i + 1}.png"))
+    print(f"  post14_report_page1..{len(pages)}.png (blurred {len(secrets)} personal values)")
+
+
+# The report's birth-data table starts with these rows, in this order (jyotisha_report.py birth_rows):
+# නම, උපන් දිනය, උපන් වේලාව, ස්ථානය, අක්ෂාංශ / දේශාංශ. Only "නම" is matched by text: the PDF text
+# layer splits or garbles some of the other Sinhala labels, so the rest are taken by position.
+_PERSONAL_ROWS = 5
+
+
+def _spans(page):
+    for b in page.get_text("dict")["blocks"]:
+        for ln in b.get("lines", []):
+            for s in ln["spans"]:
+                if s["text"].strip():
+                    yield s
+
+
+def _personal_values(doc):
+    """Read name/date/time/place/coordinates from the birth-data table, so every occurrence
+    can be blurred wherever the layout puts it. Returns the set of strings to blur."""
+    for page in doc:
+        spans = list(_spans(page))
+        label = next((s for s in spans if s["text"].strip() == "නම"), None)
+        if label is None:
             continue
-        im = Image.open(p).convert("RGB")
-        W, H = im.size
-        for (x0, y0, x1, y1) in boxes.get(i, []):
-            box = (int(x0 * W), int(y0 * H), int(x1 * W), int(y1 * H))
-            im.paste(im.crop(box).filter(ImageFilter.GaussianBlur(14)), box)
-        im.save(os.path.join(out, f"post14_report_page{i}.png"))
-        os.remove(p)
-    print("  post14_report_page1..6.png")
+        y0 = label["bbox"][1] - 2
+        # value column = spans right of the label column, from the name row downwards
+        values = [s for s in spans if s["bbox"][0] > label["bbox"][2] + 20 and s["bbox"][1] >= y0]
+        if not values:
+            continue
+        col_x = min(s["bbox"][0] for s in values if abs(s["bbox"][1] - label["bbox"][1]) < 4)
+        rows = []   # [[y_top, [texts]]], spans within 4 pt vertically form one row
+        for s in sorted((s for s in values if s["bbox"][0] >= col_x - 2), key=lambda s: (s["bbox"][1], s["bbox"][0])):
+            if rows and s["bbox"][1] - rows[-1][0] < 4:
+                rows[-1][1].append(s["text"])
+            else:
+                rows.append([s["bbox"][1], [s["text"]]])
+        found = set()
+        for _, texts in rows[:_PERSONAL_ROWS]:
+            text = "".join(texts).strip()
+            found.add(text)
+            # "10:30 (නිශ්චිත)" -> "10:30"; "6.9271° N, 79.8612° E" -> "6.9271", "79.8612"
+            found.update(t.strip("(),°") for t in text.replace("°", " ").replace(",", " ").split())
+        return {v for v in found if len(v) >= 3}
+    return set()
 
 
 def main():

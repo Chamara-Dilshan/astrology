@@ -81,10 +81,10 @@ Usage examples
 Method sources: P.V.R. Narasimha Rao, "Vedic Astrology: An Integrated Approach"
   ch.5 special lagnas, ch.12 Ashtakavarga, ch.15.5 strength rules, ch.17 Ashtottari, ch.18 Narayana dasa,
   ch.20 Sudasa, ch.24 Kalachakra, ch.27-31 Tajaka & Sudarsana, ch.35 Mundane, ch.36 Muhurta.
-Verified (--selftest, 43 checks): Table 40, Example 66, AV examples 40-43, Example 118, Ithasala examples,
+Verified (--selftest, 42 checks): Table 40, Example 66, AV examples 40-43, Example 118, Ithasala examples,
   Kalachakra Examples 95-97 & Exercise 34, Tables 44-47, Ashtottari Example 59, Sree Lagna Example 10 &
   Exercise 10, hora example 1.3.11, Sudasa Example 77, Sudarsana Example 127, compressed dasa 35.4.
-  v3 (--selftest 43 checks): Upagraha Example 6, Drigdasa Examples 80 & 82, Kendradi 19.2 examples, Argala 10.6 example,
+  v3 (--selftest 42 checks): Upagraha Example 6, Drigdasa Examples 80 & 82, Kendradi 19.2 examples, Argala 10.6 example,
   Vimshottari variants Example 51, Tajaka monthly/sixty-hour 27.3-27.4 times, natural benefics 3.3.
 Kalachakra note: Table 45 in the textbook prints "Revati" where the 9-fold Parasara pattern (Tables 42/44/46/47)
   requires Uttarabhadrapada; the script follows the pattern (Revati = Savya-1, U.Bhadra = Savya-2).

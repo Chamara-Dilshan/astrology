@@ -40,6 +40,11 @@ jobs:
           python jyotisha_report.py --report A1 --name Test --date 1990-05-15 --time 10:30
           --lat 6.93 --lon 79.85 --place Colombo --brand "Jyothisha Insight" --out test_A1.pdf --qa
 
+      - name: Social graphics (post 14 must blur the birth data)
+        run: |
+          python jyotisha_gfx.py --out gfx --report test_A1.pdf
+          python -c "import pymupdf, jyotisha_gfx as g; v = g._personal_values(pymupdf.open('test_A1.pdf')); print(sorted(v)); assert {'Test', '1990-05-15', '10:30', 'Colombo', '6.9300', '79.8500'} <= v"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
