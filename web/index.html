@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6b1010">
 <title>Jyothisha Insight · ජන්ම පත්‍රය</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
@@ -28,19 +29,24 @@
   label { display: block; font-weight: 700; font-size: 14px; margin: 14px 0 6px; }
   label:first-child { margin-top: 0; }
   .hint { font-weight: 400; color: var(--muted); }
-  input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
-                  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  /* 16px text in fields stops iOS zooming in on focus; 48px height is a comfortable tap target */
+  input, select { display: block; width: 100%; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink);
+                  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; text-align: left; }
+  input::-webkit-date-and-time-value { text-align: left; }
   input:focus, select:focus, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .check { display: flex; gap: 8px; align-items: center; font-weight: 400; margin-top: 14px; }
-  .check input { width: auto; }
-  button { margin-top: 20px; width: 100%; font: 700 16px inherit; font-family: inherit; padding: 12px;
-           border: 0; border-radius: 8px; background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+  .check { display: flex; gap: 12px; align-items: center; min-height: 44px; font-weight: 400; margin: 10px 0 0; cursor: pointer; }
+  .check input { width: 22px; height: 22px; min-height: 0; flex: none; margin: 0; accent-color: var(--brand); }
+  [hidden] { display: none !important; }
+  button { display: block; margin-top: 20px; width: 100%; min-height: 52px; font-family: inherit; font-size: 17px;
+           font-weight: 700; padding: 12px; border: 0; border-radius: 8px; background: var(--brand);
+           color: var(--brand-ink); cursor: pointer; touch-action: manipulation; }
   button[disabled] { opacity: .6; cursor: progress; }
-  #status { min-height: 1.5em; margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  #status { min-height: 1.5em; margin: 12px 0 0; font-size: 15px; color: var(--muted); }
   #status.err { color: var(--err); }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
-  footer a { color: inherit; }
+  footer a { color: inherit; display: inline-block; padding: 12px 4px; }
   @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -55,7 +61,7 @@
 
   <form id="f" method="post" action="/report">
     <label for="name">නම <span class="hint">· Name</span></label>
-    <input id="name" name="name" maxlength="60" required autocomplete="off">
+    <input id="name" name="name" maxlength="60" required autocomplete="off" autocapitalize="words" enterkeyhint="next">
 
     <div class="row">
       <div>
@@ -73,18 +79,22 @@
     <label for="placesel">උපන් ස්ථානය <span class="hint">· Place</span></label>
     <select id="placesel"></select>
     <input type="hidden" name="place" id="place">
+    <div id="otherbox" hidden>
+      <label for="placeother">ස්ථානයේ නම <span class="hint">· Town name</span></label>
+      <input id="placeother" maxlength="60" autocomplete="off" autocapitalize="words">
+    </div>
     <div class="row">
       <div>
         <label for="lat">Latitude <span class="hint">(N +)</span></label>
-        <input id="lat" name="lat" type="number" step="0.0001" min="-66" max="66" required>
+        <input id="lat" name="lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66" required>
       </div>
       <div>
         <label for="lon">Longitude <span class="hint">(E +)</span></label>
-        <input id="lon" name="lon" type="number" step="0.0001" min="-180" max="180" required>
+        <input id="lon" name="lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180" required>
       </div>
     </div>
     <label for="tz">Time zone</label>
-    <input id="tz" name="tz" value="Asia/Colombo" required>
+    <input id="tz" name="tz" value="Asia/Colombo" required autocapitalize="off" autocorrect="off" spellcheck="false">
 
     <label for="report">වාර්තාව <span class="hint">· Report</span></label>
     <select id="report" name="report">{{REPORT_OPTIONS}}</select>
@@ -105,10 +115,12 @@ const sel = document.getElementById("placesel"), lat = document.getElementById("
       lon = document.getElementById("lon"), place = document.getElementById("place");
 for (const [n] of PLACES) sel.add(new Option(n, n));
 sel.add(new Option("Other (enter coordinates)", ""));
+const otherbox = document.getElementById("otherbox"), placeother = document.getElementById("placeother");
 function pick() {
   const p = PLACES.find(([n]) => n === sel.value);
-  place.value = p ? p[0] : "";
-  if (p) { lat.value = p[1]; lon.value = p[2]; } else { lat.value = ""; lon.value = ""; lat.focus(); }
+  otherbox.hidden = !!p;
+  placeother.required = !p;
+  if (p) { lat.value = p[1]; lon.value = p[2]; } else { lat.value = ""; lon.value = ""; placeother.focus(); }
 }
 sel.addEventListener("change", pick);
 sel.value = "Colombo"; pick();
@@ -119,6 +131,8 @@ document.getElementById("approx").addEventListener("change", e => {
 const form = document.getElementById("f"), go = document.getElementById("go"), status = document.getElementById("status");
 form.addEventListener("submit", async e => {
   e.preventDefault();
+  place.value = otherbox.hidden ? sel.value : placeother.value.trim();
+  if (document.activeElement) document.activeElement.blur();   // close the phone keyboard
   go.disabled = true; status.className = ""; status.textContent = "Calculating the chart and rendering the PDF… (up to a minute)";
   try {
     const r = await fetch("/report", { method: "POST", body: new FormData(form) });
@@ -137,7 +151,10 @@ form.addEventListener("submit", async e => {
     status.textContent = "Done — your PDF has downloaded.";
   } catch (err) {
     status.className = "err"; status.textContent = "Error: " + err.message;
-  } finally { go.disabled = false; }
+  } finally {
+    go.disabled = false;
+    status.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
 });
 </script>
 </body>

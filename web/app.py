@@ -98,7 +98,7 @@ async def report(name: str = Form(...), birth_date: str = Form(...), birth_time:
                 pdf = await asyncio.to_thread(_render, args, workdir)
             except subprocess.TimeoutExpired:
                 raise HTTPException(504, "Report took too long")
-    stamp = datetime.now().strftime("%Y%m%d")
+    stamp = datetime.now(ZoneInfo(tz)).strftime("%Y%m%d")   # the user's date, not the server's (UTC)
     filename = f"jyotisha_{report}_{stamp}.pdf"
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"',
