@@ -16,7 +16,7 @@ from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,6 +45,13 @@ def index():
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+@app.get("/_iphdrs")   # TEMPORARY: see which proxy headers Render sends; removed in the next commit
+def _iphdrs(request: Request):
+    keep = ("x-forwarded-for", "cf-connecting-ip", "true-client-ip", "x-real-ip", "forwarded", "rndr-id")
+    return {"peer": request.client.host if request.client else None,
+            **{k: v for k, v in request.headers.items() if k in keep}}
 
 
 def _validate(name, birth_date, birth_time, lat, lon, tz, report):
