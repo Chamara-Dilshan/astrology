@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/Chamara-Dilshan/astrology/actions/workflows/ci.yml/badge.svg)](https://github.com/Chamara-Dilshan/astrology/actions/workflows/ci.yml)
 
+**Live demo: [jyotisha-insight.onrender.com](https://jyotisha-insight.onrender.com)**
+(free hosting: the first visit after a quiet spell takes up to a minute to wake,
+and a report takes 10–30 s)
+
 A command-line pipeline that turns birth data (date, time, place) into a
 print-ready **Sinhala** Vedic astrology report (PDF). It calculates the chart
 with the Swiss Ephemeris, lays the report out as HTML/CSS and renders it with
