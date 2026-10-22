@@ -4,6 +4,7 @@ services:
     name: jyotisha-insight
     runtime: docker
     plan: free
+    region: singapore   # closest Render region to Sri Lanka
     healthCheckPath: /healthz
     envVars:
       - key: MAX_PARALLEL
