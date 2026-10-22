@@ -56,11 +56,30 @@ there is nothing else to install.
 docker run --rm -p 8000:8000 jyotisha        # then open http://localhost:8000
 ```
 
-A one-page form (name, date, time, place) that returns the PDF; see `web/`.
-Picking a town fills in its coordinates, which stay editable. Each request runs
-in a temporary folder that is deleted afterwards, so no birth data is stored.
-Reports run at most `MAX_PARALLEL` at a time (default 2), each limited to
-`REPORT_TIMEOUT` seconds.
+<img src="docs/img/web-form-mobile.jpg" alt="The web form on a phone" width="300" align="right">
+
+A one-page, mobile-first form (name, date, time, place) that returns the PDF;
+see `web/`. Picking a town fills in its coordinates, which stay editable, and
+"Other" asks for the town name. Each request runs in a temporary folder that is
+deleted afterwards, so no birth data is stored.
+
+Limits, all set by environment variables:
+
+| Variable | Default | |
+|---|---|---|
+| `REPORTS_PER_HOUR_PER_IP` | 10 | per visitor, sliding one-hour window (HTTP 429 + `Retry-After`) |
+| `REPORTS_PER_HOUR` | 120 | for the whole site |
+| `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |
+| `REPORT_TIMEOUT` | 180 | seconds per report |
+| `CLIENT_IP_HEADER` | `cf-connecting-ip` | header the proxy sets with the visitor's IP; `X-Forwarded-For` is ignored because clients can forge it |
+
+Only valid requests count towards the limits. They cap CPU use per visitor; they
+can't stop traffic from waking a free-tier instance, which is the host's job.
+
+Tests: `pip install -r requirements-dev.txt` then `pytest` (input validation,
+what reaches the report, limits, and one real PDF end to end).
+
+<br clear="right">
 
 **Deploy:** `render.yaml` is a [Render](https://render.com) blueprint (Docker,
 free plan). In Render choose New → Blueprint and select this repo. Any host

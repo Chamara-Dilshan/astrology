@@ -5,6 +5,7 @@ services:
     runtime: docker
     plan: free
     region: singapore   # closest Render region to Sri Lanka
+    autoDeploy: true    # redeploy on every push to main
     healthCheckPath: /healthz
     envVars:
       - key: MAX_PARALLEL
