@@ -30,8 +30,9 @@ MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
 RATE_TOTAL = int(os.environ.get("REPORTS_PER_HOUR", "120"))
-# Header set by the proxy in front of the app (Render sits behind Cloudflare). The client can't
-# forge it: Cloudflare overwrites it. X-Forwarded-For is NOT used: a client can prepend to it.
+# Header set by the proxy in front of the app. Checked on Render (2026-10-24): it is behind
+# Cloudflare, CF-Connecting-IP holds the visitor's IP, and Cloudflare rejects requests that try to
+# set it themselves (error 1000). X-Forwarded-For is NOT used: a forged value is kept at the front.
 CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "cf-connecting-ip")
 
 PLACES = json.loads((HERE / "places.json").read_text(encoding="utf-8"))["places"]
@@ -95,12 +96,6 @@ def index():
 def healthz():
     return {"ok": True}
 
-
-@app.get("/_iphdrs")   # TEMPORARY: see which proxy headers Render sends; removed in the next commit
-def _iphdrs(request: Request):
-    keep = ("x-forwarded-for", "cf-connecting-ip", "true-client-ip", "x-real-ip", "forwarded", "rndr-id")
-    return {"peer": request.client.host if request.client else None,
-            **{k: v for k, v in request.headers.items() if k in keep}}
 
 
 def _validate(name, birth_date, birth_time, lat, lon, tz, report):
