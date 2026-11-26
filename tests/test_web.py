@@ -127,13 +127,27 @@ def test_pdf_response_headers(client, calls):
 
 # ---------------------------------------------------------------- free vs paid reports, contact
 
-def test_default_config_offers_only_free_g(monkeypatch):
-    monkeypatch.delenv("WEB_REPORTS", raising=False)
+def test_defaults_offer_all_reports_with_facebook_contact(monkeypatch):
+    for var in ("WEB_REPORTS", "BRAND_CONTACT", "ORDER_URL"):
+        monkeypatch.delenv(var, raising=False)
+    import importlib
+    fresh = importlib.reload(web)
+    try:
+        assert list(fresh.REPORTS) == ["G", "A1", "A2", "A3"]
+        assert "61594028591573" in fresh.BRAND_CONTACT
+        assert fresh.ORDER_URL == fresh.FACEBOOK_PAGE
+    finally:
+        importlib.reload(web)
+
+
+def test_web_reports_env_can_limit_to_g(monkeypatch):
+    monkeypatch.setenv("WEB_REPORTS", "g")
     import importlib
     fresh = importlib.reload(web)
     try:
         assert list(fresh.REPORTS) == ["G"]
     finally:
+        monkeypatch.delenv("WEB_REPORTS")
         importlib.reload(web)
 
 
@@ -157,12 +171,14 @@ def test_no_contact_line_by_default(client, calls):
     assert "--brand-contact" not in calls[0]
 
 
-def test_order_link_shown_only_for_web_urls(client, monkeypatch):
-    assert "Order here" not in client.get("/").text
+def test_order_button_shown_only_for_web_urls(client, monkeypatch):
+    assert "Order on Facebook" not in client.get("/").text
     monkeypatch.setattr(web, "ORDER_URL", "https://facebook.com/example?a=1&b=2")
-    assert 'href="https://facebook.com/example?a=1&amp;b=2"' in client.get("/").text
+    page = client.get("/").text
+    assert "Order on Facebook" in page
+    assert 'href="https://facebook.com/example?a=1&amp;b=2"' in page
     monkeypatch.setattr(web, "ORDER_URL", "javascript:alert(1)")
-    assert "Order here" not in client.get("/").text
+    assert "Order on Facebook" not in client.get("/").text
 
 
 # ---------------------------------------------------------------- limits

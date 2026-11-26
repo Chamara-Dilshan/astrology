@@ -67,9 +67,9 @@ Settings, all environment variables:
 
 | Variable | Default | |
 |---|---|---|
-| `WEB_REPORTS` | `G` | reports the site makes; A1–A3 are paid and ordered, so the public site offers only the free G (`G,A1,A2,A3` offers all) |
-| `BRAND_CONTACT` | (none) | contact line printed at the bottom of each PDF |
-| `ORDER_URL` | (none) | "order the full report" link under the form (http/https only) |
+| `WEB_REPORTS` | `G,A1,A2,A3` | reports the site makes (e.g. `G` for the free summary only) |
+| `BRAND_CONTACT` | the Jyothisha Insight Facebook page | contact line printed at the bottom of each PDF (`""` hides it) |
+| `ORDER_URL` | the same page | "order a personal reading" button under the form (http/https only; `""` hides it) |
 | `REPORTS_PER_HOUR_PER_IP` | 10 | per visitor, sliding one-hour window (HTTP 429 + `Retry-After`) |
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
 | `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |

@@ -46,9 +46,13 @@
   button[disabled] { opacity: .6; cursor: progress; }
   #status { min-height: 1.5em; margin: 12px 0 0; font-size: 15px; color: var(--muted); }
   #status.err { color: var(--err); }
-  .order { margin: 16px 0 0; padding: 14px 16px; border: 1px solid var(--gold); border-radius: 12px;
+  .order { margin: 16px 0 0; padding: 16px 20px; border: 1px solid var(--gold); border-radius: 12px;
            background: var(--card); text-align: center; font-size: 15px; }
-  .order a { color: var(--brand); font-weight: 700; display: inline-block; padding: 8px 4px; }
+  .order p { margin: 0 0 12px; }
+  .orderbtn { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 16px;
+              border: 2px solid var(--brand); border-radius: 8px; color: var(--brand); font-weight: 700;
+              text-decoration: none; }
+  .orderbtn:hover, .orderbtn:focus-visible { background: var(--brand); color: var(--brand-ink); }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
   footer a { color: inherit; display: inline-block; padding: 12px 4px; }
   /* stacked on phones: the labels' own top margin spaces them, so no extra row gap */

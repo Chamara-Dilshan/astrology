@@ -27,14 +27,15 @@ HERE = Path(__file__).resolve().parent
 SOURCE_URL = "https://github.com/Chamara-Dilshan/astrology"
 ALL_REPORTS = {"G": "Free summary (1 page)", "A1": "Natal report (8 pages)",
                "A2": "Full natal report (9 pages)", "A3": "Deep natal report with divisional charts (14 pages)"}
-# Which reports the public site makes. Default: only the free G summary; A1-A3 are paid products
-# (prices.json) ordered through the astrologer. Set e.g. WEB_REPORTS=G,A1,A2,A3 to offer them all.
-REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", "G").upper().replace(" ", "").split(",")
-           if c in ALL_REPORTS} or {"G": ALL_REPORTS["G"]}
-# Printed at the bottom of each PDF (e.g. "facebook.com/yourpage"), and where "order a full report"
-# links to. Both optional; set in the host's environment, not in code.
-BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "").strip()
-ORDER_URL = os.environ.get("ORDER_URL", "").strip()
+# Which reports the public site makes: all four by default (the owner's choice). The paid versions
+# add the astrologer's own notes; set e.g. WEB_REPORTS=G to offer only the free summary.
+REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", ",".join(ALL_REPORTS)).upper()
+           .replace(" ", "").split(",") if c in ALL_REPORTS} or {"G": ALL_REPORTS["G"]}
+# Printed at the bottom of each PDF, and where the "order a personal reading" button links to.
+# Defaults are the Jyothisha Insight Facebook page; set either to "" in the environment to hide it.
+FACEBOOK_PAGE = "https://www.facebook.com/profile.php?id=61594028591573"
+BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "Facebook: Jyothisha Insight · facebook.com/profile.php?id=61594028591573").strip()
+ORDER_URL = os.environ.get("ORDER_URL", FACEBOOK_PAGE).strip()
 MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
@@ -98,8 +99,10 @@ def index():
     opts = "".join(f'<option value="{c}">{c} — {label}</option>' for c, label in REPORTS.items())
     order = ""
     if ORDER_URL.startswith(("https://", "http://")):
-        order = (f'<p class="order">සම්පූර්ණ වාර්තාවක් අවශ්‍යද? · Want the full report (A1–A3)? '
-                 f'<a href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">Order here</a></p>')
+        order = ('<div class="order"><p>ජ්‍යොතිෂවේදියාගේ සටහන් සහිත පුද්ගලික වාර්තාවක් අවශ්‍යද?<br>'
+                 '<span class="hint">Want a personal reading with the astrologer\'s own notes?</span></p>'
+                 f'<a class="orderbtn" href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">'
+                 'Facebook හරහා ඇණවුම් කරන්න · Order on Facebook</a></div>')
     return PAGE.replace("{{REPORT_OPTIONS}}", opts) \
                .replace("{{ORDER_LINK}}", order) \
                .replace("{{PLACES_JSON}}", json.dumps(PLACES)) \
