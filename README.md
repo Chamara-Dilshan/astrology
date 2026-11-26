@@ -88,6 +88,10 @@ what reaches the report, limits, and one real PDF end to end).
 free plan). In Render choose New → Blueprint and select this repo. Any host
 that runs a Dockerfile and sets `PORT` works the same way.
 
+Pushes to `main` deploy automatically only if Render's GitHub app has access to
+this repository (GitHub → Settings → Applications → Render → Configure). A public
+repo can be deployed by hand without it, so a missing grant fails silently.
+
 ## Quick start without Docker (Linux / macOS)
 
 ```bash
