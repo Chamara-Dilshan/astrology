@@ -67,8 +67,11 @@ def test_index_has_form_places_and_source_link(client):
     assert "{{" not in r.text            # every template placeholder was filled
 
 
-def test_healthz(client):
-    assert client.get("/healthz").json() == {"ok": True}
+def test_healthz(client, monkeypatch):
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    assert client.get("/healthz").json() == {"ok": True, "version": "dev"}
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "67b2668a1b2c3d4e")
+    assert client.get("/healthz").json()["version"] == "67b2668"
 
 
 # ---------------------------------------------------------------- input validation

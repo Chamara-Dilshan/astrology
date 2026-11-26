@@ -111,7 +111,8 @@ def index():
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True}
+    # RENDER_GIT_COMMIT is set by Render; shows which commit is live ("dev" when run locally)
+    return {"ok": True, "version": os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]}
 
 
 def _validate(name, birth_date, birth_time, lat, lon, tz, report):
