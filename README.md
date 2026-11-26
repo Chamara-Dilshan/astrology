@@ -63,10 +63,13 @@ see `web/`. Picking a town fills in its coordinates, which stay editable, and
 "Other" asks for the town name. Each request runs in a temporary folder that is
 deleted afterwards, so no birth data is stored.
 
-Limits, all set by environment variables:
+Settings, all environment variables:
 
 | Variable | Default | |
 |---|---|---|
+| `WEB_REPORTS` | `G` | reports the site makes; A1–A3 are paid and ordered, so the public site offers only the free G (`G,A1,A2,A3` offers all) |
+| `BRAND_CONTACT` | (none) | contact line printed at the bottom of each PDF |
+| `ORDER_URL` | (none) | "order the full report" link under the form (http/https only) |
 | `REPORTS_PER_HOUR_PER_IP` | 10 | per visitor, sliding one-hour window (HTTP 429 + `Retry-After`) |
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
 | `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |

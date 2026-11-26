@@ -10,3 +10,12 @@ services:
     envVars:
       - key: MAX_PARALLEL
         value: "1"
+      # only the free G report on the public site; A1-A3 are ordered (e.g. "G,A1,A2,A3" to offer all)
+      - key: WEB_REPORTS
+        value: "G"
+      # printed at the bottom of each PDF
+      - key: BRAND_CONTACT
+        value: "Facebook: Jyothisha Insight · facebook.com/profile.php?id=61594028591573"
+      # the "order a full report" link under the form
+      - key: ORDER_URL
+        value: "https://www.facebook.com/profile.php?id=61594028591573"

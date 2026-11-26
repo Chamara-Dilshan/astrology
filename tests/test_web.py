@@ -19,10 +19,14 @@ GOOD = dict(name="Sample", birth_date="1990-05-15", birth_time="10:30", place="C
 
 @pytest.fixture(autouse=True)
 def fresh_limits(monkeypatch):
-    """Every test starts with empty rate-limit windows and generous limits."""
+    """Every test starts with empty rate-limit windows, generous limits, all report types on,
+    and no contact line or order link."""
     web._limiter.reset()
     monkeypatch.setattr(web, "RATE_PER_IP", 1000)
     monkeypatch.setattr(web, "RATE_TOTAL", 1000)
+    monkeypatch.setattr(web, "REPORTS", dict(web.ALL_REPORTS))
+    monkeypatch.setattr(web, "BRAND_CONTACT", "")
+    monkeypatch.setattr(web, "ORDER_URL", "")
 
 
 @pytest.fixture
@@ -121,6 +125,46 @@ def test_pdf_response_headers(client, calls):
     assert re.fullmatch(r'attachment; filename="jyotisha_G_\d{8}\.pdf"', r.headers["content-disposition"])
 
 
+# ---------------------------------------------------------------- free vs paid reports, contact
+
+def test_default_config_offers_only_free_g(monkeypatch):
+    monkeypatch.delenv("WEB_REPORTS", raising=False)
+    import importlib
+    fresh = importlib.reload(web)
+    try:
+        assert list(fresh.REPORTS) == ["G"]
+    finally:
+        importlib.reload(web)
+
+
+def test_paid_report_refused_when_not_offered(client, calls, monkeypatch):
+    monkeypatch.setattr(web, "REPORTS", {"G": web.ALL_REPORTS["G"]})
+    r = post(client, report="A1")
+    assert r.status_code == 400 and r.json()["detail"] == "This report is available by order only"
+    assert calls == []
+    page = client.get("/").text
+    assert 'value="G"' in page and 'value="A1"' not in page
+
+
+def test_contact_line_reaches_the_pdf(client, calls, monkeypatch):
+    monkeypatch.setattr(web, "BRAND_CONTACT", "facebook.com/example")
+    post(client)
+    assert arg(calls[0], "--brand-contact") == "facebook.com/example"
+
+
+def test_no_contact_line_by_default(client, calls):
+    post(client)
+    assert "--brand-contact" not in calls[0]
+
+
+def test_order_link_shown_only_for_web_urls(client, monkeypatch):
+    assert "Order here" not in client.get("/").text
+    monkeypatch.setattr(web, "ORDER_URL", "https://facebook.com/example?a=1&b=2")
+    assert 'href="https://facebook.com/example?a=1&amp;b=2"' in client.get("/").text
+    monkeypatch.setattr(web, "ORDER_URL", "javascript:alert(1)")
+    assert "Order here" not in client.get("/").text
+
+
 # ---------------------------------------------------------------- limits
 
 def test_per_ip_limit(client, calls, monkeypatch):
@@ -163,12 +207,14 @@ def test_busy_when_all_slots_taken(client, calls, monkeypatch):
 
 # ---------------------------------------------------------------- real pipeline
 
-def test_real_report_g_is_a_pdf(client):
+def test_real_report_g_is_a_pdf(client, monkeypatch):
     pymupdf = pytest.importorskip("pymupdf")
+    monkeypatch.setattr(web, "BRAND_CONTACT", "facebook.com/example")
     r = post(client, name="Test", place="Kandy", lat="7.2906", lon="80.6337")
     assert r.status_code == 200
     doc = pymupdf.open(stream=r.content, filetype="pdf")
     text = doc[0].get_text()
     assert len(doc) == 1 and "Test" in text and "Kandy" in text
+    assert "facebook.com/example" in text
     fonts = {s["font"] for b in doc[0].get_text("dict")["blocks"] for l in b.get("lines", []) for s in l["spans"]}
     assert fonts and all(f.startswith("Noto") for f in fonts)

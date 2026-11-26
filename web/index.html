@@ -45,6 +45,9 @@
   button[disabled] { opacity: .6; cursor: progress; }
   #status { min-height: 1.5em; margin: 12px 0 0; font-size: 15px; color: var(--muted); }
   #status.err { color: var(--err); }
+  .order { margin: 16px 0 0; padding: 14px 16px; border: 1px solid var(--gold); border-radius: 12px;
+           background: var(--card); text-align: center; font-size: 15px; }
+  .order a { color: var(--brand); font-weight: 700; display: inline-block; padding: 8px 4px; }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
   footer a { color: inherit; display: inline-block; padding: 12px 4px; }
   @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
@@ -102,6 +105,7 @@
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
   </form>
+  {{ORDER_LINK}}
 
   <footer>
     Birth data is used only to make your PDF and is not stored.<br>

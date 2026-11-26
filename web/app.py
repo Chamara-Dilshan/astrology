@@ -7,6 +7,7 @@ deleted as soon as the PDF has been read back.
 """
 import asyncio
 import collections
+import html
 import json
 import os
 import re
@@ -24,8 +25,16 @@ from fastapi.responses import HTMLResponse, Response
 ROOT = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
 SOURCE_URL = "https://github.com/Chamara-Dilshan/astrology"
-REPORTS = {"G": "Free summary (1 page)", "A1": "Natal report (8 pages)",
-           "A2": "Full natal report", "A3": "Deep natal report with divisional charts"}
+ALL_REPORTS = {"G": "Free summary (1 page)", "A1": "Natal report (8 pages)",
+               "A2": "Full natal report (9 pages)", "A3": "Deep natal report with divisional charts (14 pages)"}
+# Which reports the public site makes. Default: only the free G summary; A1-A3 are paid products
+# (prices.json) ordered through the astrologer. Set e.g. WEB_REPORTS=G,A1,A2,A3 to offer them all.
+REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", "G").upper().replace(" ", "").split(",")
+           if c in ALL_REPORTS} or {"G": ALL_REPORTS["G"]}
+# Printed at the bottom of each PDF (e.g. "facebook.com/yourpage"), and where "order a full report"
+# links to. Both optional; set in the host's environment, not in code.
+BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "").strip()
+ORDER_URL = os.environ.get("ORDER_URL", "").strip()
 MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
@@ -87,7 +96,12 @@ app = FastAPI(title="Jyothisha Insight", docs_url=None, redoc_url=None)
 @app.get("/", response_class=HTMLResponse)
 def index():
     opts = "".join(f'<option value="{c}">{c} — {label}</option>' for c, label in REPORTS.items())
+    order = ""
+    if ORDER_URL.startswith(("https://", "http://")):
+        order = (f'<p class="order">සම්පූර්ණ වාර්තාවක් අවශ්‍යද? · Want the full report (A1–A3)? '
+                 f'<a href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">Order here</a></p>')
     return PAGE.replace("{{REPORT_OPTIONS}}", opts) \
+               .replace("{{ORDER_LINK}}", order) \
                .replace("{{PLACES_JSON}}", json.dumps(PLACES)) \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
 
@@ -97,8 +111,9 @@ def healthz():
     return {"ok": True}
 
 
-
 def _validate(name, birth_date, birth_time, lat, lon, tz, report):
+    if report in ALL_REPORTS and report not in REPORTS:
+        raise HTTPException(400, "This report is available by order only")
     if report not in REPORTS:
         raise HTTPException(400, "Unknown report type")
     name = " ".join(name.split())
@@ -141,6 +156,8 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args = ["--report", report, "--name", name, "--date", birth_date, "--time", birth_time,
             "--lat", f"{lat:.4f}", "--lon", f"{lon:.4f}", "--tz", tz, "--place", place,
             "--time-exact", "yes" if time_exact == "yes" else "approx", "--brand", "Jyothisha Insight"]
+    if BRAND_CONTACT:
+        args += ["--brand-contact", BRAND_CONTACT]
     if _slots.locked():
         raise HTTPException(503, "Busy, please try again in a minute")
     # counted only once the request is valid and a slot is free, so typos and "busy" don't use it up
