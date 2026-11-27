@@ -151,7 +151,7 @@ def test_csp_allows_only_the_template_script(client):
     assert f"script-src 'sha256-{digest}';" in csp                        # the served script is allowed ...
     assert csp.count("'sha256-") == 1                                      # ... and nothing else
     data = re.search(r'<script type="application/json" id="page-data">(.*?)</script>', r.text, re.S).group(1)
-    assert "<" not in data and set(json.loads(data)) == {"place", "catalog", "order"}
+    assert "<" not in data and set(json.loads(data)) == {"place", "catalog", "order", "studio"}
     for path in ("/accuracy", "/panchanga"):
         assert "script-src 'none'" in client.get(path).headers["content-security-policy"]
 

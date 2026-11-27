@@ -24,7 +24,7 @@ import zoneinfo
 from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -57,6 +57,14 @@ MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "90"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
 RATE_TOTAL = int(os.environ.get("REPORTS_PER_HOUR", "120"))
+# Studio: this same site on the owner's own computer ("Jyothisha Studio.bat"), for the paid reports.
+# Every report is made, with boxes for the astrologer's notes and one that fills the form from a
+# customer's pasted order. It answers only this computer (StudioLocalOnly below), so a studio
+# started anywhere else serves nobody. Never set STUDIO on the public site.
+STUDIO = os.environ.get("STUDIO", "") == "1"
+if STUDIO:
+    REPORTS = dict(ALL_REPORTS)
+    RATE_PER_IP = RATE_TOTAL = 100_000
 # Town search (the place box asks as you type): generous, but bounded.
 SEARCH_PER_IP = int(os.environ.get("SEARCHES_PER_HOUR_PER_IP", "600"))
 SEARCH_TOTAL = int(os.environ.get("SEARCHES_PER_HOUR", "20000"))
@@ -241,6 +249,27 @@ class HeadAsGet:
 
 app.add_middleware(HeadAsGet)
 
+LOOPBACK = {"127.0.0.1", "::1"}
+
+
+class StudioLocalOnly:
+    """In studio mode, answer only requests from this computer itself (the socket's address, not a
+    header): the studio makes every paid report for free and takes the astrologer's notes."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if STUDIO and scope["type"] == "http" and (scope.get("client") or ("",))[0] not in LOOPBACK:
+            await send({"type": "http.response.start", "status": 403,
+                        "headers": [(b"content-type", b"text/plain; charset=utf-8")]})
+            await send({"type": "http.response.body", "body": b"Jyothisha Studio answers only this computer."})
+            return
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(StudioLocalOnly)
+
 
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -273,6 +302,27 @@ def _script_json(value):
     return json.dumps(value).replace("<", "\\u003c")
 
 
+def _studio_top():
+    """Studio only: what it is, and the box that fills the form from a customer's pasted order."""
+    return ('<div class="studio"><p class="studiotag">STUDIO · මේ පරිගණකයේ පමණි<br>'
+            '<span class="hint">සියලු වාර්තා, ඔබේ සටහන් සමඟ · every report, with your own notes · this computer only</span></p>'
+            '<label for="orderpaste">පාරිභෝගිකයාගේ ඇණවුම paste කරන්න <span class="hint">· Paste the customer’s order message</span></label>'
+            '<textarea id="orderpaste" class="q" rows="5" placeholder="Jyothisha Insight – ඇණවුම / Order …"></textarea>'
+            '<button type="button" id="fillorder" class="secondary">පෝරමය පුරවන්න · Fill the form</button>'
+            '<p id="fillstatus" class="hint small" aria-live="polite"></p></div>')
+
+
+def _studio_notes_html():
+    """Studio only: a box for each section of the astrologer's notes."""
+    boxes = "".join(f'<label for="note_{k}">{html.escape(label)}</label>'
+                    f'<textarea id="note_{k}" name="note_{k}" class="q" rows="3" maxlength="{NOTE_MAX}"></textarea>'
+                    for k, label in NOTE_SECTIONS)
+    return ('<fieldset class="sec notes"><label class="ntitle">ජ්‍යොතිෂවේදියාගේ සටහන් · Astrologer’s notes</label>'
+            '<p class="hint small">හිස් කොටු වාර්තාවට එකතු නොවේ; හිස් පේළියක් නව ඡේදයක් අරඹයි. '
+            '· Empty boxes are left out; a blank line starts a new paragraph. A report shows the sections it has.</p>'
+            + boxes + '</fieldset>')
+
+
 def _index_html():
     entries = _catalog()
     order_cfg = {"url": ORDER_URL if ORDER_URL.startswith(("https://", "http://")) else "",
@@ -291,9 +341,11 @@ def _index_html():
                .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
                .replace("{{LANG_OPTIONS}}", opt(catalog.LANG_NAMES.items())) \
                .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
-               .replace("{{ORDER_LINK}}", order) \
+               .replace("{{ORDER_LINK}}", "" if STUDIO else order) \
+               .replace("{{STUDIO_TOP}}", _studio_top() if STUDIO else "") \
+               .replace("{{STUDIO_NOTES}}", _studio_notes_html() if STUDIO else "") \
                .replace("{{PAGE_DATA_JSON}}", _script_json({"place": placesearch.DEFAULT, "catalog": entries,
-                                                            "order": order_cfg})) \
+                                                            "order": order_cfg, "studio": STUDIO})) \
                .replace("{{PANCHANGA_LINK}}", '<a href="/panchanga">අද රාහු කාලය · Today’s Rahu kalaya</a><br>'
                          if PANCHANGA_PAGE else "") \
                .replace("{{SITE_URL}}", html.escape(SITE_URL))
@@ -545,14 +597,14 @@ def _render(args, workdir, files=None):
     for fname, text in (files or {}).items():                   # e.g. matches.json for D3
         (Path(workdir) / fname).write_text(text, encoding="utf-8")
     # point file arguments at this request's own temporary folder
-    args = [a.replace("{workdir}", workdir) if a.startswith(("--matches=", "--events=")) else a for a in args]
+    args = [a.replace("{workdir}", workdir) if a.startswith(("--matches=", "--events=", "--notes=")) else a for a in args]
     # Its own process group, so a timeout also stops the calculation processes it starts
     posix = os.name == "posix"
     proc = subprocess.Popen([sys.executable, str(ROOT / "jyotisha_report.py"), *args, "--out", str(out)],
                             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
                             env={**os.environ, "PYTHONIOENCODING": "utf-8"}, start_new_session=posix)
     try:
-        _, err = proc.communicate(timeout=TIMEOUT_S)
+        printed, err = proc.communicate(timeout=TIMEOUT_S)
     except subprocess.TimeoutExpired:
         if posix:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -565,10 +617,47 @@ def _render(args, workdir, files=None):
         last = (err.strip().splitlines() or ["?"])[-1]
         print(f"report failed: exit {proc.returncode}: {last.split(':')[0][:80]}", file=sys.stderr)
         raise HTTPException(500, "Report generation failed")
+    (Path(workdir) / "report.log").write_text(printed or "", encoding="utf-8")   # the studio's notes check
     return out.read_bytes()
 
 
 MAX_PROPOSALS = 5
+
+# The astrologer's note boxes in the studio: (key the report reads, label). A report shows the ones it has.
+NOTE_SECTIONS = [("summary", "සාරාංශය · Summary"), ("lagna", "ලග්නය · Lagna"), ("yogas", "යෝග · Yogas"),
+                 ("dasha", "දශා · Dasha periods"), ("gochara", "ගෝචරය · Transits"),
+                 ("upcoming", "ඉදිරි කාලය · The coming period"), ("remedies", "යෝජනා · Remedies"),
+                 ("areas", "ජීවිත ක්ෂේත්‍ර · Life areas (A2, A3)"), ("calendar", "මාසයෙන් මාසය · Month by month (C2)"),
+                 ("dosha", "දෝෂ · Doshas (porondam)")]
+NOTE_MAX = 4000
+
+
+async def _studio_notes(request):
+    """The note boxes that have text, checked like the other fields (but keeping line breaks)."""
+    form = await request.form()
+    notes = {}
+    for key, label in NOTE_SECTIONS:
+        text = str(form.get(f"note_{key}", "")).replace("\r\n", "\n").strip()
+        if len(text) > NOTE_MAX:
+            raise HTTPException(400, f"Notes ({label}) must be at most {NOTE_MAX} characters")
+        if any(unicodedata.category(c)[0] == "C" and c != "\n" and c not in SINHALA_JOINERS for c in text):
+            raise HTTPException(400, f"Notes ({label}) contain characters that aren't allowed")
+        if text:
+            notes[key] = text
+    return notes
+
+
+def _notes_check(log):
+    """The report's notes cross-check (a note that contradicts the chart), from its printed output."""
+    found, on = [], False
+    for ln in log.splitlines():
+        if ln.startswith("!!") and "notes cross-check" in ln:
+            on = True
+        elif on:
+            if not ln.strip() or ln.strip().startswith("("):
+                break
+            found.append(ln.strip())
+    return found
 
 
 def _partners(p_name, p_date, p_time, p_place, p_lat, p_lon, p_tz):
@@ -714,6 +803,10 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args += extra
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")
+    notes = await _studio_notes(request) if STUDIO else {}
+    if notes:
+        files = {**files, "notes.json": json.dumps(notes, ensure_ascii=False)}
+        args.append("--notes={workdir}/notes.json")
     if _slots.locked():
         raise HTTPException(503, "Busy, please try again in a minute")
     # counted only once the request is valid and a slot is free, so typos and "busy" don't use it up
@@ -728,8 +821,11 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                 pdf = await asyncio.to_thread(_render, args, workdir, files)
             except subprocess.TimeoutExpired:
                 raise HTTPException(504, "Report took too long")
+            log = Path(workdir) / "report.log"
+            check = _notes_check(log.read_text(encoding="utf-8")) if notes and log.exists() else []
     stamp = datetime.now(ZoneInfo(tz)).strftime("%Y%m%d")   # the user's date, not the server's (UTC)
     filename = f"jyotisha_{report}{'_' + lang if lang != 'si' else ''}_{stamp}.pdf"
-    return Response(pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{filename}"',
-                             "Cache-Control": "no-store"})
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"}
+    if notes:    # the studio shows it on the "ready" card: [] = the notes agree with the chart
+        headers["X-Notes-Check"] = quote(json.dumps(check, ensure_ascii=False))
+    return Response(pdf, media_type="application/pdf", headers=headers)

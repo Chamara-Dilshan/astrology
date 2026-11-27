@@ -103,6 +103,17 @@
   .share { margin-top: 14px !important; font-size: 14px; color: var(--muted); }
   .share a { color: var(--brand); font-weight: 700; display: inline-block; padding: 8px 6px; }
   @media (prefers-reduced-motion: reduce) { .spin, .steps li.now::before { animation: none; } .bar span { transition: none; } }
+  /* studio (the owner's own computer only): paste an order, add notes */
+  .studio { background: var(--card); border: 2px dashed var(--gold); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+  .studiotag { margin: 0 0 4px; font: 700 15px "Noto Sans", "Noto Sans Sinhala", sans-serif; letter-spacing: 1px; color: var(--brand); }
+  .studio label { margin-top: 12px; }
+  .studio button { margin-top: 10px; min-height: 44px; font-size: 15px; }
+  .notes { margin-top: 24px; padding-top: 4px; border-top: 1px solid var(--line); }
+  .notes .ntitle { font-size: 16px; color: var(--brand); }
+  .notes label { font-size: 14px; margin-top: 14px; }
+  #notescheck { margin-top: 10px; font-size: 14px; }
+  #notescheck.okline { color: var(--ok); }
+  #notescheck.warn { color: var(--err); text-align: left; }
   .order { margin: 16px 0 0; padding: 16px 20px; border: 1px solid var(--gold); border-radius: 12px;
            background: var(--card); text-align: center; font-size: 15px; }
   .order p { margin: 0 0 12px; }
@@ -155,6 +166,7 @@
     <p class="sub">Your Vedic birth chart as a Sinhala PDF (the free summary also in English) · Lahiri ayanamsa · Swiss Ephemeris</p>
   </header>
 
+  {{STUDIO_TOP}}
   <form id="f" method="post" action="/report">
     <label for="report">වාර්තාව <span class="hint">· Report</span></label>
     <select id="report" name="report">{{REPORT_OPTIONS}}</select>
@@ -328,6 +340,7 @@
       </div>
     </template>
 
+    {{STUDIO_NOTES}}
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
 
@@ -347,6 +360,7 @@
       <svg class="icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 13-15"/></svg>
       <h2 id="donetitle" tabindex="-1">ඔබේ PDF එක සූදානම්<span class="en">Your PDF is ready</span></h2>
       <p id="fname" class="fname"></p>
+      <p id="notescheck" hidden></p>
       <p class="hint small">ඔබේ Downloads ෆෝල්ඩරයට බාගත විය · Saved to your Downloads</p>
       <div class="row">
         <a id="openpdf" class="orderbtn fill" target="_blank" rel="noopener">PDF විවෘත කරන්න · Open</a>
@@ -469,7 +483,8 @@ function placePicker(box) {
   return set;
 }
 const lat = document.getElementById("lat"), lon = document.getElementById("lon"), place = document.getElementById("place");
-placePicker(document.querySelector(".placebox"))(DEFAULT_PLACE);
+const setMainPlace = placePicker(document.querySelector(".placebox"));
+setMainPlace(DEFAULT_PLACE);
 document.getElementById("approx").addEventListener("change", e => {
   document.getElementById("time_exact").value = e.target.checked ? "approx" : "yes";
 });
@@ -545,7 +560,8 @@ function addPartner() {
   const el = partnerTpl.content.firstElementChild.cloneNode(true), id = "p" + (++partnerSeq) + "_";
   el.querySelectorAll("[data-f]").forEach(f => { f.id = id + f.dataset.f; });
   el.querySelectorAll("label[data-for]").forEach(l => { l.htmlFor = id + l.dataset.for; });
-  placePicker(el.querySelector(".placebox"))(DEFAULT_PLACE);
+  el.setPlace = placePicker(el.querySelector(".placebox"));
+  el.setPlace(DEFAULT_PLACE);
   el.querySelector(".removep").addEventListener("click", () => { el.remove(); renumberPartners(); });
   partnersBox.append(el);
   renumberPartners();
@@ -697,6 +713,14 @@ form.addEventListener("submit", async e => {
     const a = Object.assign(document.createElement("a"), { href: pdfUrl, download: fname });
     document.body.append(a); a.click(); a.remove();
     document.getElementById("fname").textContent = `${fname} · ${Math.max(1, Math.round(blob.size / 1024))} KB`;
+    const nc = r.headers.get("X-Notes-Check"), ncEl = document.getElementById("notescheck");   // studio, with notes
+    ncEl.hidden = nc === null;
+    if (nc !== null) {
+      const w = JSON.parse(decodeURIComponent(nc));
+      ncEl.className = w.length ? "warn" : "okline";
+      ncEl.textContent = w.length ? "⚠ සටහන් සහ කේන්දරය නොගැලපේ · Your notes don't match the chart: " + w.join(" · ")
+                                  : "✓ සටහන් කේන්දරයට ගැලපේ · Your notes match the chart";
+    }
     openpdf.href = savepdf.href = pdfUrl; savepdf.download = fname;
     working.hidden = true; done.hidden = false;
     document.getElementById("donetitle").focus({ preventScroll: true });
@@ -743,6 +767,86 @@ document.getElementById("again").addEventListener("click", () => {
 { // muhurta range defaults: the next 30 days
   const a = nowIn(form.tz.value), b = nowIn(form.tz.value, 30);
   document.getElementById("m_from").value = a.date; document.getElementById("m_to").value = b.date;
+}
+// ---- studio: fill the form from a customer's pasted order (the message orderMessage() makes)
+function fillFromOrder(text) {
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const one = re => { for (const l of lines) { const m = l.match(re); if (m) return m; } return null; };
+  const all = re => lines.map(l => l.match(re)).filter(Boolean);
+  const byText = (sel, t) => { const o = [...sel.options].find(o => o.textContent.trim() === t.trim()); if (o) sel.value = o.value; return !!o; };
+  const PLACE = /^(.*?)\s*\((-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\)$/;
+  const placeOf = s => { const m = s.match(PLACE); return m && { name: m[1] === "-" ? "" : m[1], lat: +m[2], lon: +m[3], area: "ඇණවුමෙන් · from the order" }; };
+  const code = one(/^වාර්තාව:\s*([A-Z][0-9]?)\b/);
+  if (!code || !CATALOG.some(c => c.code === code[1]))
+    return "⚠ වාර්තා කේතය හමු නොවීය — මුළු පණිවිඩයම paste කරන්න · No report code found: paste the whole order message.";
+  reportSel.value = code[1];
+  showReport();                                  // shows that report's sections, partner and event rows
+  const lang = one(/^භාෂාව \/ Language:\s*(.+)$/);
+  if (lang && !langSel.disabled) byText(langSel, lang[1]);
+  const name = one(/^නම:\s*(.*)$/);
+  if (name) document.getElementById("name").value = name[1];
+  const born = one(/^උපන් දිනය:\s*(\d{4}-\d{2}-\d{2})/), time = one(/^උපන් වේලාව:\s*(\d{1,2}:\d{2})(.*)$/);
+  const asked = one(/^ප්‍රශ්නය ඇසූ මොහොත:\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})/);
+  form.birth_date.value = born ? born[1] : asked ? asked[1] : "";
+  form.birth_date.dispatchEvent(new Event("change"));
+  form.birth_time.value = time ? time[1].padStart(5, "0") : asked ? asked[2].padStart(5, "0") : "";
+  const approx = !!time && /ආසන්න|approximate/.test(time[2]);
+  document.getElementById("approx").checked = approx;
+  document.getElementById("time_exact").value = approx ? "approx" : "yes";
+  const where = one(/^(?:උපන් ස්ථානය|ප්‍රශ්නය ඇසූ ස්ථානය):\s*(.*)$/), p = where && placeOf(where[1]);
+  if (p) setMainPlace(p);
+  const tzl = one(/^Time zone:\s*(\S+)/);
+  if (tzl) form.tz.value = tzl[1];
+  const yr = one(/^වර්ෂය:\s*(\d{4})/), mo = one(/^මාසය:\s*(\d{1,2})/);
+  if (yr) yearIn.value = yr[1];
+  if (mo) monthSel.value = mo[1];
+  const role = one(/^ඉහත අය:\s*(.*)$/);
+  if (role) document.getElementById("role").value = /මනාලිය|Bride/.test(role[1]) ? "girl" : "boy";
+  const partners = all(/^(?:සහකරු|යෝජනාව \d+):\s*(.*),\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}),\s*(.*)$/);
+  if (partners.length && current().needs) {
+    while (partnersBox.children.length < partners.length) addPartner();
+    while (partnersBox.children.length > Math.max(partners.length, current().needs === "partners" ? 2 : 1)) partnersBox.lastElementChild.remove();
+    partners.forEach((m, i) => {
+      const el = partnersBox.children[i], q = placeOf(m[4]);
+      el.querySelector("[name=p_name]").value = m[1];
+      el.querySelector("[name=p_date]").value = m[2];
+      el.querySelector("[name=p_time]").value = m[3].padStart(5, "0");
+      if (q) el.setPlace(q);
+    });
+    renumberPartners();
+  }
+  const question = one(/^ප්‍රශ්නය:\s*(.*)$/), topic = one(/^වර්ගය:\s*(.*)$/), matter = one(/^භාවය:\s*(.*)$/);
+  if (question) document.getElementById("question").value = question[1];
+  if (topic) byText(document.getElementById("topic"), topic[1]);
+  if (matter) byText(document.getElementById("matter"), matter[1]);
+  const task = one(/^කාර්යය:\s*(.*)$/), range = one(/^කාල පරාසය:\s*(\d{4}-\d{2}-\d{2})\s*–\s*(\d{4}-\d{2}-\d{2})\s*\((.*)\)$/);
+  if (task) byText(document.getElementById("task"), task[1]);
+  if (range) {
+    document.getElementById("m_from").value = range[1]; document.getElementById("m_to").value = range[2];
+    byText(document.getElementById("m_hours"), range[3]);
+  }
+  const events = all(/^සිදුවීම \d+:\s*(.*?)\s*—\s*(\d{4}-\d{2}-\d{2})(?:\s*\((.*)\))?$/);
+  if (events.length && current().needs === "events") {
+    while (eventsBox.children.length < events.length) addEvent();
+    while (eventsBox.children.length > Math.max(events.length, EVENTS_MIN)) eventsBox.lastElementChild.remove();
+    events.forEach((m, i) => {
+      const el = eventsBox.children[i];
+      byText(el.querySelector("[name=e_type]"), m[1]);
+      el.querySelector("[name=e_date]").value = m[2];
+      el.querySelector("[name=e_note]").value = m[3] || "";
+    });
+    renumberEvents();
+  }
+  return `✓ පෝරමය පිරවිණි: ${code[1]} · ${name ? name[1] : ""} — පරීක්ෂා කර, සටහන් එක් කර, PDF සාදන්න. ` +
+         "· Form filled from the order: check it, add your notes, then Make PDF.";
+}
+if (PAGE_DATA.studio) {
+  document.querySelector(".share").hidden = true;          // "tell a friend" is for customers
+  document.getElementById("fillorder").addEventListener("click", () => {
+    const msg = fillFromOrder(document.getElementById("orderpaste").value);
+    document.getElementById("fillstatus").textContent = msg;
+    if (msg.startsWith("✓")) document.getElementById("name").scrollIntoView({ block: "center", behavior: "smooth" });
+  });
 }
 showReport();   // first render, after everything it uses is defined
 </script>
