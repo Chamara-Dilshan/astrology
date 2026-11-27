@@ -21,3 +21,6 @@ ephe/
 
 # intermediate calculation output, written next to each PDF
 calc.json
+
+# private business research (never publish)
+research/
