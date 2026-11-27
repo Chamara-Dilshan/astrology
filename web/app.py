@@ -180,6 +180,7 @@ def _index_html():
                .replace("{{HOUSE_OPTIONS}}", opt((h, f"{h} – {jr.HOUSE_SI[h]}") for h in range(1, 13))) \
                .replace("{{TASK_OPTIONS}}", opt(jr.MUHURTA_TASK_SI.items())) \
                .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
+               .replace("{{LANG_OPTIONS}}", opt(catalog.LANG_NAMES.items())) \
                .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
                .replace("{{ORDER_LINK}}", order) \
                .replace("{{DEFAULT_PLACE_JSON}}", _script_json(placesearch.DEFAULT)) \
@@ -430,8 +431,11 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                  p_tz: list[str] = Form([]), question: str = Form(""), topic: str = Form("general"),
                  matter: int | None = Form(None), task: str = Form("general"), m_from: str = Form(""),
                  m_to: str = Form(""), m_hours: str = Form("6-21"),
-                 e_type: list[str] = Form([]), e_date: list[str] = Form([]), e_note: list[str] = Form([])):
+                 e_type: list[str] = Form([]), e_date: list[str] = Form([]), e_note: list[str] = Form([]),
+                 lang: str = Form("si")):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
+    if lang not in catalog.LANGS.get(report, ("si",)):
+        raise HTTPException(400, f"Report {report} is only available in Sinhala")
     place = _clean_text(place, "Place", required=False)
     partners = ()
     if catalog.REPORTS[report][3] in ("partner", "partners"):      # ignored for other reports
@@ -442,6 +446,8 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
             f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
             f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
+    if lang != "si":
+        args.append(f"--lang={lang}")
     events = ()
     if catalog.REPORTS[report][3] == "events":                       # ignored for other reports
         events = _events(birth_date, e_type, e_date, e_note)
@@ -465,7 +471,7 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
             except subprocess.TimeoutExpired:
                 raise HTTPException(504, "Report took too long")
     stamp = datetime.now(ZoneInfo(tz)).strftime("%Y%m%d")   # the user's date, not the server's (UTC)
-    filename = f"jyotisha_{report}_{stamp}.pdf"
+    filename = f"jyotisha_{report}{'_' + lang if lang != 'si' else ''}_{stamp}.pdf"
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"',
                              "Cache-Control": "no-store"})

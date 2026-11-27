@@ -64,6 +64,8 @@ correction), year and month ahead, marriage matching (partner, or 2–5 proposal
 with groom/bride role), and prashna / muhurta. Each report shows only the inputs
 it needs (year, month, partners, question, purpose and date range, past events).
 Free reports return the PDF; the others build an order message in the browser.
+The free G summary can also be made in English (`--lang en`, or the language
+choice on the form), for readers who don't read Sinhala.
 The place box searches **every town and village in Sri Lanka** as you type
 (17,800 places from [GeoNames](https://www.geonames.org), CC BY 4.0, with their
 district; English, Sinhala or Tamil names, e.g. `hingu` → Hingurakgoda,

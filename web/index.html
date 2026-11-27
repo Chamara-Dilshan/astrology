@@ -95,13 +95,17 @@
     <div class="mark">Jyothisha Insight</div>
     <div class="rule"></div>
     <h1>ඔබේ ජන්ම පත්‍රය</h1>
-    <p class="sub">Your Vedic birth chart as a Sinhala PDF · Lahiri ayanamsa · Swiss Ephemeris</p>
+    <p class="sub">Your Vedic birth chart as a Sinhala PDF (the free summary also in English) · Lahiri ayanamsa · Swiss Ephemeris</p>
   </header>
 
   <form id="f" method="post" action="/report">
     <label for="report">වාර්තාව <span class="hint">· Report</span></label>
     <select id="report" name="report">{{REPORT_OPTIONS}}</select>
     <p id="reportinfo" class="reportinfo"></p>
+    <div id="langbox" hidden>
+      <label for="lang">වාර්තාවේ භාෂාව <span class="hint">· Report language</span></label>
+      <select id="lang" name="lang">{{LANG_OPTIONS}}</select>
+    </div>
 
     <label for="name">නම <span class="hint">· Name</span></label>
     <input id="name" name="name" maxlength="60" required autocomplete="off" autocapitalize="words" enterkeyhint="next">
@@ -382,6 +386,7 @@ const CATALOG = {{CATALOG_JSON}}, ORDER = {{ORDER_JSON}};
 const reportSel = document.getElementById("report"), info = document.getElementById("reportinfo");
 const orderbox = document.getElementById("orderbox"), ordermsg = document.getElementById("ordermsg");
 const current = () => CATALOG.find(c => c.code === reportSel.value);
+const langbox = document.getElementById("langbox"), langSel = document.getElementById("lang");
 const rs = n => "Rs " + Number(n).toLocaleString("en");
 function showReport() {
   const c = current();
@@ -392,6 +397,9 @@ function showReport() {
   info.append(tag, c.en + (c.free ? "" : " · prepared with the astrologer's own notes"));
   go.textContent = c.free ? "PDF සාදන්න · Make PDF" : "ඇණවුම් කරන්න · Order" + (c.price ? " – " + rs(c.price) : "");
   orderbox.hidden = true; status.textContent = "";
+  const langs = c.langs || ["si"];                 // a language choice only where there is one (G)
+  langbox.hidden = langSel.disabled = langs.length < 2;
+  if (!langs.includes(langSel.value)) langSel.value = langs[0];
   // show only the extra inputs this report needs; hidden ones are disabled so they aren't sent
   for (const el of document.querySelectorAll("[data-needs]")) el.hidden = !el.dataset.needs.split(" ").includes(c.needs);
   syncPartners();
@@ -497,6 +505,7 @@ function orderMessage(c) {
   return [
     "Jyothisha Insight – ඇණවුම / Order",
     `වාර්තාව: ${c.code} – ${c.si}` + (c.price ? ` (${rs(c.price)})` : ""),
+    ...(!langSel.disabled && langSel.value !== "si" ? [`භාෂාව / Language: ${langSel.selectedOptions[0].textContent}`] : []),
     `නම: ${document.getElementById("name").value.trim()}`,   // not form.name: that's the form's own name
     ...(form.classList.contains("ask") ? [
       `ප්‍රශ්නය ඇසූ මොහොත: ${form.birth_date.value} ${form.birth_time.value}`,

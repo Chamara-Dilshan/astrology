@@ -85,6 +85,48 @@ YOGA_SI = {"Gaja-Kesari": "ගජකේසරී යෝගය — කීර්�
            "Neecha Bhanga": "නීච භංග රාජ යෝගය", "Vipareeta": "විපරීත රාජ යෝගය — බාධක වලින්ම ජය"}
 WEEKDAY_SI = ["සඳුදා", "අඟහරුවාදා", "බදාදා", "බ්‍රහස්පතින්දා", "සිකුරාදා", "සෙනසුරාදා", "ඉරිදා"]
 
+# ---------------------------------------------------------------- English vocabulary (G report with --lang en)
+# Same meanings as the Sinhala lists above, line for line; Sanskrit terms are kept with an English gloss.
+BRAND_TAGLINE_EN = "Traditional astrology · modern precision"
+PLANET_EN = {"Su": "Sun", "Mo": "Moon", "Ma": "Mars", "Me": "Mercury", "Ju": "Jupiter", "Ve": "Venus",
+             "Sa": "Saturn", "Ra": "Rahu", "Ke": "Ketu"}
+HOUSE_EN = {1: "body, personality, self-confidence", 2: "wealth, speech, family, food",
+            3: "siblings, courage, short journeys, communication", 4: "mother, home, vehicles, education, peace of mind",
+            5: "children, intelligence, merit from past lives, creativity", 6: "illness, debts, enemies, service, competition",
+            7: "marriage, partner, business partnerships", 8: "longevity, sudden changes, hidden knowledge, inheritance",
+            9: "father, dharma, fortune, higher education, long journeys", 10: "career, karma, reputation, social standing",
+            11: "gains, income, friends, hopes", 12: "expenses, foreign lands, sleep, letting go, liberation"}
+LAGNA_NATURE_EN = [
+    "active, quick to decide, with natural leadership; patience is worth developing",
+    "steady, patient, appreciates comfort and fine things; can resist change",
+    "intelligent, a good talker, curious; attention can scatter",
+    "sensitive, devoted to family, seeks security; take care not to decide on feelings alone",
+    "self-confident, values dignity, generous; pride needs balancing",
+    "analytical, careful with detail, service-minded; can be over-critical",
+    "balanced, values relationships, refined taste; can hesitate over decisions",
+    "deep, intense, searching, wholly committed; watch for mistrust and rigidity",
+    "philosophical, honest, devoted to dharma, far-sighted; can be over-bold",
+    "disciplined, practical, rises through dedication; may come across as cold",
+    "original thinker, humanitarian, independent; tends to keep apart",
+    "compassionate, artistic, spiritually inclined; needs practical limits",
+]
+PLANET_NATURE_EN = {"Su": "the self, father, authority, government, self-confidence",
+                    "Mo": "the mind, mother, feelings, the public, comfort",
+                    "Ma": "energy, courage, brothers, land, engineering and technical work",
+                    "Me": "intellect, speech, business, education, writing",
+                    "Ju": "wisdom, teachers, children, wealth, dharma, fortune",
+                    "Ve": "love, marriage, the arts, comforts, vehicles",
+                    "Sa": "karma, hard work, discipline, delays, long-term results",
+                    "Ra": "ambition, foreign lands, technology, the unexpected, illusion",
+                    "Ke": "detachment, spirituality, research, past karma"}
+WEEKDAY_EN = {"Ravi": "Sunday", "Soma": "Monday", "Mangala": "Tuesday", "Budha": "Wednesday", "Guru": "Thursday",
+              "Shukra": "Friday", "Shani": "Saturday"}
+
+
+def sign_en(i):
+    """'Karka (Cancer)': the Sanskrit name a Sri Lankan reader knows, with the Western one."""
+    return f"{jc.SIGNS[i]} ({jc.SIGNS_EN[i]})"
+
 
 def si_dignity(d):
     if not d:
@@ -126,14 +168,17 @@ _GRID = {11: (0, 0), 0: (1, 0), 1: (2, 0), 2: (3, 0), 10: (0, 1), 3: (3, 1), 9: 
          8: (0, 3), 7: (1, 3), 6: (2, 3), 5: (3, 3)}
 
 
-def south_indian_html_si(sign_labels, title, size_mm=120):
-    """sign_labels: {sign_idx: [Sinhala labels]} — South Indian fixed layout as an HTML grid (proper text shaping)."""
+def south_indian_html_si(sign_labels, title, size_mm=120, lang="si"):
+    """sign_labels: {sign_idx: [labels]} — South Indian fixed layout as an HTML grid (proper text shaping).
+    The Lagna label (ලග්න / Lagna) is shown in bold. lang="en" names the signs in English."""
+    names, lagna = (SIGN_SI, "ලග්න") if lang == "si" else (jc.SIGNS, "Lagna")
+    sub = "දකුණු ඉන්දීය ක්‍රමය · ලාහිරි අයනාංශය" if lang == "si" else "South Indian style · Lahiri ayanamsa"
     cells = []
     for si, (cx, cy) in _GRID.items():
         labs = sign_labels.get(si, [])
-        pl = "<br>".join(f"<b>{html.escape(l)}</b>" if l.startswith("ලග්න") else html.escape(l) for l in labs[:6])
-        cells.append(f'<div class="c" style="left:{cx * 25}%;top:{cy * 25}%"><div class="sn">{SIGN_SI[si]}</div><div class="pl">{pl}</div></div>')
-    mid = f'<div class="mid"><div class="t">{html.escape(title)}</div><div class="s">දකුණු ඉන්දීය ක්‍රමය · ලාහිරි අයනාංශය</div></div>'
+        pl = "<br>".join(f"<b>{html.escape(l)}</b>" if l.startswith(lagna) else html.escape(l) for l in labs[:6])
+        cells.append(f'<div class="c" style="left:{cx * 25}%;top:{cy * 25}%"><div class="sn">{names[si]}</div><div class="pl">{pl}</div></div>')
+    mid = f'<div class="mid"><div class="t">{html.escape(title)}</div><div class="s">{sub}</div></div>'
     return f'<div class="sic" style="width:{size_mm}mm;height:{size_mm}mm">' + "".join(cells) + mid + "</div>"
 
 
@@ -328,6 +373,12 @@ li { margin: 2pt 0; }
 .brandline { width: 46mm; height: 2px; background: #c9a24d; margin: 7pt auto 5pt auto; }
 .brandtag { font-size: 9.5pt; color: #8a7f7f; letter-spacing: .5px; }
 .brandfoot { text-align: center; margin-top: 14pt; padding-top: 8pt; border-top: 1px solid #e4dccb; }
+"""
+
+
+CSS_EN = """
+body { font-family: "Noto Sans", "Noto Sans Sinhala", "Noto Sans Symbols 2", "Noto Sans Math", sans-serif; }
+@page { @bottom-right { font-family: "Noto Sans"; } }
 """
 
 
@@ -833,6 +884,70 @@ def build_g(d, a, now_local):
              'අපගේ <b>කේන්දර සාර (A1)</b> වාර්තාව බලන්න.</p></div>')
     H.append('<p class="disc">ජ්‍යොතිෂය ප්‍රවණතා ගැන ප්‍රතිබිම්බනාත්මක මගපෙන්වීමකි; ස්ථිර අනාවැකි නොවේ. වෛද්‍ය, නීතිමය හෝ මූල්‍ය උපදෙස් නොවේ. '
              'උපන් වේලාවේ නිරවද්‍යතාව ප්‍රතිඵල වලට බලපායි. ගණනය: ලාහිරි අයනාංශය · සම්පූර්ණ රාශි භාව ක්‍රමය · Swiss Ephemeris.</p>')
+    H.append(f'<div class="brandfoot"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
+             + (f'<div class="muted">{esc(BRAND_CONTACT)}</div>' if BRAND_CONTACT else "") + "</div>")
+    return "\n".join(H)
+
+
+def current_dashas(d, now_local):
+    """(maha dasha, antar dasha) running at now_local, or None for either."""
+    now_utc = now_local.astimezone(timezone.utc)
+    for m in d["vimshottari"]["mahadashas"]:
+        if datetime.fromisoformat(m["start"]) <= now_utc < datetime.fromisoformat(m["end"]):
+            ad = next((s for s in m.get("sub", [])
+                       if datetime.fromisoformat(s["start"]) <= now_utc < datetime.fromisoformat(s["end"])), None)
+            return m, ad
+    return None, None
+
+
+def pch_en(p):
+    """English rendering of the engine's panchanga: 'Mangalavara (Tuesday)', 'Krishna Panchami'."""
+    vara = str(p.get("vara", ""))
+    base = re.sub(r"\s*\(.*?\)\s*$", "", vara)
+    day = WEEKDAY_EN.get(re.sub(r"vara$", "", base, flags=re.I).strip(), "")
+    out = f"{base} ({day})" if day else base
+    if "before sunrise" in vara:
+        out += ", born before sunrise: the previous day's vara"
+    return {"vara": out, "tithi": str(p.get("tithi", ""))}
+
+
+def build_g_en(d, a, now_local):
+    """The free one-page summary (G) in English: the same facts and wording as build_g."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    moon, lord = P["Mo"], jc.SIGN_LORD[d["lagna"]["sign_idx"]]
+    labels = {ls: ["Lagna"]}
+    for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
+        labels.setdefault(P[c]["sign_idx"], []).append(PLANET_EN[c])
+    md, ad = current_dashas(d, now_local)
+    nama = jc.nama_nakshatra(moon["lon"])
+    pch = pch_en(d["panchanga"])
+    span = lambda x: f" ({fmt_date(x['start'], a.tz)} – {fmt_date(x['end'], a.tz)})"  # noqa: E731
+    H = [f'''<div style="text-align:center"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+      <div class="brandtag">{esc(BRAND_TAGLINE_EN)}</div>
+      <h1 style="margin-top:14pt; font-size:17pt">Your Birth Chart at a Glance</h1>
+      <div class="muted">{esc(a.name)} · {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div></div>''']
+    H.append(f'<div class="two" style="margin-top:10pt"><div style="flex:0 0 84mm">'
+             f'{south_indian_html_si(labels, "Rasi chart", 84, lang="en")}</div><div>')
+    H.append("<table>"
+             f"<tr><td><b>Lagna (Ascendant)</b></td><td>{sign_en(ls)} {dms(d['lagna']['deg_in_sign'])}</td></tr>"
+             f"<tr><td><b>Lagna lord</b></td><td>{PLANET_EN[lord]}, in house {P[lord]['house']}</td></tr>"
+             f"<tr><td><b>Moon sign (Rasi)</b></td><td>{sign_en(moon['sign_idx'])}</td></tr>"
+             f"<tr><td><b>Birth star (Nakshatra)</b></td><td>{esc(moon['nakshatra'])}, pada {moon['pada']}</td></tr>"
+             f"<tr><td><b>Naming letter</b></td><td>{esc(nama['syllable'])} · {esc(nama['sinhala'])}</td></tr>"
+             f"<tr><td><b>Current Maha Dasha</b></td><td>{PLANET_EN[md['lord']] + span(md) if md else '—'}</td></tr>"
+             + (f"<tr><td><b>Antar Dasha</b></td><td>{PLANET_EN[ad['lord']]}{span(ad)}</td></tr>" if ad else "")
+             + f"<tr><td><b>Panchanga</b></td><td>{esc(pch['vara'])} · {esc(pch['tithi'])}</td></tr>"
+             "</table></div></div>")
+    H.append(f'<div class="box"><b>{jc.SIGNS[ls]} Lagna:</b> {LAGNA_NATURE_EN[ls]}.'
+             + (f'<br><b>{PLANET_EN[md["lord"]]} Maha Dasha:</b> {PLANET_NATURE_EN[md["lord"]]}. '
+                f'{PLANET_EN[md["lord"]]} sits in house {P[md["lord"]]["house"]} of the birth chart '
+                f'({HOUSE_EN[P[md["lord"]]["house"]]}).' if md else "") + "</div>")
+    H.append('<div class="note"><div class="lbl">This is a free summary sheet</div>'
+             '<p>For a full reading (yogas and doshas, the Navamsa chart, dasha periods, transits and the trends '
+             'of the next few years), see our <b>Kendra Sara (A1)</b> report, written in Sinhala.</p></div>')
+    H.append('<p class="disc">Astrology offers reflective guidance on tendencies, not fixed predictions, and is not '
+             'medical, legal or financial advice. Results depend on an accurate birth time. Calculation: Lahiri '
+             'ayanamsa · whole-sign houses · Swiss Ephemeris.</p>')
     H.append(f'<div class="brandfoot"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
              + (f'<div class="muted">{esc(BRAND_CONTACT)}</div>' if BRAND_CONTACT else "") + "</div>")
     return "\n".join(H)
@@ -2920,6 +3035,7 @@ def main():
     ap.add_argument("--match-lat", type=float)
     ap.add_argument("--match-lon", type=float)
     ap.add_argument("--match-tz", default="Asia/Colombo")
+    ap.add_argument("--lang", choices=["si", "en"], default="si", help="report language; English is available for G")
     ap.add_argument("--node", choices=["mean", "true"], default="mean",
                     help="Rahu/Ketu: mean node (default, the project standard) or true node")
     ap.add_argument("--role", choices=["boy", "girl"], default="boy",
@@ -2944,6 +3060,8 @@ def main():
     global BRAND, BRAND_CONTACT
     a = ap.parse_args()
     BRAND, BRAND_CONTACT = (a.brand or BRAND), a.brand_contact
+    if a.lang == "en" and a.report != "G":
+        sys.exit("--lang en is available for the G report only")
 
     tz = ZoneInfo(a.tz)
     now_local = datetime.strptime(a.report_date, "%Y-%m-%d").replace(hour=12, tzinfo=tz) if a.report_date else datetime.now(tz)
@@ -3017,7 +3135,7 @@ def main():
         changes = sign_changes(now_local.astimezone(timezone.utc), 7.0)
         body = build_b(d, a, a.report, tr, changes, notes, now_local)
     elif a.report == "G":
-        body = build_g(d, a, now_local)
+        body = build_g_en(d, a, now_local) if a.lang == "en" else build_g(d, a, now_local)
     elif a.report == "C1":
         body = build_c1(d, a, notes, now_local, rep_year)
     elif a.report == "C2":
@@ -3079,7 +3197,9 @@ def main():
     else:
         body = build_p1(d, a, notes, now_local, a.shat_topic, a.matter)
     css = CSS.replace("FONTDIR", font_uri()).replace("BRANDNAME", BRAND)
-    page = f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} {esc(a.report)}</title><style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
+    if a.lang == "en":   # English page numbers, and Latin text set in Noto Sans rather than the Sinhala font's Latin
+        css = css.replace('content: "පිටුව " counter(page)', 'content: "Page " counter(page)') + CSS_EN
+    page = f'<!DOCTYPE html><html lang="{a.lang}"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} {esc(a.report)}</title><style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
     if a.html:
         open(a.html, "w", encoding="utf-8").write(page)
     from weasyprint import HTML

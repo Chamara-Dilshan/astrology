@@ -55,6 +55,9 @@ PRASHNA_TOPICS = ["general", "travel", "abroad", "lost", "dispute", "health", "m
 MUHURTA_HOURS = {"6-21": "6:00 – 21:00", "0-24": "දවස පුරා · all day"}
 MUHURTA_MAX_DAYS = 62
 EVENTS_MIN, EVENTS_MAX = 3, 12          # E1: the plan recommends 8-12 past events
+# Report languages: every report is in Sinhala; these can also be made in English (jyotisha_report --lang).
+LANGS = {"G": ("si", "en")}
+LANG_NAMES = {"si": "සිංහල · Sinhala", "en": "English"}
 
 
 def prices():
@@ -73,5 +76,5 @@ def entries(free_codes):
     for code, (group, si, en, needs) in REPORTS.items():
         free = code in free_codes
         out.append({"code": code, "group": group, "si": si, "en": en, "needs": needs,
-                    "free": free, "price": None if free else price.get(code)})
+                    "free": free, "price": None if free else price.get(code), "langs": list(LANGS.get(code, ("si",)))})
     return out
