@@ -37,6 +37,7 @@ REPORTS = {
     "C3": ("timing", "සඩේ සති වාර්තාව", "Sade Sati: Saturn's 7½-year transit", None),
     "C4": ("timing", "දශා සන්ධි වාර්තාව", "Change of Maha Dasa", None),
     "N":  ("timing", "නාම නක්ෂත්‍ර වාර්තාව", "Letters for naming a child", None),
+    "E1": ("timing", "ජන්ම කාල ශුද්ධි වාර්තාව", "Birth-time correction from past life events", "events"),
     "C1": ("year", "වාර්ෂික ඵල වාර්තාව", "Year ahead from your birthday (Tajaka annual chart)", "year"),
     "C2": ("year", "වාර්ෂික ඵල සහ ගෝචර", "Year ahead with transits and a month-by-month calendar", "year"),
     "C6": ("year", "මාස ඵල වාර්තාව", "One month ahead (Tajaka monthly chart)", "year_month"),
@@ -53,6 +54,7 @@ REPORTS = {
 PRASHNA_TOPICS = ["general", "travel", "abroad", "lost", "dispute", "health", "marriage", "subject", "rain"]
 MUHURTA_HOURS = {"6-21": "6:00 – 21:00", "0-24": "දවස පුරා · all day"}
 MUHURTA_MAX_DAYS = 62
+EVENTS_MIN, EVENTS_MAX = 3, 12          # E1: the plan recommends 8-12 past events
 
 
 def prices():

@@ -58,10 +58,15 @@ docker run --rm -p 8000:8000 jyotisha        # then open http://localhost:8000
 
 <img src="docs/img/web-form-mobile.jpg" alt="The web form on a phone" width="300" align="right">
 
-A one-page, mobile-first form (name, date, time, place) that returns the PDF;
-see `web/`. Picking a town fills in its coordinates, which stay editable, and
-"Other" asks for the town name. Each request runs in a temporary folder that is
-deleted afterwards, so no birth data is stored.
+A one-page, mobile-first form covering the **whole report catalogue** (25 types in
+6 groups, `web/catalog.py`): birth chart, life areas, timing (incl. E1 birth-time
+correction), year and month ahead, marriage matching (partner, or 2–5 proposals,
+with groom/bride role), and prashna / muhurta. Each report shows only the inputs
+it needs (year, month, partners, question, purpose and date range, past events).
+Free reports return the PDF; the others build an order message in the browser.
+Picking a town fills in its coordinates, which stay editable, and "Other" asks
+for the town name. Each request runs in a temporary folder that is deleted
+afterwards, so no birth data is stored.
 
 Settings, all environment variables:
 

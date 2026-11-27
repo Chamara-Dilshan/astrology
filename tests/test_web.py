@@ -200,7 +200,7 @@ def test_catalogue_lists_reports_in_groups(client):
     needs = {e["code"]: e["needs"] for e in web._catalog() if e["needs"]}
     assert needs == {"C1": "year", "C2": "year", "C6": "year_month",
                      "D1": "partner", "D2": "partner", "D3": "partners",
-                     "P1": "prashna", "P2": "prashna", "M1": "muhurta"}
+                     "P1": "prashna", "P2": "prashna", "M1": "muhurta", "E1": "events"}
 
 
 # ---------------------------------------------------------------- phase 2: year / month
@@ -353,6 +353,47 @@ def test_prashna_and_muhurta_inputs_are_checked(client, calls, fields, message):
 def test_real_prashna_and_muhurta_reports_are_pdfs(client, fields):
     pymupdf = pytest.importorskip("pymupdf")
     r = post(client, name="Test", **fields)
+    assert r.status_code == 200, r.text[:200]
+    assert len(pymupdf.open(stream=r.content, filetype="pdf")) >= 3
+
+
+# ---------------------------------------------------------------- phase 5: birth-time correction
+
+def events(rows=None):
+    rows = rows or [("marriage", "2018-03-04", "Galle"), ("job", "2014-01-10", ""), ("child", "2020-07-01", "")]
+    return {"e_type": [r[0] for r in rows], "e_date": [r[1] for r in rows], "e_note": [r[2] for r in rows]}
+
+
+def test_e1_writes_events_file(client, calls):
+    assert post(client, report="E1", **events()).status_code == 200
+    assert arg(calls[0], "--events") == "{workdir}/events.json"
+    rows = json.loads(calls.files[0]["events.json"])
+    assert rows[0] == {"type": "marriage", "date": "2018-03-04", "note": "Galle"} and len(rows) == 3
+
+
+@pytest.mark.parametrize("rows, message", [
+    ([("job", "2014-01-10", "")] * 2, "Enter 3–12 past events"),
+    ([("job", "2014-01-10", "")] * 13, "Enter 3–12 past events"),
+    ([("job", "2014-01-10", "")] * 2 + [("wedding-cake", "2014-01-10", "")], "Event 3: unknown kind of event"),
+    ([("job", "2014-01-10", "")] * 2 + [("job", "1980-01-01", "")], "Event 3: the date must be between"),
+    ([("job", "2014-01-10", "")] * 2 + [("job", "2999-01-01", "")], "Event 3: the date must be between"),
+    ([("job", "2014-01-10", "")] * 2 + [("job", "10/01/2014", "")], "Event 3 date must be YYYY-MM-DD"),
+    ([("job", "2014-01-10", "")] * 2 + [("job", "2014-01-10", "<b>")], "Event 3 note contains characters"),
+])
+def test_events_are_checked(client, calls, rows, message):
+    r = post(client, report="E1", **events(rows))
+    assert r.status_code == 400 and message in r.json()["detail"]
+    assert calls == []
+
+
+def test_events_are_ignored_for_other_reports(client, calls):
+    assert post(client, report="A1", e_type=["nonsense"], e_date=["x"]).status_code == 200
+    assert not any(a.startswith("--events") for a in calls[0])
+
+
+def test_real_report_e1_is_a_pdf(client):
+    pymupdf = pytest.importorskip("pymupdf")
+    r = post(client, report="E1", name="Test", **events())
     assert r.status_code == 200, r.text[:200]
     assert len(pymupdf.open(stream=r.content, filetype="pdf")) >= 3
 

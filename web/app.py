@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -176,6 +176,7 @@ def _index_html():
                .replace("{{HOUSE_OPTIONS}}", opt((h, f"{h} – {jr.HOUSE_SI[h]}") for h in range(1, 13))) \
                .replace("{{TASK_OPTIONS}}", opt(jr.MUHURTA_TASK_SI.items())) \
                .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
+               .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
                .replace("{{ORDER_LINK}}", order) \
                .replace("{{PLACES_JSON}}", _script_json(PLACES)) \
                .replace("{{CATALOG_JSON}}", _script_json(entries)) \
@@ -238,7 +239,7 @@ def _render(args, workdir, files=None):
     for fname, text in (files or {}).items():                   # e.g. matches.json for D3
         (Path(workdir) / fname).write_text(text, encoding="utf-8")
     # point file arguments at this request's own temporary folder
-    args = [a.replace("{workdir}", workdir) if a.startswith("--matches=") else a for a in args]
+    args = [a.replace("{workdir}", workdir) if a.startswith(("--matches=", "--events=")) else a for a in args]
     r = subprocess.run([sys.executable, str(ROOT / "jyotisha_report.py"), *args, "--out", str(out)],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                        env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=TIMEOUT_S)
@@ -283,12 +284,35 @@ def _iso_date(value, field):
         raise HTTPException(400, f"{field} must be YYYY-MM-DD")
 
 
+def _events(birth_date, e_type, e_date, e_note):
+    """Checked life events for E1 from the repeated e_* form fields."""
+    if not len(e_type) == len(e_date):
+        raise HTTPException(400, "Event details are incomplete")
+    if not catalog.EVENTS_MIN <= len(e_type) <= catalog.EVENTS_MAX:
+        raise HTTPException(400, f"Enter {catalog.EVENTS_MIN}–{catalog.EVENTS_MAX} past events")
+    born = date.fromisoformat(birth_date)
+    rows = []
+    for i, (t, d) in enumerate(zip(e_type, e_date)):
+        label = f"Event {i + 1}"
+        if t not in jr.EVENT_TYPES:
+            raise HTTPException(400, f"{label}: unknown kind of event")
+        when = _iso_date(d, f"{label} date")
+        if not born <= when <= date.today() + timedelta(days=1):   # +1: server is UTC, Sri Lanka is ahead
+            raise HTTPException(400, f"{label}: the date must be between the birth date and today")
+        note = _clean_text(e_note[i] if i < len(e_note) else "", f"{label} note", required=False)
+        rows.append({"type": t, "date": when.isoformat(), "note": note})
+    return rows
+
+
 def _extra_args(report, birth_date, year, month, role="boy", partners=(), question="", topic="general",
-                matter=None, task="general", m_from="", m_to="", m_hours="6-21"):
+                matter=None, task="general", m_from="", m_to="", m_hours="6-21", events=()):
     """Checked arguments for the report's extra input (see catalog.REPORTS), plus any files the
     report needs written into its temporary folder: ([args], {filename: text})."""
     needs = catalog.REPORTS[report][3]
     args, files = [], {}
+    if needs == "events":
+        files["events.json"] = json.dumps(list(events), ensure_ascii=False)
+        args.append("--events={workdir}/events.json")
     if needs == "prashna":
         args.append(f"--question={_clean_text(question, 'Question', required=True, max_len=150)}")
         if topic not in catalog.PRASHNA_TOPICS:
@@ -346,7 +370,8 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                  p_place: list[str] = Form([]), p_lat: list[str] = Form([]), p_lon: list[str] = Form([]),
                  p_tz: list[str] = Form([]), question: str = Form(""), topic: str = Form("general"),
                  matter: int | None = Form(None), task: str = Form("general"), m_from: str = Form(""),
-                 m_to: str = Form(""), m_hours: str = Form("6-21")):
+                 m_to: str = Form(""), m_hours: str = Form("6-21"),
+                 e_type: list[str] = Form([]), e_date: list[str] = Form([]), e_note: list[str] = Form([])):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
     place = _clean_text(place, "Place", required=False)
     partners = ()
@@ -358,8 +383,11 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
             f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
             f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
+    events = ()
+    if catalog.REPORTS[report][3] == "events":                       # ignored for other reports
+        events = _events(birth_date, e_type, e_date, e_note)
     extra, files = _extra_args(report, birth_date, year, month, role, partners, question, topic, matter,
-                               task, m_from, m_to, m_hours)
+                               task, m_from, m_to, m_hours, events)
     args += extra
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")

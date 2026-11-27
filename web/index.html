@@ -189,6 +189,32 @@
         A range under 62 days. Your birth details above are used to suit the times to your birth star.</p>
     </fieldset>
 
+    <fieldset id="sec-events" class="sec" data-needs="events" hidden>
+      <p class="hint small">ඔබේ ජීවිතයේ සිදු වූ වැදගත් සිදුවීම් 3–12ක් (වැඩි වන තරමට හොඳයි) දිනයත් සමඟ ඇතුළත් කරන්න.
+        ඒවාට ගැළපෙන නිවැරදි උපන් වේලාව ජ්‍යොතිෂවේදියා සොයා බලයි.<br>
+        Enter 3–12 important past events with their dates (more is better); the astrologer finds the birth time that fits them.</p>
+      <div id="events"></div>
+      <button type="button" id="addevent" class="secondary">+ තවත් සිදුවීමක් · Add an event</button>
+    </fieldset>
+    <template id="event-tpl">
+      <div class="partner event">
+        <h3 class="ptitle"></h3>
+        <div class="row">
+          <div>
+            <label data-for="type">සිදුවීම <span class="hint">· Event</span></label>
+            <select data-f="type" name="e_type">{{EVENT_OPTIONS}}</select>
+          </div>
+          <div>
+            <label data-for="date">දිනය <span class="hint">· Date</span></label>
+            <input data-f="date" name="e_date" type="date" min="1800-01-01">
+          </div>
+        </div>
+        <label data-for="note">සටහන <span class="hint">· Note (optional)</span></label>
+        <input data-f="note" name="e_note" maxlength="60" autocomplete="off" data-optional>
+        <button type="button" class="removep secondary">ඉවත් කරන්න · Remove</button>
+      </div>
+    </template>
+
     <template id="partner-tpl">
       <div class="partner">
         <h3 class="ptitle"></h3>
@@ -282,6 +308,7 @@ function showReport() {
   // show only the extra inputs this report needs; hidden ones are disabled so they aren't sent
   for (const el of document.querySelectorAll("[data-needs]")) el.hidden = !el.dataset.needs.split(" ").includes(c.needs);
   syncPartners();
+  syncEvents();
   setAskMode(c.needs === "prashna");
   for (const f of document.querySelectorAll("[data-needs] input, [data-needs] select, [data-needs] textarea")) {
     const off = !!f.closest("[data-needs][hidden]");   // inside any hidden section
@@ -359,6 +386,34 @@ function syncPartners() {
 }
 addBtn.addEventListener("click", () => { addPartner(); showReport(); });
 
+// ---- E1 life events: 3–12 rows
+const eventsBox = document.getElementById("events"), eventTpl = document.getElementById("event-tpl");
+const addEventBtn = document.getElementById("addevent"), EVENTS_MIN = 3, EVENTS_MAX = 12;
+let eventSeq = 0;
+function addEvent() {
+  if (eventsBox.children.length >= EVENTS_MAX) return;
+  const el = eventTpl.content.firstElementChild.cloneNode(true), id = "e" + (++eventSeq) + "_";
+  el.querySelectorAll("[data-f]").forEach(f => { f.id = id + f.dataset.f; });
+  el.querySelectorAll("label[data-for]").forEach(l => { l.htmlFor = id + l.dataset.for; });
+  el.querySelector(".removep").addEventListener("click", () => { el.remove(); renumberEvents(); });
+  eventsBox.append(el);
+  renumberEvents();
+}
+function renumberEvents() {
+  const rows = [...eventsBox.children];
+  rows.forEach((el, i) => {
+    el.querySelector(".ptitle").textContent = `සිදුවීම ${i + 1} · Event ${i + 1}`;
+    el.querySelector(".removep").hidden = rows.length <= EVENTS_MIN;
+  });
+  addEventBtn.hidden = rows.length >= EVENTS_MAX;
+}
+function syncEvents() {
+  if (current().needs !== "events") return;
+  while (eventsBox.children.length < EVENTS_MIN) addEvent();
+  renumberEvents();
+}
+addEventBtn.addEventListener("click", () => { addEvent(); showReport(); });
+
 function orderMessage(c) {
   const approx = document.getElementById("time_exact").value === "approx";
   return [
@@ -387,6 +442,12 @@ function sectionLines() {
             ...(val("matter").value ? [`භාවය: ${text("matter")}`] : [])];
   if (!val("sec-muhurta").hidden)
     return [`කාර්යය: ${text("task")}`, `කාල පරාසය: ${val("m_from").value} – ${val("m_to").value} (${text("m_hours")})`];
+  if (!val("sec-events").hidden)
+    return [...eventsBox.children].map((el, i) => {
+      const sel = el.querySelector("[name=e_type]"), note = el.querySelector("[name=e_note]").value.trim();
+      return `සිදුවීම ${i + 1}: ${sel.selectedOptions[0].textContent} — ${el.querySelector("[name=e_date]").value}` +
+             (note ? ` (${note})` : "");
+    });
   return [];
 }
 function partnerLines() {
