@@ -25,7 +25,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
 import jyotisha_report as jr   # only for its Sinhala labels (topics, houses, muhurta purposes)
-from web import catalog
+from web import catalog, placesearch
 
 ROOT = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
@@ -47,12 +47,14 @@ MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
 RATE_TOTAL = int(os.environ.get("REPORTS_PER_HOUR", "120"))
+# Town search (the place box asks as you type): generous, but bounded.
+SEARCH_PER_IP = int(os.environ.get("SEARCHES_PER_HOUR_PER_IP", "600"))
+SEARCH_TOTAL = int(os.environ.get("SEARCHES_PER_HOUR", "20000"))
 # Header set by the proxy in front of the app. Checked on Render (2026-10-24): it is behind
 # Cloudflare, CF-Connecting-IP holds the visitor's IP, and Cloudflare rejects requests that try to
 # set it themselves (error 1000). X-Forwarded-For is NOT used: a forged value is kept at the front.
 CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "cf-connecting-ip")
 
-PLACES = json.loads((HERE / "places.json").read_text(encoding="utf-8"))["places"]
 PAGE = (HERE / "index.html").read_text(encoding="utf-8")
 _slots = asyncio.Semaphore(MAX_PARALLEL)
 
@@ -92,6 +94,7 @@ class _HourlyLimiter:
 
 
 _limiter = _HourlyLimiter()
+_search_limiter = _HourlyLimiter()
 
 
 def _client_ip(request):
@@ -179,7 +182,7 @@ def _index_html():
                .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
                .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
                .replace("{{ORDER_LINK}}", order) \
-               .replace("{{PLACES_JSON}}", _script_json(PLACES)) \
+               .replace("{{DEFAULT_PLACE_JSON}}", _script_json(placesearch.DEFAULT)) \
                .replace("{{CATALOG_JSON}}", _script_json(entries)) \
                .replace("{{ORDER_JSON}}", _script_json(order_cfg)) \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
@@ -228,6 +231,16 @@ def _accuracy_html():
 def accuracy():
     page = _accuracy_html()
     return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
+
+
+@app.post("/places")
+async def places(request: Request, q: str = Form("")):
+    """Town suggestions for the place box. POST, so what visitors type stays out of access logs."""
+    if len(placesearch.norm(q[:200])) < placesearch.MIN_QUERY:
+        return {"places": []}
+    if _search_limiter.check(_client_ip(request), SEARCH_PER_IP, SEARCH_TOTAL):
+        raise HTTPException(429, "Too many searches. Enter the latitude and longitude instead, or try later.")
+    return {"places": placesearch.search(q[:200])}
 
 
 @app.get("/healthz")

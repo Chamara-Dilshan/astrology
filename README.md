@@ -64,9 +64,17 @@ correction), year and month ahead, marriage matching (partner, or 2–5 proposal
 with groom/bride role), and prashna / muhurta. Each report shows only the inputs
 it needs (year, month, partners, question, purpose and date range, past events).
 Free reports return the PDF; the others build an order message in the browser.
-Picking a town fills in its coordinates, which stay editable, and "Other" asks
-for the town name. Each request runs in a temporary folder that is deleted
-afterwards, so no birth data is stored.
+The place box searches **every town and village in Sri Lanka** as you type
+(17,800 places from [GeoNames](https://www.geonames.org), CC BY 4.0, with their
+district; English, Sinhala or Tamil names, e.g. `hingu` → Hingurakgoda,
+`මහනුවර` → Kandy). Picking one fills in its coordinates, which stay editable; a
+place abroad is typed with its coordinates. The search is a POST, so what
+visitors type stays out of access logs. Each request runs in a temporary folder
+that is deleted afterwards, so no birth data is stored.
+
+The town list `web/places_lk.json` is rebuilt with `python -I tools/build_places.py LK.zip`
+(from `https://download.geonames.org/export/dump/LK.zip`); the curated town centres
+and Sinhala names in `web/places.json` are merged in and rank first.
 
 Settings, all environment variables:
 
@@ -78,6 +86,8 @@ Settings, all environment variables:
 | `ORDER_URL` | the same page | "order a personal reading" button under the form (http/https only; `""` hides it) |
 | `REPORTS_PER_HOUR_PER_IP` | 10 | per visitor, sliding one-hour window (HTTP 429 + `Retry-After`) |
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
+| `SEARCHES_PER_HOUR_PER_IP` | 600 | town searches per visitor (the place box asks as you type) |
+| `SEARCHES_PER_HOUR` | 20000 | town searches for the whole site |
 | `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |
 | `REPORT_TIMEOUT` | 180 | seconds per report |
 | `CLIENT_IP_HEADER` | `cf-connecting-ip` | header the proxy sets with the visitor's IP; `X-Forwarded-For` is ignored because clients can forge it |

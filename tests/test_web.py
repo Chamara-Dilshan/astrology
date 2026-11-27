@@ -23,6 +23,7 @@ def fresh_limits(monkeypatch):
     """Every test starts with empty rate-limit windows, generous limits, all report types on,
     and no contact line or order link."""
     web._limiter.reset()
+    web._search_limiter.reset()
     monkeypatch.setattr(web, "RATE_PER_IP", 1000)
     monkeypatch.setattr(web, "RATE_TOTAL", 1000)
     monkeypatch.setattr(web, "REPORTS", dict(web.ALL_REPORTS))
@@ -69,7 +70,9 @@ def test_index_has_form_places_and_source_link(client):
     assert r.status_code == 200
     for code in web.REPORTS:
         assert f'value="{code}"' in r.text
-    assert '"Polonnaruwa", 7.9403, 81.0188' in r.text
+    assert json.dumps(web.placesearch.DEFAULT) in r.text                                   # default place
+    assert web.placesearch.DEFAULT["name"] == "Colombo" and web.placesearch.DEFAULT["lat"] == 6.9271
+    assert 'role="combobox"' in r.text and "geonames.org" in r.text                          # search + credit
     assert web.SOURCE_URL in r.text
     assert "{{" not in r.text            # every template placeholder was filled
 

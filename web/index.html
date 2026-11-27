@@ -74,6 +74,15 @@
   .orderbox .row { margin-top: 10px; align-items: stretch; row-gap: 10px; }
   .orderbox .row button, .orderbox .row .orderbtn { margin-top: 0; min-height: 48px; font-size: 15px; }
   button.secondary { background: transparent; color: var(--brand); border: 2px solid var(--brand); }
+  /* place search: suggestions drop down over the fields below */
+  .combo { position: relative; }
+  .suggest { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px 0;
+             list-style: none; max-height: min(320px, 50vh); overflow-y: auto; background: var(--card);
+             border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+  .suggest li { padding: 9px 12px; cursor: pointer; line-height: 1.35; }
+  .suggest li[aria-selected="true"] { background: var(--bg); box-shadow: inset 3px 0 0 var(--gold); }
+  .suggest li .hint { display: block; font-size: 13px; }
+  .phelp:empty { display: none; }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
   footer a { color: inherit; display: inline-block; padding: 12px 4px; }
   /* stacked on phones: the labels' own top margin spaces them, so no extra row gap */
@@ -112,21 +121,24 @@
       A prashna chart is cast for the moment the question is asked; the current time is filled in.</p>
     <input type="hidden" name="time_exact" id="time_exact" value="yes">
 
-    <label for="placesel"><span class="lbl-birth">උපන් ස්ථානය <span class="hint">· Place</span></span><span class="lbl-ask">ප්‍රශ්නය ඇසූ ස්ථානය <span class="hint">· Where asked</span></span></label>
-    <select id="placesel"></select>
-    <input type="hidden" name="place" id="place">
-    <div id="otherbox" hidden>
-      <label for="placeother">ස්ථානයේ නම <span class="hint">· Town name</span></label>
-      <input id="placeother" maxlength="60" autocomplete="off" autocapitalize="words">
-    </div>
-    <div class="row">
-      <div>
-        <label for="lat">Latitude <span class="hint">(N +)</span></label>
-        <input id="lat" name="lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66" required>
+    <div class="placebox">
+      <label for="place"><span class="lbl-birth">උපන් ස්ථානය <span class="hint">· Place</span></span><span class="lbl-ask">ප්‍රශ්නය ඇසූ ස්ථානය <span class="hint">· Where asked</span></span></label>
+      <div class="combo">
+        <input id="place" name="place" class="pq" maxlength="60" required role="combobox" aria-autocomplete="list"
+               aria-expanded="false" aria-controls="place-list" aria-describedby="place-help" autocomplete="off"
+               autocapitalize="words" spellcheck="false" placeholder="නගරය හෝ ගම · town or village">
+        <ul id="place-list" class="suggest" role="listbox" aria-label="Towns" hidden></ul>
       </div>
-      <div>
-        <label for="lon">Longitude <span class="hint">(E +)</span></label>
-        <input id="lon" name="lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180" required>
+      <p id="place-help" class="hint small phelp" aria-live="polite"></p>
+      <div class="row">
+        <div>
+          <label for="lat">Latitude <span class="hint">(N +)</span></label>
+          <input id="lat" name="lat" data-coord="lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66" required>
+        </div>
+        <div>
+          <label for="lon">Longitude <span class="hint">(E +)</span></label>
+          <input id="lon" name="lon" data-coord="lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180" required>
+        </div>
       </div>
     </div>
     <label for="tz">Time zone</label>
@@ -230,17 +242,24 @@
             <input data-f="time" name="p_time" type="time">
           </div>
         </div>
-        <label data-for="psel">උපන් ස්ථානය <span class="hint">· Place</span></label>
-        <select data-f="psel" class="psel"></select>
-        <input type="hidden" name="p_place">
-        <div class="row">
-          <div>
-            <label data-for="lat">Latitude</label>
-            <input data-f="lat" name="p_lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66">
+        <div class="placebox">
+          <label data-for="pq">උපන් ස්ථානය <span class="hint">· Place</span></label>
+          <div class="combo">
+            <input data-f="pq" name="p_place" class="pq" maxlength="60" role="combobox" aria-autocomplete="list"
+                   aria-expanded="false" autocomplete="off" autocapitalize="words" spellcheck="false"
+                   placeholder="නගරය හෝ ගම · town or village">
+            <ul data-f="plist" class="suggest" role="listbox" aria-label="Towns" hidden></ul>
           </div>
-          <div>
-            <label data-for="lon">Longitude</label>
-            <input data-f="lon" name="p_lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180">
+          <p data-f="phelp" class="hint small phelp" aria-live="polite"></p>
+          <div class="row">
+            <div>
+              <label data-for="lat">Latitude</label>
+              <input data-f="lat" name="p_lat" data-coord="lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66">
+            </div>
+            <div>
+              <label data-for="lon">Longitude</label>
+              <input data-f="lon" name="p_lon" data-coord="lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180">
+            </div>
           </div>
         </div>
         <input type="hidden" name="p_tz" value="Asia/Colombo">
@@ -267,24 +286,91 @@
     Birth data is used only to make your PDF and is not stored.<br>
     For reflection only; not medical, legal or financial advice.<br>
     <a href="/accuracy">ගණනය කිරීම් කෙතරම් නිවැරදිද? · How accurate is this?</a><br>
+    Town list: <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0)<br>
     <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
   </footer>
 </main>
 <script>
-const PLACES = {{PLACES_JSON}};
-const sel = document.getElementById("placesel"), lat = document.getElementById("lat"),
-      lon = document.getElementById("lon"), place = document.getElementById("place");
-for (const [n] of PLACES) sel.add(new Option(n, n));
-sel.add(new Option("Other (enter coordinates)", ""));
-const otherbox = document.getElementById("otherbox"), placeother = document.getElementById("placeother");
-function pick() {
-  const p = PLACES.find(([n]) => n === sel.value);
-  otherbox.hidden = !!p;
-  placeother.required = !p;
-  if (p) { lat.value = p[1]; lon.value = p[2]; } else { lat.value = ""; lon.value = ""; placeother.focus(); }
+// ---- place search: every Sri Lankan town and village (GeoNames), suggested by the server as you type.
+// Picking one fills in its coordinates; a place not in the list (abroad) needs them typed by hand.
+const DEFAULT_PLACE = {{DEFAULT_PLACE_JSON}};
+const PICK_HINT = "ලැයිස්තුවෙන් තෝරන්න, නැතහොත් latitude / longitude ලියන්න · Pick from the list, or enter the coordinates";
+function placePicker(box) {
+  const input = box.querySelector(".pq"), list = box.querySelector(".suggest"), help = box.querySelector(".phelp"),
+        latIn = box.querySelector("[data-coord=lat]"), lonIn = box.querySelector("[data-coord=lon]");
+  let items = [], active = -1, picked = null, timer = 0, ctrl = null, seq = 0;
+  input.setAttribute("aria-controls", list.id);
+  input.setAttribute("aria-describedby", help.id);
+  const say = () => {
+    help.textContent = picked ? `✓ ${picked.area || picked.name}` :
+      input.value.trim() && !(latIn.value && lonIn.value) ? PICK_HINT : "";
+  };
+  const show = () => {
+    list.replaceChildren(...items.map((p, i) => {
+      const li = document.createElement("li"), b = document.createElement("b"), s = document.createElement("span");
+      li.id = `${list.id}-${i}`; li.setAttribute("role", "option"); li.setAttribute("aria-selected", String(i === active));
+      b.textContent = p.si ? `${p.name} · ${p.si}` : p.name;
+      s.className = "hint"; s.textContent = p.area;
+      li.append(b, s);
+      li.addEventListener("mousedown", e => e.preventDefault());   // keep the focus (and phone keyboard) in the box
+      li.addEventListener("click", () => choose(i));
+      return li;
+    }));
+    const open = items.length > 0;
+    list.hidden = !open; input.setAttribute("aria-expanded", String(open));
+    if (open && active >= 0) {
+      input.setAttribute("aria-activedescendant", `${list.id}-${active}`);
+      list.children[active].scrollIntoView({ block: "nearest" });
+    } else input.removeAttribute("aria-activedescendant");
+  };
+  const close = () => { items = []; active = -1; show(); };
+  const set = p => {
+    input.value = p.name; picked = p; latIn.value = p.lat; lonIn.value = p.lon; say();
+  };
+  const choose = i => { set(items[i]); close(); };
+  const exact = () => {   // the one suggestion whose name is exactly what was typed, if any
+    const v = input.value.trim().toLowerCase(), m = items.filter(p => p.name.toLowerCase() === v);
+    return m.length === 1 ? items.indexOf(m[0]) : -1;
+  };
+  input.addEventListener("input", () => {
+    if (picked) { picked = null; latIn.value = ""; lonIn.value = ""; }   // coordinates belonged to the old place
+    say();
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { close(); return; }
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      if (ctrl) ctrl.abort();
+      ctrl = new AbortController();
+      try {
+        const r = await fetch("/places", { method: "POST", body: new URLSearchParams({ q }), signal: ctrl.signal });
+        const found = r.ok ? (await r.json()).places : [];
+        if (mine !== seq) return;
+        items = found; active = items.length ? 0 : -1;
+        if (document.activeElement === input) show();
+        else { const i = exact(); if (i >= 0) choose(i); else close(); }   // left the box before the list came
+      } catch (_) { /* aborted by a newer query, or offline: coordinates can still be typed */ }
+    }, 180);
+  });
+  input.addEventListener("keydown", e => {
+    if (list.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      active = (active + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+      show();
+    } else if (e.key === "Enter") { e.preventDefault(); choose(Math.max(active, 0)); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => {
+    if (document.activeElement === input || list.hidden) return;
+    const i = exact();
+    if (i >= 0) choose(i); else close();
+  }, 150));
+  for (const c of [latIn, lonIn]) c.addEventListener("input", () => { picked = null; say(); });
+  return set;
 }
-sel.addEventListener("change", pick);
-sel.value = "Colombo"; pick();
+const lat = document.getElementById("lat"), lon = document.getElementById("lon"), place = document.getElementById("place");
+placePicker(document.querySelector(".placebox"))(DEFAULT_PLACE);
 document.getElementById("approx").addEventListener("change", e => {
   document.getElementById("time_exact").value = e.target.checked ? "approx" : "yes";
 });
@@ -356,16 +442,7 @@ function addPartner() {
   const el = partnerTpl.content.firstElementChild.cloneNode(true), id = "p" + (++partnerSeq) + "_";
   el.querySelectorAll("[data-f]").forEach(f => { f.id = id + f.dataset.f; });
   el.querySelectorAll("label[data-for]").forEach(l => { l.htmlFor = id + l.dataset.for; });
-  const ps = el.querySelector(".psel"), plat = el.querySelector("[name=p_lat]"),
-        plon = el.querySelector("[name=p_lon]"), pplace = el.querySelector("[name=p_place]");
-  for (const [n] of PLACES) ps.add(new Option(n, n));
-  ps.add(new Option("Other (enter coordinates)", ""));
-  const ppick = () => {
-    const p = PLACES.find(([n]) => n === ps.value);
-    pplace.value = p ? p[0] : "";
-    if (p) { plat.value = p[1]; plon.value = p[2]; } else { plat.value = ""; plon.value = ""; plat.focus(); }
-  };
-  ps.addEventListener("change", ppick); ps.value = "Colombo"; ppick();
+  placePicker(el.querySelector(".placebox"))(DEFAULT_PLACE);
   el.querySelector(".removep").addEventListener("click", () => { el.remove(); renumberPartners(); });
   partnersBox.append(el);
   renumberPartners();
@@ -473,7 +550,6 @@ document.getElementById("orderlink").href = ORDER.url || "#";
 
 form.addEventListener("submit", async e => {
   e.preventDefault();
-  place.value = otherbox.hidden ? sel.value : placeother.value.trim();
   if (document.activeElement) document.activeElement.blur();   // close the phone keyboard
   const c = current();
   if (!c.free) {                                  // order: nothing is sent to our server
