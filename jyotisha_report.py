@@ -34,6 +34,7 @@ BRAND_CONTACT = ""   # e.g. "facebook.com/jyothishainsight · 07X XXX XXXX"
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import jyotisha_calc as jc  # noqa: E402
+import jyotisha_pdftext  # noqa: E402
 
 # ---------------------------------------------------------------- Sinhala vocabulary
 SIGN_SI = ["මේෂ", "වෘෂභ", "මිථුන", "කටක", "සිංහ", "කන්‍යා", "තුලා", "වෘශ්චික", "ධනු", "මකර", "කුම්භ", "මීන"]
@@ -3580,15 +3581,24 @@ QA_ALLOWED_FONTS = ("Noto-Sans-Sinhala", "Noto-Sans-Sinhala-Bold", "Noto-Sans", 
                     "NotoSansSinhala", "NotoSansSinhala-Bold", "NotoSans", "NotoSans-Bold")
 
 
+# QA reads glyph positions and fonts, so MuPDF must not apply the ActualText spans (jyotisha_pdftext.py):
+# it scatters a word's ActualText over its glyphs and splits the line.
+def _qa_flags(base):
+    import pymupdf
+    return base | getattr(pymupdf, "TEXT_IGNORE_ACTUALTEXT", 0)
+
+
 def _text_spans(page):
-    for b in page.get_text("dict")["blocks"]:
+    import pymupdf
+    for b in page.get_text("dict", flags=_qa_flags(pymupdf.TEXTFLAGS_DICT))["blocks"]:
         for ln in b.get("lines", []):
             for s in ln["spans"]:
                 yield s
 
 
 def _raw_spans(page):
-    for b in page.get_text("rawdict")["blocks"]:
+    import pymupdf
+    for b in page.get_text("rawdict", flags=_qa_flags(pymupdf.TEXTFLAGS_RAWDICT))["blocks"]:
         for ln in b.get("lines", []):
             for s in ln["spans"]:
                 yield s
@@ -3605,10 +3615,12 @@ def shaping_probe(text=QA_PROBE, ref=QA_PROBE_REF, fontdir=None):
             f'<body><p style="font-size:{QA_PROBE_PT}pt;white-space:nowrap">{text}</p></body></html>')
     pdf = HTML(string=html, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf()
     page = pymupdf.open(stream=pdf, filetype="pdf")[0]
-    for s in _text_spans(page):
-        if abs(s["size"] - QA_PROBE_PT) < 0.5:
-            ratio = (s["bbox"][2] - s["bbox"][0]) / s["size"]
-            return ratio, abs(ratio - ref) / ref <= QA_PROBE_TOL, s["font"]
+    # the whole probe line, left edge of its first span to right edge of its last (the ActualText word
+    # spans of jyotisha_pdftext.py make MuPDF start a new span at each word)
+    spans = [s for s in _text_spans(page) if abs(s["size"] - QA_PROBE_PT) < 0.5]
+    if spans:
+        ratio = (max(s["bbox"][2] for s in spans) - min(s["bbox"][0] for s in spans)) / spans[0]["size"]
+        return ratio, abs(ratio - ref) / ref <= QA_PROBE_TOL, spans[0]["font"]
     return 0.0, False, "?"
 
 
@@ -3766,6 +3778,7 @@ def main():
         if a.html:
             open(a.html, "w", encoding="utf-8").write(page)
         from weasyprint import HTML
+        jyotisha_pdftext.install()   # copyable Sinhala text
         HTML(string=page, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf(a.out)
         print(f"PDF written: {a.out}")
         if a.qa and not run_qa(a.out, a.qa_dir):
@@ -3884,6 +3897,7 @@ def main():
     if a.html:
         open(a.html, "w", encoding="utf-8").write(page)
     from weasyprint import HTML
+    jyotisha_pdftext.install()   # copyable Sinhala text (ActualText spans)
     HTML(string=page, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf(a.out)
     print(f"PDF written: {a.out}")
     if a.qa and not run_qa(a.out, a.qa_dir):

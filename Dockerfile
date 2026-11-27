@@ -8,8 +8,10 @@
 FROM python:3.13-slim-trixie AS build
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt requirements-web.txt /tmp/
-RUN pip wheel --no-cache-dir --wheel-dir /wheels -r /tmp/requirements.txt -r /tmp/requirements-web.txt
+# requirements.lock pins every package (direct and indirect) to one version and its SHA-256 hashes,
+# so a changed or substituted file on the package index fails the build (see README, "Dependency lock")
+COPY requirements.lock /tmp/
+RUN pip wheel --no-cache-dir --require-hashes --wheel-dir /wheels -r /tmp/requirements.lock
 # Swiss Ephemeris data (1800-2400 AD), pinned to one upstream commit and SHA-256 checked;
 # the build fails if a file doesn't match
 COPY fetch_ephe.py /tmp/
@@ -23,7 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b tini \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /wheels /wheels
-RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
+# only the wheels built above: nothing is fetched from the index at this stage
+RUN pip install --no-cache-dir --no-index --no-deps /wheels/* && rm -rf /wheels
 
 WORKDIR /app
 COPY --from=build /ephe ephe/

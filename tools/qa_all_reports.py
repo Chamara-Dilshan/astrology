@@ -1,12 +1,14 @@
 """Build every report type with fictional data and check each PDF: the generator's own --qa (shaping,
 fonts, text off the page, blank pages), plus leftover placeholders and engine English in the Sinhala
-reports. Run it before a release; CI runs it on every change.
+reports, and checks that Sinhala copied out of each PDF (with PDFium, Chrome's engine) is the report's real
+text. Run it before a release; CI runs it on every change.
 
     python tools/qa_all_reports.py [out_dir] [--jobs N] [--only A1,M1]
 
 Exit code 1 if any report fails. Data and dates are fixed, so the output is the same every day."""
 import argparse
 import concurrent.futures as cf
+import html
 import json
 import os
 import re
@@ -40,11 +42,30 @@ UTC AK AmK BK MK PiK PK GK DK AL UL BAV SAV KP PVB Vedic Astrology An Integrated
 Swiss Ephemeris Lahiri Sahams synastry Synastry Uttara Ashadha Bhe Bho Ja Ji""".split())
 
 
+SINHALA = re.compile(r"[඀-෿‌‍]+")
+
+
+def copy_check(pdf, page_html):
+    """Every Sinhala word PDFium (Chrome, Edge, Android) copies out of the PDF must be a word of the report."""
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:      # a dev dependency; without it this check is skipped
+        return []
+    src = open(page_html, encoding="utf-8").read()
+    src = html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<style.*?</style>", " ", src, flags=re.S)))
+    want = set(SINHALA.findall(src)) | {"පිටුව"}   # the page-number footer comes from the stylesheet
+    bad = set()
+    for page in pdfium.PdfDocument(pdf):
+        bad |= {w for w in SINHALA.findall(page.get_textpage().get_text_range()) if w not in want}
+    return [f"copied Sinhala is not the report's text: {', '.join(sorted(bad)[:8])}"] if bad else []
+
+
 def build(tag, code, out):
     args = [a.replace("{out}", out) for a in EXTRA.get(code, [])]
-    pdf = os.path.join(out, f"{tag}.pdf")
+    pdf, page_html = os.path.join(out, f"{tag}.pdf"), os.path.join(out, f"{tag}.html")
     cmd = [sys.executable, os.path.join(ROOT, "jyotisha_report.py"), f"--report={code}", *BASE, *args,
-           *(["--lang=en"] if tag == "G-en" else []), f"--out={pdf}", "--qa", f"--qa-dir={os.path.join(out, tag + '_qa')}"]
+           *(["--lang=en"] if tag == "G-en" else []), f"--out={pdf}", f"--html={page_html}", "--qa",
+           f"--qa-dir={os.path.join(out, tag + '_qa')}"]
     t = time.time()
     p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
@@ -61,6 +82,7 @@ def build(tag, code, out):
                 eng = sorted({w for w in re.findall(r"[A-Za-z]{3,}", text) if w not in ENGLISH_OK})
                 if eng:
                     problems.append(f"p{page.number + 1}: English in a Sinhala report: {', '.join(eng[:12])}")
+        problems += copy_check(pdf, page_html)
     return tag, time.time() - t, problems
 
 

@@ -41,8 +41,14 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
   fallback fonts, overflow and blank pages. Sinhala shaping failures raise no
   error anywhere in the stack, so they have to be measured.
   `python tools/qa_all_reports.py` builds all 25 report types (and English G) with
-  fixed sample data, runs that QA on each, and also fails on leftover placeholders or
-  untranslated engine English in a Sinhala report; CI runs it on every change.
+  fixed sample data, runs that QA on each, and also fails on leftover placeholders,
+  untranslated engine English in a Sinhala report, or Sinhala that doesn't copy out of
+  the PDF as the report's real text; CI runs it on every change.
+- **Copyable Sinhala:** WeasyPrint's own text map scrambles Sinhala that is drawn with
+  several glyphs per letter ("r,දෝෂ" for "දෝෂ"), so copying or searching a PDF failed.
+  `jyotisha_pdftext.py` wraps each Sinhala word in a PDF ActualText span, which Chrome,
+  Edge, Android's viewer (PDFium) and Acrobat use; the pages look exactly the same.
+  MuPDF-based viewers (SumatraPDF) still repeat part of a word when copying.
 
 ```
 web form / CLI ─► jyotisha_calc ─► jyotisha_report (HTML/CSS) ─► WeasyPrint + Pango/HarfBuzz ─► PDF ─► --qa (PyMuPDF)
@@ -113,6 +119,20 @@ can't stop traffic from waking a free-tier instance, which is the host's job.
 
 Tests: `pip install -r requirements-dev.txt` then `pytest` (input validation,
 what reaches the report, limits, and one real PDF end to end).
+
+**Dependency lock:** `requirements*.txt` say what the project needs (lower bounds, security
+floors). The Docker image and CI install from `requirements.lock` / `requirements-dev.lock`
+instead: every package, direct or indirect, at one version with its SHA-256 hashes, so a
+changed or substituted file on the package index fails the install. After editing a
+`requirements*.txt` (or to take updates), regenerate both in the image's own Python:
+
+```bash
+docker run --rm -v "$PWD:/src" -w /src python:3.13-slim-trixie sh -c "pip install pip-tools && \
+  pip-compile --generate-hashes --strip-extras --allow-unsafe --upgrade -o requirements.lock requirements.txt requirements-web.txt && \
+  pip-compile --generate-hashes --strip-extras --allow-unsafe --upgrade -o requirements-dev.lock requirements-dev.txt"
+```
+
+`tests/test_locks.py` fails if a lock no longer satisfies the `requirements*.txt` it came from.
 
 <br clear="right">
 

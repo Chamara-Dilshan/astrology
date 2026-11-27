@@ -260,7 +260,11 @@ _PERSONAL_ROWS = 5
 
 
 def _spans(page):
-    for b in page.get_text("dict")["blocks"]:
+    import pymupdf
+    # glyph text and positions, not the reports' ActualText spans (MuPDF scatters those over the glyphs);
+    # the values found and the spans blurred come from the same reading, so they always match
+    flags = pymupdf.TEXTFLAGS_DICT | getattr(pymupdf, "TEXT_IGNORE_ACTUALTEXT", 0)
+    for b in page.get_text("dict", flags=flags)["blocks"]:
         for ln in b.get("lines", []):
             for s in ln["spans"]:
                 if s["text"].strip():
