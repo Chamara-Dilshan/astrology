@@ -42,8 +42,9 @@ REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", "G,A1,A2,A3,
            .replace(" ", "").split(",") if c in ALL_REPORTS} or {"G": ALL_REPORTS["G"]}
 # Printed at the bottom of each PDF, and where the "order a personal reading" button links to.
 # Defaults are the Jyothisha Insight Facebook page; set either to "" in the environment to hide it.
-FACEBOOK_PAGE = "https://www.facebook.com/profile.php?id=61594028591573"
-BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "Facebook: Jyothisha Insight · facebook.com/profile.php?id=61594028591573").strip()
+# The Page's username (set 2026-11-28); facebook.com/profile.php?id=61594028591573 is the same Page.
+FACEBOOK_PAGE = "https://www.facebook.com/JyothishaInsight"
+BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "Facebook: Jyothisha Insight · facebook.com/JyothishaInsight").strip()
 ORDER_URL = os.environ.get("ORDER_URL", FACEBOOK_PAGE).strip()
 # Optional WhatsApp number (international digits, e.g. 9471xxxxxxx) for orders: the order button then
 # opens WhatsApp with the details filled in. Without it, the details are copied for pasting on Facebook.

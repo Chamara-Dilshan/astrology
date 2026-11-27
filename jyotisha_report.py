@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 BRAND = "Jyothisha Insight"
 BRAND_SI = "ජ්‍යොතිෂ ඉන්සයිට්"
 BRAND_TAGLINE = "පාරම්පරික ජ්‍යොතිෂය · නවීන නිරවද්‍යතාව"
-BRAND_CONTACT = ""   # e.g. "facebook.com/jyothishainsight · 07X XXX XXXX"
+BRAND_CONTACT = ""   # e.g. "facebook.com/JyothishaInsight · 07X XXX XXXX"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

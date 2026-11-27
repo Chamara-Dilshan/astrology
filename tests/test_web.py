@@ -186,8 +186,8 @@ def test_defaults_offer_all_reports_with_facebook_contact(monkeypatch):
     fresh = importlib.reload(web)
     try:
         assert list(fresh.REPORTS) == ["G", "A1", "A2", "A3", "N", "C3"]   # owner's free set + samples
-        assert "61594028591573" in fresh.BRAND_CONTACT
-        assert fresh.ORDER_URL == fresh.FACEBOOK_PAGE
+        assert "facebook.com/JyothishaInsight" in fresh.BRAND_CONTACT
+        assert fresh.ORDER_URL == fresh.FACEBOOK_PAGE == "https://www.facebook.com/JyothishaInsight"
     finally:
         importlib.reload(web)
 
