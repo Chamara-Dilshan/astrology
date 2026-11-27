@@ -30,7 +30,7 @@ EXTRA = {"C1": ["--year=2026"], "C2": ["--year=2026"], "C6": ["--year=2026", "--
          "E1": ["--events={out}/events.json", "--time-exact=approx"],
          "M1": ["--task=wedding", "--muhurta-from=2026-12-01", "--muhurta-to=2026-12-31", "--muhurta-hours=6-21"],
          "P1": ["--question=මගේ විවාහය කවදා සිදුවේද?", "--matter=7", "--shat-topic=marriage"],
-         "P2": ["--question=රැකියාව ලැබේද?", "--matter=10", "--shat-topic=general"]}
+         "P2": ["--question=ගමන සාර්ථකද?", "--matter=9", "--shat-topic=travel"]}
 CODES = ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C1", "C2", "C3", "C4", "C6",
          "D1", "D2", "D3", "E1", "M1", "N", "P1", "P2"]
 LEFTOVER = re.compile(r"\bNone\b|\bnan\b|\{\{|\}\}|Traceback|\bundefined\b|\[\]|\{\}|KeyError")

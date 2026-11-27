@@ -1482,7 +1482,7 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
     if d.get("shatpanchasika"):
         H.append(f'<div class="pb"></div><h2>4. ෂට්පංචාශිකා — {PRASHNA_TOPIC_SI.get(shat_topic, shat_topic)}</h2>')
         H.append("<table><tr><th style='width:8%'>ශ්ලෝකය</th><th>නියමය</th><th>ඇඟවීම</th></tr>"
-                 + "".join(f"<tr><td>{r['stanza']}</td><td>{esc(si_text(r['rule']))}</td><td>{esc(si_text(r['verdict']))}</td></tr>"
+                 + "".join(f"<tr><td>{r['stanza']}</td><td>{esc(si_shat_rule(r['rule']))}</td><td>{esc(si_shat_verdict(r['verdict'])[0])}</td></tr>"
                            for r in d["shatpanchasika"]) + "</table>")
         H.append('<p class="small muted">මූලාශ්‍රය: ප්‍රිථුයශස් ගේ ෂට්පංචාශිකා (චප්පන්න), B. Suryanarain Rao ගේ 1946 ඉංග්‍රීසි පරිවර්තනය. '
                  'නූපන් දරුවාගේ ලිංගය, ලිංගික හැසිරීම සහ මරණය පිළිබඳ ශ්ලෝක මෙහි ඉදිරිපත් නොකෙරේ.</p>')
@@ -1498,6 +1498,258 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
 
 POS_MARKS = ("සාර්ථක", "ලැබීම", "ලාභ", "ජය", "සමෘද්ධි", "හිතකර", "ඉටුවීම", "සාමය", "සුවය", "විවාහය සිදුවීම", "ගෞරව")
 NEG_MARKS = ("අසාර්ථක", "අලාභ", "පරාජය", "නොවේ", "නැත", "ලිස්සා", "බිය", "බාධක", "ප්‍රවේශම්", "අහිමි")
+
+
+# ================================================================ Shatpanchasika (P1/P2) in Sinhala
+# Every rule and verdict the engine's shatpanchasika() can print (B. Suryanarain Rao's 1946 rendering),
+# translated sentence by sentence. Word-by-word translation left most of the travel, lost-article,
+# dispute, health, subject and rain stanzas in English (found 2026-11-27).
+_SH_TYPE = {"movable": "චර", "fixed": "ස්ථිර", "dual": "ද්විස්වභාව"}
+_SH_WHO8 = {"father": "පියා", "mother / maternal relations": "මව / මව් පාර්ශ්වයේ ඥාතීන්", "brothers, cousins": "සහෝදරයන්, ඥාති සහෝදරයන්",
+            "maternal uncles": "මාමලා", "children, preceptor": "දරුවන්, ගුරුවරයා", "wife, female relations": "බිරිඳ, කාන්තා ඥාතීන්",
+            "servants, dependents": "සේවකයන්, යැපෙන්නන්", "-": "—"}
+_SH_WHO49 = {"someone like / connected to the querent himself": "ප්‍රශ්නකරු වැනි හෝ ඔහුට සම්බන්ධ කෙනෙක්", "brothers": "සහෝදරයන්",
+             "mother or sisters": "මව හෝ සහෝදරියන්", "children": "දරුවන්", "enemies / opponents": "සතුරන් / ප්‍රතිවාදීන්",
+             "wife / spouse": "බිරිඳ / කලත්‍රයා", "a virtuous person / elder": "ගුණවත් කෙනෙක් / වැඩිහිටියෙක්",
+             "preceptor / person venerated": "ගුරුවරයා / ගෞරවනීය කෙනෙක්", "not classified by the text (2/8/11/12)": "ග්‍රන්ථයේ වර්ග කර නැත (2/8/11/12)"}
+_SH_AGE = {"young": "තරුණ", "old": "වැඩිහිටි", "post-natal / mature": "මේරූ", "restless / difficult": "නොසන්සුන් / අපහසු",
+           "pleasure-loving": "සැප විඳීමට කැමති"}
+_SH_LAGNA38 = {"fixed sign": "ස්ථිර රාශිය", "fixed navamsa": "ස්ථිර නවාංශය", "vargottama": "වර්ගෝත්තම"}
+_SH_SHAPE = {"long": "දිගු", "broad": "පළල්", "small": "කුඩා"}
+_SH_GROUP = {"Dhatu (mineral/inanimate)": "ධාතු (ලෝහ/අජීවී)", "Moola (vegetable/root)": "මූල (ශාක/මුල්)", "Jeeva (living being)": "ජීව (ප්‍රාණීන්)"}
+_SH_DIR = {"East": "නැගෙනහිර", "South-East": "අග්නිදිග", "South": "දකුණ", "South-West": "නිරිත දිග", "West": "බටහිර",
+           "North-West": "වයඹ දිග", "North": "උතුර", "North-East": "ඊසාන දිග"}
+
+
+def _sh_planets(s):
+    """'Guru/Shukr' (the engine's five-letter forms) or '-' -> Sinhala."""
+    s = s.strip()
+    return "නැත" if s in ("", "-") else "/".join(PL_EN2SI.get(x, x) for x in s.split("/"))
+
+
+_SH_CONV = {"p": _sh_planets, "s": lambda s: SIGN_EN2SI.get(s, s), "n": str, "t": lambda s: _SH_TYPE[s],
+            "b": lambda s: {"benefic": "ශුභ", "malefic": "පාප"}[s], "o": lambda s: {"odd": "ඔජ", "even": "යුග්ම"}[s],
+            "u": lambda s: {"Sirshodaya": "ශීර්ෂෝදය", "Prishtodaya": "පෘෂ්ඨෝදය", "Ubhayodaya": "උභයෝදය"}[s],
+            "r": lambda s: " — වක්‍ර" if s else "", "w": lambda s: _SH_WHO8.get(s, s), "q": lambda s: _SH_WHO49.get(s, s),
+            "a": lambda s: ", ".join(_SH_AGE.get(x, x) for x in s.split(", ")), "v": lambda s: ", ".join(_SH_LAGNA38[x] for x in s.split(", ")),
+            "h": lambda s: _SH_SHAPE[s], "g": lambda s: _SH_GROUP.get(s, s), "d": lambda s: _SH_DIR.get(s, s),
+            "c": lambda s: " — ශුභ සම්බන්ධයක් නැත" if s == " (no benefic association)" else f", ශුභ {_sh_planets(s.replace(' with benefic ', ''))} සමඟ"}
+_PL = r"([A-Za-z/-]+)"     # a planet list as printed, or "-"
+_SG = r"([A-Z][a-z]+)"     # a sign
+SHAT_RULE_SI = [(re.compile(rx), si, conv) for rx, si, conv in [
+    # general
+    (rf"Lagna {_SG}: (benefic|malefic)-owned, (\d)/6 benefic shadvarga lords, (Sirshodaya|Prishtodaya|Ubhayodaya)",
+     "ලග්නය {0}: {1} ග්‍රහයෙකුට අයත්; ෂඩ්වර්ග අධිපතීන් 6න් {2}ක් ශුභ; {3}", "sbnu"),
+    (r"Lagna navamsa (\d) in (odd|even) sign", "ලග්න නවාංශය {0} ({1} රාශියක)", "no"),
+    (rf"benefics {_PL} in kendra/trikona, no malefics in kendras/8th",
+     "කේන්ද්‍ර/ත්‍රිකෝණවල ශුභ ග්‍රහයන් {0}; කේන්ද්‍රවල හෝ 8 වැන්නේ පාප ග්‍රහයන් නැත", "p"),
+    (rf"malefics {_PL} in kendras/8th, no benefics in kendra/trikona",
+     "කේන්ද්‍රවල හෝ 8 වැන්නේ පාප ග්‍රහයන් {0}; කේන්ද්‍ර/ත්‍රිකෝණවල ශුභ ග්‍රහයන් නැත", "p"),
+    (rf"benefics {_PL} in kendra/trikona but malefics {_PL} in kendras/8th",
+     "කේන්ද්‍ර/ත්‍රිකෝණවල ශුභ ග්‍රහයන් {0}, නමුත් කේන්ද්‍රවල හෝ 8 වැන්නේ පාප ග්‍රහයන් {1}", "pp"),
+    (rf"3/5/7/11: benefics {_PL}, malefics {_PL}", "3/5/7/11 භාවවල: ශුභ ග්‍රහයන් {0}, පාප ග්‍රහයන් {1}", "pp"),
+    (rf"Lagna {_SG} \(Ge/Vi/Li/Aq\) with benefic {_PL}", "ලග්නය {0} (මිථුන/කන්‍යා/තුලා/කුම්භ), ශුභ {1} සමඟ", "sp"),
+    (rf"benefics in 7th/10th: {_PL}", "7/10 වැන්නේ ශුභ ග්‍රහයන්: {0}", "p"),
+    (rf"benefics in 1/2/5: {_PL}", "1/2/5 හි ශුභ ග්‍රහයන්: {0}", "p"),
+    (rf"malefics in 11th/12th: {_PL}", "11/12 වැන්නේ පාප ග්‍රහයන්: {0}", "p"),
+    (r"Chandra in Lagna", "චන්ද්‍ර ලග්නයේ", ""),
+    (r"Chandra in 10th", "චන්ද්‍ර 10 වැන්නේ", ""),
+    (r"Chandra in (\d+) aspected by Guru", "චන්ද්‍ර {0} වැන්නේ, ගුරු දෘෂ්ටිය සහිතව", "n"),
+    (rf"malefics {_PL} in 1/3/5/8/9", "1/3/5/8/9 හි පාප ග්‍රහයන් {0}", "p"),
+    (rf"benefics {_PL} in 1/3/5/8/9", "1/3/5/8/9 හි ශුභ ග්‍රහයන් {0}", "p"),
+    # travel and return
+    (rf"Lagna {_SG} is (movable|fixed|dual)", "ලග්නය {0} — {1} රාශියකි", "st"),
+    (rf"Lagna & Chandra influences: benefic {_PL}, malefic {_PL}", "ලග්නයට සහ චන්ද්‍රයාට බලපෑම්: ශුභ {0}, පාප {1}", "pp"),
+    (rf"planets in 2/3/5: {_PL}", "2/3/5 හි ග්‍රහයන්: {0}", "p"),
+    (r"planet in 6th/7th, with Guru in kendra or Budha/Shukra in 5th/9th",
+     "6/7 වැන්නේ ග්‍රහයෙක්; ගුරු කේන්ද්‍රයක හෝ බුධ/ශුක්‍ර 5/9 වැන්නේ", ""),
+    (rf"Chandra in 8th; kendras: malefics {_PL}, benefics {_PL}", "චන්ද්‍ර 8 වැන්නේ; කේන්ද්‍රවල: පාප {0}, ශුභ {1}", "pp"),
+    (rf"Prishtodaya lagna aspected by malefic {_PL}", "පෘෂ්ඨෝදය ලග්නයට පාප ග්‍රහ {0} දෘෂ්ටිය", "p"),
+    (rf"malefics {_PL} in (\d+)th, no benefic aspect", "{1} වැන්නේ පාප ග්‍රහයන් {0}, ශුභ දෘෂ්ටියක් නැත", "pn"),
+    (rf"malefics {_PL} in kendras without benefic aspect", "ශුභ දෘෂ්ටියක් නැති කේන්ද්‍රවල පාප ග්‍රහයන් {0}", "p"),
+    (rf"first occupied sign from Lagna is (\d+)th \({_SG}, {_PL}\)( retrograde)?",
+     "ලග්නයෙන් පසු ග්‍රහයෙක් සිටින පළමු රාශිය {0} වැන්න ({1}, {2}){3}", "nspr"),
+    (r"movable lagna in a movable navamsa beyond the 5th", "චර ලග්නය, 5 වැන්නෙන් ඔබ්බට චර නවාංශයක", ""),
+    (rf"retrograde {_PL} in houses 8-12", "8–12 භාවවල වක්‍ර {0}", "p"),
+    (rf"([A-Z][a-z]+) in 8th( with benefic [A-Za-z/-]+| \(no benefic association\))", "{0} 8 වැන්නේ{1}", "pc"),
+    (r"Shani with malefics in 9th, no benefic aspect", "9 වැන්නේ පාප ග්‍රහයන් සමඟ ශනි, ශුභ දෘෂ්ටියක් නැත", ""),
+    (rf"movable lagna with benefic {_PL}", "චර ලග්නය, ශුභ {0} සමඟ", "p"),
+    (rf"malefics {_PL} in prashna lagna", "ප්‍රශ්න ලග්නයේ පාප ග්‍රහයන් {0}", "p"),
+    # lost article
+    (r"bright \(full\) Chandra in lagna aspected by Guru/Shukra", "පූර්ණ (දීප්තිමත්) චන්ද්‍ර ලග්නයේ, ගුරු/ශුක්‍ර දෘෂ්ටිය සහිතව", ""),
+    (rf"powerful benefic {_PL} in 11th", "11 වැන්නේ ශක්තිමත් ශුභ ග්‍රහ {0}", "p"),
+    (rf"Sirshodaya lagna {_SG} with benefic {_PL}, benefic aspect", "ශීර්ෂෝදය ලග්නය {0}, ශුභ {1} සමඟ, ශුභ දෘෂ්ටිය සහිතව", "sp"),
+    (r"none of the recovery combinations \(7, 40\) present", "නැවත ලැබීමේ සංයෝග (7, 40) කිසිවක් නැත", ""),
+    (r"lagna: ((?:fixed sign|fixed navamsa|vargottama)(?:, (?:fixed sign|fixed navamsa|vargottama))*)", "ලග්නය: {0}", "v"),
+    (r"lagna neither fixed, fixed-navamsa nor vargottama", "ලග්නය ස්ථිර රාශියක්, ස්ථිර නවාංශයක් හෝ වර්ගෝත්තම නොවේ", ""),
+    (r"drekkana (\d) rising", "උදා වන ද්‍රේෂ්කාණය {0}", "n"),
+    (r"strongest planet in kendras: ([A-Z][a-z]+)", "කේන්ද්‍රවල ශක්තිමත්ම ග්‍රහයා: {0}", "p"),
+    (r"no planet in kendras; lagna lord ([A-Z][a-z]+)", "කේන්ද්‍රවල ග්‍රහයන් නැත; ලග්නාධිපති {0}", "p"),
+    (rf"lagna {_SG}", "ලග්නය {0}", "s"),
+    # dispute
+    (rf"benefics {_PL} in 1/7/10", "1/7/10 හි ශුභ ග්‍රහයන් {0}", "p"),
+    (r"Kuja & Shani in 9th", "කුජ සහ ශනි 9 වැන්නේ", ""),
+    (rf"{_PL} in 9th", "{0} 9 වැන්නේ", "p"),
+    (rf"benefics on querent's half \(3-8\): {_PL}; on opponent's half \(9-2\): {_PL}",
+     "ප්‍රශ්නකරුගේ පැත්තේ (3–8) ශුභ ග්‍රහයන්: {0}; ප්‍රතිවාදියාගේ පැත්තේ (9–2): {1}", "pp"),
+    (rf"malefics {_PL} in 10/11/12", "10/11/12 හි පාප ග්‍රහයන් {0}", "p"),
+    (r"male-sign lagna with benefic, or benefics in 11th/12th", "ශුභ ග්‍රහයෙකු සහිත පුරුෂ රාශි ලග්නයක්, හෝ 11/12 වැන්නේ ශුභ ග්‍රහයන්", ""),
+    (rf"malefics {_PL} in dual signs", "ද්විස්වභාව රාශිවල පාප ග්‍රහයන් {0}", "p"),
+    (rf"benefics {_PL} in kendras", "කේන්ද්‍රවල ශුභ ග්‍රහයන් {0}", "p"),
+    (rf"malefics {_PL} in kendras", "කේන්ද්‍රවල පාප ග්‍රහයන් {0}", "p"),
+    (r"(movable|fixed|dual) lagna, Chandra in (movable|fixed|dual) sign", "{0} ලග්නය, චන්ද්‍ර {1} රාශියක", "tt"),
+    (r"fixed lagna with Guru/Shani", "ස්ථිර ලග්නය, ගුරු/ශනි සමඟ", ""),
+    (r"movable lagna with Surya/Guru", "චර ලග්නය, රවි/ගුරු සමඟ", ""),
+    (rf"movable lagna with {_PL}", "චර ලග්නය, {0} සමඟ", "p"),
+    (rf"malefics {_PL} in 4th", "4 වැන්නේ පාප ග්‍රහයන් {0}", "p"),
+    (rf"4th house is {_SG} \(Pi/Sc/Aq/Cn\)", "4 වැන්න {0} (මීන/වෘශ්චික/කුම්භ/කටක)", "s"),
+    (r"lagna or 4th in Ar/Le/Ta/Sg", "ලග්නය හෝ 4 වැන්න මේෂ/සිංහ/වෘෂභ/ධනු රාශියක", ""),
+    (r"Surya & Chandra in 4th", "රවි සහ චන්ද්‍ර 4 වැන්නේ", ""),
+    (rf"{_PL} in 4th", "{0} 4 වැන්නේ", "p"),
+    (r"Guru/Shukra in 2nd or 3rd", "ගුරු/ශුක්‍ර 2 හෝ 3 වැන්නේ", ""),
+    (r"strongest planet ([A-Z][a-z]+) is (\d+)th from lagna; navamsa (movable|fixed|dual) \(x(\d)\)",
+     "ශක්තිමත්ම ග්‍රහයා {0} ලග්නයෙන් {1} වැන්නේ; නවාංශය {2} (×{3})", "pntn"),
+    (r"7th lord ([A-Z][a-z]+) retrograde", "7 වන අධිපති {0} වක්‍ර", "p"),
+    (r"Chandra (\d+)th from lagna, no planet between", "චන්ද්‍ර ලග්නයෙන් {0} වැන්නේ, අතර ග්‍රහයෙක් නැත", "n"),
+    # health, marriage, subject, rain
+    (rf"benefics in 1/5/7/8: {_PL}; Chandra in (\d+)", "1/5/7/8 හි ශුභ ග්‍රහයන්: {0}; චන්ද්‍ර {1} වැන්නේ", "pn"),
+    (r"Shani in (\d+)th", "ශනි {0} වැන්නේ", "n"),
+    (r"Chandra in (\d+) aspected by Guru/Surya/Budha", "චන්ද්‍ර {0} වැන්නේ, ගුරු/රවි/බුධ දෘෂ්ටිය සහිතව", "n"),
+    (rf"benefics {_PL} in kendra/trikona", "කේන්ද්‍ර/ත්‍රිකෝණවල ශුභ ග්‍රහයන් {0}", "p"),
+    (r"strongest planet ([A-Z][a-z]+) \(PVB ([\d.]+)\) in house (\d+)", "ශක්තිමත්ම ග්‍රහයා {0} (පංචවර්ගීය බලය {1}) {2} වැන්නේ", "pnn"),
+    (r"navamsa lord of lagna is in lagna", "ලග්නයේ නවාංශ අධිපති ලග්නයේම සිටී", ""),
+    (rf"planets in/aspecting lagna: {_PL}", "ලග්නයේ සිටින හෝ ලග්නයට දෘෂ්ටි කරන ග්‍රහයන්: {0}", "p"),
+    (r"Shani 7th from Chandra / Shani 4th & Shukra 8th / both in 2nd-3rd",
+     "චන්ද්‍රයාගෙන් 7 වැන්නේ ශනි / ශනි 4 සහ ශුක්‍ර 8 වැන්නේ / දෙදෙනාම 2–3 වැන්නේ", ""),
+    (rf"benefics {_PL} in watery signs in 1/2/3/4/7/10, bright fortnight", "1/2/3/4/7/10 හි ජල රාශිවල ශුභ ග්‍රහයන් {0}; පුර පක්ෂය", "p"),
+    (r"Chandra in lagna in a watery sign", "ජල රාශියක චන්ද්‍ර ලග්නයේ", ""),
+    (r"no rain combination", "වර්ෂා සංයෝගයක් නැත", ""),
+]]
+
+# verdict -> (Sinhala, tone): +1 favours the querent, -1 against, 0 information only
+SHAT_VERDICT_SI = {
+    "SUCCESS indicated": ("සාර්ථක වීමේ ප්‍රවණතාව", 1), "FAILURE indicated": ("අසාර්ථක වීමේ ප්‍රවණතාව", -1),
+    "MIXED — success only with great effort": ("මිශ්‍ර — විශාල උත්සාහයකින් පමණක් සාර්ථකත්වය", 0),
+    "querent gains ALL desired in full": ("අපේක්ෂිත දේ සම්පූර්ණයෙන් ලැබීමේ ප්‍රවණතාව", 1),
+    "complete failure of the desire; caution": ("අපේක්ෂාව ඉටු නොවීමේ ප්‍රවණතාව; ප්‍රවේශම්", -1),
+    "partial — obstacles": ("අර්ධ ප්‍රතිඵල — බාධක", 0),
+    "gains & success": ("ලාභ සහ සාර්ථකත්වය", 1), "losses": ("අලාභ", -1), "gains and losses both": ("ලාභ සහ අලාභ දෙකම", 0),
+    "success foretold": ("සාර්ථකත්වය", 1), "gain of land/position": ("ඉඩම්/තනතුරු ලාභය", 1),
+    "wealth & honour from authorities": ("අධිකාරි මගින් ධනය සහ ගෞරවය", 1), "no success in the matter": ("කාරණයේ සාර්ථකත්වයක් නැත", -1),
+    "not favourable for the matter": ("කාරණයට හිතකර නැත", -1), "prosperity": ("සමෘද්ධිය", 1),
+    "success through a woman's help": ("කාන්තාවකගේ සහාය මගින් සාර්ථකත්වය", 1),
+    "loss of the object in mind, monetary loss, fear": ("අපේක්ෂිත දේ අහිමි වීම, මුදල් අලාභ, බිය", -1),
+    "good in all these respects": ("මේ සියලු අතින් හිතකර", 1),
+    # travel
+    "traveller has suffered / moved / met loss": ("ගමන් ගිය අය දුෂ්කරතා විඳ, ස්ථාන මාරු වී හෝ අලාභ ලබා ඇත", -1),
+    "traveller has not left, no harm, no loss, no defeat": ("ගමන් ගිය අය තවම පිටත්ව ගොස් නැත; හානියක්, අලාභයක්, පරාජයක් නැත", 1),
+    "mixed results": ("මිශ්‍ර ප්‍රතිඵල", 0), "good": ("හිතකර", 1), "unfavourable": ("අහිතකර", -1), "mixed": ("මිශ්‍ර", 0),
+    "return with property/riches": ("ධනය/සම්පත් සමඟ ආපසු පැමිණීම", 1),
+    "return, but without gains": ("ආපසු පැමිණීම, නමුත් ලාභ නොමැතිව", 0),
+    "return with property/riches; SPEEDY return (Guru/Shukra there)": ("ධනය/සම්පත් සමඟ, ඉක්මනින් ආපසු පැමිණීම (ගුරු/ශුක්‍ර එහි)", 1),
+    "return, but without gains; SPEEDY return (Guru/Shukra there)": ("ඉක්මනින් ආපසු පැමිණීම (ගුරු/ශුක්‍ර එහි), නමුත් ලාභ නොමැතිව", 1),
+    "traveller WILL return (Rao's reading)": ("ගමන් ගිය අය ආපසු පැමිණේ (රාවෝගේ කියවීම)", 1),
+    "safe return": ("ආරක්ෂිතව ආපසු පැමිණීම", 1), "safe return with wealth & honour": ("ධනය සහ ගෞරවය සමඟ ආරක්ෂිතව ආපසු පැමිණීම", 1),
+    "return uncertain (malefics in kendras)": ("ආපසු පැමිණීම අවිනිශ්චිතයි (කේන්ද්‍රවල පාප ග්‍රහයන්)", -1),
+    "traveller has suffered restraint / hardship": ("ගමන් ගිය අය බාධා / දුෂ්කරතා විඳ ඇත", -1),
+    "traveller has left the place he first went to": ("ගමන් ගිය අය මුලින් ගිය ස්ථානයෙන් ඉවත්ව ගොස් ඇත", 0),
+    "grave danger to the traveller — classical text gives the worst reading; not predicted here":
+        ("ගමන් ගිය අයට බරපතළ අවදානම් ඇඟවීමක් — සම්භාව්‍ය ග්‍රන්ථයේ දරුණුම කියවීම මෙහි අනාවැකියක් ලෙස නොදක්වේ", -1),
+    "traveller waylaid / removed by robbers (classical)": ("ගමනේදී බාධා හෝ සොරුන්ගෙන් හානි (සම්භාව්‍ය කියවීම)", -1),
+    "query concerns a person gone to a foreign land": ("ප්‍රශ්නය විදේශගත කෙනෙකු ගැනයි", 0),
+    "return of the person indicated": ("එම පුද්ගලයා ආපසු පැමිණීමේ ප්‍රවණතාව", 1),
+    # Rahu/Ketu in the 8th: the text names no relative for them
+    "query about -: has moved on to another country; safe & prosperous return":
+        ("වෙනත් රටකට ගොස් ඇත; ආරක්ෂිතව, සමෘද්ධිමත්ව ආපසු පැමිණේ (ග්‍රන්ථය රාහු/කේතුට ඥාතියෙක් නියම නොකරයි)", 1),
+    "query about -: still in the first place; caution":
+        ("තවම මුල් ස්ථානයේමයි; ප්‍රවේශම් (ග්‍රන්ථය රාහු/කේතුට ඥාතියෙක් නියම නොකරයි)", 0),
+    "traveller suffering ill-health (recommend checking on them)": ("ගමන් ගිය අයගේ සෞඛ්‍යය දුර්වල විය හැක (ඔවුන් ගැන විමසා බැලීම හොඳයි)", -1),
+    "prosperity to the traveller": ("ගමන් ගිය අයට සමෘද්ධිය", 1), "trouble to the traveller": ("ගමන් ගිය අයට කරදර", -1),
+    "trouble to the traveller (fixed lagna: mixed)": ("ගමන් ගිය අයට කරදර (ස්ථිර ලග්නය: මිශ්‍ර)", -1),
+    # lost article
+    "SPEEDY recovery": ("ඉක්මනින් නැවත ලැබීම", 1), "recovery indicated": ("නැවත ලැබීමේ ප්‍රවණතාව", 1),
+    "stolen article recovered soon": ("සොරකම් කළ දේ ඉක්මනින් ලැබීම", 1),
+    "recovery not promised by this prashna": ("මේ ප්‍රශ්න කේන්දරයෙන් නැවත ලැබීමක් පෙන්නුම් නොකරයි", -1),
+    "article is still in the same place; taken by a close relation / insider": ("දේ තවම එම ස්ථානයේම; ළඟ කෙනෙකු/ඇතුළාන්තයේ කෙනෙකු විසින් ගෙන ඇත", 0),
+    "article has been moved away": ("දේ වෙනත් තැනකට ගෙන ගොස් ඇත", 0),
+    "front part of the house": ("ගෙදර ඉදිරි කොටසේ", 0), "middle of the house": ("ගෙදර මැද කොටසේ", 0),
+    "back of the house or beyond": ("ගෙදර පිටුපස හෝ ඉන් ඔබ්බේ", 0),
+    # dispute
+    "VICTORY to the querent": ("ප්‍රශ්නකරුට ජය", 1), "defeat to the opponent": ("ප්‍රතිවාදියාට පරාජය", 1),
+    "victory to the OPPONENT": ("ප්‍රතිවාදියාට ජය", -1), "favours querent": ("ප්‍රශ්නකරුට වාසි", 1),
+    "favours opponent": ("ප්‍රතිවාදියාට වාසි", -1), "balanced": ("සමබර", 0),
+    "defeat to the querent's side": ("ප්‍රශ්නකරුගේ පැත්තට පරාජය", -1),
+    "settlement / accommodation between the parties": ("පාර්ශ්ව අතර සමථයක්", 1),
+    "fighting & enmity continue": ("ගැටුම සහ වෛරය දිගටම", -1), "peace between the parties": ("පාර්ශ්ව අතර සාමය", 1),
+    "they will fight": ("ගැටුම දිගටම", -1), "opponent does not come forward": ("ප්‍රතිවාදියා ඉදිරිපත් නොවේ", 1),
+    "opponent comes in strength and presses": ("ප්‍රතිවාදියා ශක්තියෙන් ඉදිරිපත් වේ", -1),
+    "opponent turns back after advancing far": ("ප්‍රතිවාදියා දුර ඇවිත් ආපසු හැරේ", 1),
+    "opponent returns after coming half-way": ("ප්‍රතිවාදියා අඩක් ඇවිත් ආපසු යයි", 1),
+    "opponent withdraws": ("ප්‍රතිවාදියා පසුබසී", 1),
+    "opponent withdraws after a heavy defeat": ("ප්‍රතිවාදියා දැඩි පරාජයකින් පසු පසුබසී", 1),
+    "opponent does not come": ("ප්‍රතිවාදියා නොපැමිණේ", 1), "opponent comes well prepared": ("ප්‍රතිවාදියා හොඳින් සූදානම්ව පැමිණේ", -1),
+    "opponent turns back part-way": ("ප්‍රතිවාදියා අතරමගදී ආපසු හැරේ", 1),
+    "opponent retires disappointed after close approach": ("ප්‍රතිවාදියා ළං වී කලකිරී ආපසු යයි", 1),
+    "opponent retreats in disgrace": ("ප්‍රතිවාදියා අපකීර්තියෙන් පසුබසී", 1),
+    "opponent cannot stand; early retreat": ("ප්‍රතිවාදියාට ඔරොත්තු දිය නොහැක; ඉක්මන් පසුබැසීම", 1),
+    "hostile party will not arrive (Rao)": ("විරුද්ධ පාර්ශ්වය නොපැමිණේ (රාවෝ)", 1),
+    "hostile party arrives quickly (Rao)": ("විරුද්ධ පාර්ශ්වය ඉක්මනින් පැමිණේ (රාවෝ)", -1),
+    "party gone out returns immediately (Rao)": ("පිටව ගිය පාර්ශ්වය වහාම ආපසු එයි (රාවෝ)", 0),
+    "opponent clears out when the 7th lord turns direct": ("7 වන අධිපති ඍජු ගමනට හැරෙන විට ප්‍රතිවාදියා ඉවත් වේ", 0),
+    # health, marriage, subject, rain
+    "safe recovery indicated": ("සුවය ලැබීමේ ප්‍රවණතාව", 1),
+    "recovery combination incomplete — no strong promise (astrology is not medical advice)":
+        ("සුවය පිළිබඳ සංයෝගය සම්පූර්ණ නැත — ශක්තිමත් ඇඟවීමක් නැත (ජ්‍යොතිෂය වෛද්‍ය උපදෙස් නොවේ)", 0),
+    "marriage indicated (Shani in 7th)": ("විවාහයේ ප්‍රවණතාව (ශනි 7 වැන්නේ)", 1),
+    "Shani not in 7th — no promise from this stanza alone": ("ශනි 7 වැන්නේ නැත — මේ ශ්ලෝකයෙන් පමණක් ඇඟවීමක් නැත", 0),
+    "marriage will be celebrated": ("විවාහය සිදුවීමේ ප්‍රවණතාව", 1),
+    "marriage celebrated speedily": ("විවාහය ඉක්මනින් සිදුවීමේ ප්‍රවණතාව", 1),
+    "query is about the querent himself": ("ප්‍රශ්නය ප්‍රශ්නකරු ගැනමයි", 0),
+    "early rain in the season": ("කන්නයේ මුල් වර්ෂාව", 1), "combination absent": ("සංයෝගය නැත", 0),
+    "plentiful rain": ("බහුල වර්ෂාව", 1), "rain": ("වර්ෂාව", 1), "-": ("—", 0),
+}
+SHAT_VERDICT_RX = [(re.compile(rx), si, conv, tone) for rx, si, conv, tone in [
+    (r"object of the query: (.+)", "ප්‍රශ්නයේ විෂය: {0}", "g", 0),
+    (r"return within (\d+) days \(retrograde rule, Rao\)", "දින {0}ක් ඇතුළත ආපසු පැමිණීම (වක්‍ර නියමය, රාවෝ)", "n", 0),
+    (r"return within (\d+) x 12 = (\d+) days", "දින {0} × 12 = {1}ක් ඇතුළත ආපසු පැමිණීම", "nn", 0),
+    (r"query about (.+?): has moved on to another country; safe & prosperous return",
+     "ප්‍රශ්නය {0} ගැන: වෙනත් රටකට ගොස් ඇත; ආරක්ෂිතව, සමෘද්ධිමත්ව ආපසු පැමිණේ", "w", 1),
+    (r"query about (.+?): still in the first place; caution", "ප්‍රශ්නය {0} ගැන: තවම මුල් ස්ථානයේමයි; ප්‍රවේශම්", "w", 0),
+    (r"direction: (.+)", "දිශාව: {0}", "d", 0),
+    (rf"article shape: (long|broad|small); colour/nature from navamsa {_SG} \(lord ([A-Z][a-z]+)\)",
+     "දෙයේ හැඩය: {0}; වර්ණය/ස්වභාවය නවාංශ රාශිය {1} අනුව (අධිපති {2})", "hsp", 0),
+    (rf"opponent halts permanently \(retrograde {_PL}\)", "ප්‍රතිවාදියා ස්ථිරවම නතර වේ (වක්‍ර {0})", "p", 1),
+    (r"opponent withdraws within ~(\d+) months", "මාස {0}ක් පමණ ඇතුළත ප්‍රතිවාදියා පසුබසී", "n", 0),
+    (r"opponent arrives within ~(\d+) days", "දින {0}ක් පමණ ඇතුළත ප්‍රතිවාදියා පැමිණේ", "n", 0),
+    (r"query concerns: (.+)", "ප්‍රශ්නය සම්බන්ධ වන්නේ: {0}", "q", 0),
+    (r"person's age/type: (.+)", "පුද්ගලයාගේ වයස/ස්වභාවය: {0}", "a", 0),
+]]
+
+
+def _sh_fill(m, si, conv):
+    return si.format(*[_SH_CONV[c](g or "") for c, g in zip(conv, m.groups())])
+
+
+def si_shat_rule(rule):
+    """A Shatpanchasika rule line in Sinhala (falls back to word-by-word for anything new)."""
+    for rx, si, conv in SHAT_RULE_SI:
+        m = rx.fullmatch(rule.strip())
+        if m:
+            return _sh_fill(m, si, conv)
+    return si_text(rule)
+
+
+def si_shat_verdict(verdict):
+    """(Sinhala, tone) for a Shatpanchasika verdict; tone +1 favours the querent, -1 is against, 0 neither."""
+    v = verdict.strip()
+    if v in SHAT_VERDICT_SI:
+        return SHAT_VERDICT_SI[v]
+    for rx, si, conv, tone in SHAT_VERDICT_RX:
+        m = rx.fullmatch(v)
+        if m:
+            return _sh_fill(m, si, conv), tone
+    s = si_text(v)
+    return s, (1 if any(w in s for w in POS_MARKS) and not any(w in s for w in NEG_MARKS) else -1 if any(w in s for w in NEG_MARKS) else 0)
 
 
 def p1_auto_summary(d, matter, shat_topic):
@@ -1526,8 +1778,8 @@ def p1_auto_summary(d, matter, shat_topic):
                 + ("ඉටුවීමේ ඇඟවීම් වැඩියි." if ith > ees else "ප්‍රමාද/බාධක ඇඟවීම් වැඩියි." if ees > ith else "දෙපැත්තම සමානයි."))
     sh = d.get("shatpanchasika") or []
     if sh:
-        pos = sum(1 for r in sh if any(w in si_text(r["verdict"]) for w in POS_MARKS) and not any(w in si_text(r["verdict"]) for w in NEG_MARKS))
-        neg = sum(1 for r in sh if any(w in si_text(r["verdict"]) for w in NEG_MARKS))
+        tones = [si_shat_verdict(r["verdict"])[1] for r in sh]
+        pos, neg = tones.count(1), tones.count(-1)
         bits.append(f"ෂට්පංචාශිකා ({PRASHNA_TOPIC_SI.get(shat_topic, shat_topic)}): හිතකර ඇඟවීම් {pos}ක්, අවධානය යොමු කළ යුතු ඇඟවීම් {neg}ක්"
                     + (" — සමස්තයක් ලෙස හිතකර පැත්තට බර වැඩියි." if pos > neg
                        else " — සමස්තයක් ලෙස අවධානය යොමු කළ යුතු පැත්තට බර වැඩියි." if neg > pos else " — මිශ්‍රයි."))
