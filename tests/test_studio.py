@@ -54,7 +54,7 @@ def test_studio_page_has_the_order_box_and_note_boxes(studio):
     for key, _ in web.NOTE_SECTIONS:
         assert f'name="note_{key}"' in page
         assert f'placeholder="{web.html.escape(web.NOTE_HINTS[key])}"' in page   # says what to write there
-    assert "Order on Messenger" not in page                       # no ordering from yourself
+    assert "Order on Facebook" not in page                        # no ordering from yourself
 
 
 def test_studio_makes_a_paid_report_with_the_notes(studio, seen):
