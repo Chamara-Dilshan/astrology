@@ -175,6 +175,41 @@ def test_every_pair_gives_twenty_sane_results(bn, gn):
     assert g["vedha"] == grade("vedha", person(jc.NAKSHATRAS[gn]), person(jc.NAKSHATRAS[bn]))   # symmetric
 
 
+# ---------------------------------------------------------------- against an established calculator
+
+# Four made-up couples (bride, groom; Sri Lanka time) entered in porondam.lk's free 20-porondam
+# calculator on 2026-11-27. Over all 80 verdicts, 59 agree on match / no match (48 with the same grade)
+# and 11 are cases our litha gives no rule for. The 10 that disagree come from different conventions:
+# porondam.lk also uses the Lagna signs for rashi, vashya and rashyadhipati (the litha says to use the
+# Moon's), treats Kaka-Herunda as friends (the litha's bird table: enemies), and judges graha its own way.
+# The porondam below are decided by the Moon's star alone and agree in every couple; they must stay so.
+PORONDAM_LK = [
+    (("1992-02-12", "11:00", 7.2906, 80.6337), ("1990-03-01", "13:00", 6.9271, 79.8612),
+     dict(nakshatra=1, gana=-1, mahendra=-1, stree_deergha=1, rajju=1, vedha=1, gotra=-1, nadi=1, dina=1, linga=1)),
+    (("1994-08-10", "10:00", 6.0535, 80.2210), ("1991-11-20", "15:00", 7.4863, 80.3647),
+     dict(nakshatra=1, gana=0, mahendra=-1, stree_deergha=1, rajju=1, vedha=1, gotra=1, nadi=-1, dina=1, linga=1)),
+    (("1988-05-05", "09:30", 5.9549, 80.5550), ("1986-12-15", "11:45", 9.6615, 80.0255),
+     dict(nakshatra=1, gana=-1, mahendra=1, stree_deergha=0, rajju=1, vedha=1, gotra=1, nadi=1, dina=1)),
+    (("1995-01-25", "14:20", 6.9271, 79.8612), ("1989-06-30", "08:15", 7.2906, 80.6337),
+     dict(nakshatra=1, gana=1, mahendra=-1, stree_deergha=1, rajju=-1, vedha=-1, gotra=1, nadi=-1, dina=1, linga=1)),
+]
+
+
+def real_person(date_, time_, lat, lon):
+    import datetime as dt
+    jd, _ = jc.to_jd_ut(dt.datetime.fromisoformat(f"{date_}T{time_}"), "Asia/Colombo")
+    pos, _ = jc.compute_positions(jd)
+    return {"moon": pos["Mo"]["lon"], "weekday": jc.birth_weekday(jd, lat, lon, "Asia/Colombo"), "pos": pos,
+            "lagna_sign": jc.sign_of(jc.compute_lagna(jd, lat, lon))}
+
+
+@pytest.mark.parametrize("bride, groom, expected", PORONDAM_LK)
+def test_agrees_with_porondam_lk_where_the_moon_decides(bride, groom, expected):
+    rows = {r["key"]: r["grade"] for r in jc.visi_porondam(real_person(*bride), real_person(*groom))}
+    got = {k: max(-1, min(1, rows[k])) for k in expected}       # porondam.lk has no "very" grades
+    assert got == expected
+
+
 # ---------------------------------------------------------------- engine output and the reports
 
 COUPLE = ["--date", "1990-03-01", "--time", "12:00", "--lat", "6.9271", "--lon", "79.8612", "--tz", "Asia/Colombo"]
