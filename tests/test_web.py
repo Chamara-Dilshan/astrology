@@ -98,7 +98,8 @@ def test_every_page_has_the_logo_and_the_home_page_a_share_preview(client):
         page = client.get(path).text
         assert 'rel="icon" href="/favicon.svg"' in page and 'rel="apple-touch-icon"' in page, path
     home = client.get("/").text
-    assert f'property="og:image" content="{web.SITE_URL}/og-image.png"' in home   # absolute, as Facebook needs
+    # absolute, as Facebook needs; ?v= changes with the picture so Facebook and WhatsApp fetch the new one
+    assert f'property="og:image" content="{web.SITE_URL}/og-image.png?v=' in home
     assert web.SITE_URL.startswith("https://")
 
 

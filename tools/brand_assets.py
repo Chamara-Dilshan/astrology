@@ -90,13 +90,19 @@ def fb_cover():
 
 
 def og_image():
-    """1200x630 link preview (Facebook, WhatsApp): the mark beside the wordmark."""
+    """1200x630 link preview. Facebook shows all of it; WhatsApp on a computer shows only the middle
+    630x630 square as a small thumbnail, so the logo and name sit in that square, large enough to stay
+    sharp when shrunk, and the faint chart frames go at the edges. (Version 1 had the logo at the left:
+    WhatsApp's thumbnail was half a logo and unreadable small text.) The web address and the free-summary
+    line are left to the preview's own text (og:description and the domain)."""
     w, h = 1200, 630
+    motif = mark_svg(rounded=False, background=False, stroke=12).replace("<svg ", '<svg width="420" height="420" ')
     body = (f'<div style="position:absolute; inset:0; background:{MAROON}"></div>'
-            f'<div style="position:absolute; left:80px; top:165px">{mark_svg(rounded=True).replace("<svg ", "<svg width=300 height=300 ")}</div>'
-            f'<div style="position:absolute; left:440px; top:178px; width:720px">{wordmark(0.86)}</div>'
-            f'<div style="position:absolute; left:0; right:0; bottom:40px; text-align:center; font:400 24px NSS; color:{CREAM}">'
-            f'නොමිලේ ජන්ම පත්‍ර සාරාංශය · Free birth chart summary — <b style="color:{GOLD}; font-family:NS">{SITE}</b></div>')
+            f'<div style="position:absolute; left:-190px; top:105px; opacity:.12">{motif}</div>'
+            f'<div style="position:absolute; right:-190px; top:105px; opacity:.12">{motif}</div>'
+            f'<div style="position:absolute; left:{(w - 250) // 2}px; top:66px">'
+            f'{mark_svg(rounded=True).replace("<svg ", "<svg width=250 height=250 ")}</div>'
+            f'<div style="position:absolute; left:0; right:0; top:340px">{wordmark(0.74, "center")}</div>')
     return render_png(body, w, h)
 
 
