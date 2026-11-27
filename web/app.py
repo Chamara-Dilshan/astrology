@@ -107,8 +107,9 @@ def _csp(page_html):
     this site. The page also can't be framed (clickjacking)."""
     scripts = re.findall(r"<script>(.*?)</script>", page_html, re.S)
     hashes = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode()).digest()).decode() for s in scripts)
+    script_src = hashes or "'none'"          # a page without scripts may run none
     return ("default-src 'none'; "
-            f"script-src {hashes}; "
+            f"script-src {script_src}; "
             "style-src 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src https://fonts.gstatic.com; "
             "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
@@ -182,6 +183,51 @@ def _index_html():
                .replace("{{CATALOG_JSON}}", _script_json(entries)) \
                .replace("{{ORDER_JSON}}", _script_json(order_cfg)) \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
+
+
+ACCURACY_PAGE = (HERE / "accuracy.html").read_text(encoding="utf-8")
+CI_URL = SOURCE_URL + "/actions/workflows/ci.yml"
+
+
+def _accuracy_html():
+    """The accuracy page, from the saved NASA comparison and the engine's own selftest names."""
+    data = json.loads((ROOT / "docs" / "accuracy_jpl.json").read_text(encoding="utf-8"))
+    checks = re.findall(r'^\s+check\(\s*"([^"]+)"', (ROOT / "jyotisha_calc.py").read_text(encoding="utf-8"), re.M)
+    bodies = list(dict.fromkeys(r["body"] for r in data["rows"]))
+    names = {c: jr.PLANET_SI[c] for c in bodies}
+    by_date = {}
+    for r in data["rows"]:
+        by_date.setdefault(r["date_ut"], {})[r["body"]] = r["diff_arcsec"]
+    year_now = str(date.today().year)
+    rows = "".join(
+        f'<tr><td>{d}</td>' + "".join(
+            f'<td class="{"future" if d[:4] > year_now else ""}">{v[b]:+.2f}</td>' for b in bodies) + "</tr>"
+        for d, v in by_date.items())
+    past = data["max_abs_diff_arcsec_to_today"]
+    fill = {
+        "{{N_PAST_DATES}}": str(sum(1 for d in by_date if d[:4] <= year_now)),
+        "{{REFERENCE}}": html.escape(data["reference"].split(", ")[-1]),
+        "{{MAX_PAST}}": f"{past:.2f}",
+        "{{LAGNA_SECONDS}}": f"{past / 15:.2f}",        # lagna ~1° per 240 s, so 1″ ≈ 1/15 s
+        "{{BODY_HEADERS}}": "".join(f"<th>{html.escape(names[b])}</th>" for b in bodies),
+        "{{ROWS}}": rows,
+        "{{NOTE}}": html.escape(data["note"]),
+        "{{GENERATED}}": html.escape(data["generated_utc"]) + " UTC",
+        "{{N_CHECKS}}": str(len(checks)),
+        "{{CHECKS}}": "".join(f"<li>{html.escape(c)}</li>" for c in checks),
+        "{{CI_URL}}": CI_URL,
+        "{{SOURCE_URL}}": SOURCE_URL,
+    }
+    page = ACCURACY_PAGE
+    for k, v in fill.items():
+        page = page.replace(k, v)
+    return page
+
+
+@app.get("/accuracy", response_class=HTMLResponse)
+def accuracy():
+    page = _accuracy_html()
+    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
 
 
 @app.get("/healthz")

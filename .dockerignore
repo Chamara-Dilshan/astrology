@@ -5,7 +5,9 @@ __pycache__
 clients
 Resources
 Sample one
-docs
+docs/*
+!docs/accuracy_jpl.json
+research
 ephe
 *.zip
 *.pdf

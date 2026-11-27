@@ -1,0 +1,403 @@
+{
+ "generated_utc": "2026-11-27 08:46",
+ "reference": "NASA/JPL Horizons API, DE441",
+ "ours": "Swiss Ephemeris 2.10.03 with files from ephe/",
+ "quantity": "geocentric apparent ecliptic longitude of date (tropical)",
+ "max_abs_diff_arcsec": 12.085,
+ "max_abs_diff_arcsec_to_today": 0.377,
+ "note": "Differences for future dates come from Delta-T (Earth-rotation) forecasts, not the ephemeris: Horizons keeps Delta-T fixed for future dates while Swiss Ephemeris extrapolates it. Compared in TT, the 2100 Moon agrees to 0.19 arcseconds.",
+ "rows": [
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Su",
+   "jpl": 280.2876997,
+   "ours": 280.2878021,
+   "diff_arcsec": 0.369
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Su",
+   "jpl": 83.8907312,
+   "ours": 83.8907987,
+   "diff_arcsec": 0.243
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Su",
+   "jpl": 0.0585301,
+   "ours": 0.0585562,
+   "diff_arcsec": 0.094
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Su",
+   "jpl": 54.1148501,
+   "ours": 54.1148628,
+   "diff_arcsec": 0.046
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Su",
+   "jpl": 280.3689092,
+   "ours": 280.3689187,
+   "diff_arcsec": 0.034
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Su",
+   "jpl": 244.7420549,
+   "ours": 244.7420632,
+   "diff_arcsec": 0.03
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Su",
+   "jpl": 280.2426485,
+   "ours": 280.2427073,
+   "diff_arcsec": 0.212
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Su",
+   "jpl": 102.1776152,
+   "ours": 102.1778317,
+   "diff_arcsec": 0.779
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Mo",
+   "jpl": 134.4089578,
+   "ours": 134.4090515,
+   "diff_arcsec": 0.337
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Mo",
+   "jpl": 293.7948592,
+   "ours": 293.7949247,
+   "diff_arcsec": 0.236
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Mo",
+   "jpl": 28.749812,
+   "ours": 28.7498375,
+   "diff_arcsec": 0.092
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Mo",
+   "jpl": 293.5682229,
+   "ours": 293.5682284,
+   "diff_arcsec": 0.02
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Mo",
+   "jpl": 223.323786,
+   "ours": 223.3237514,
+   "diff_arcsec": -0.124
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Mo",
+   "jpl": 98.2332911,
+   "ours": 98.2332379,
+   "diff_arcsec": -0.191
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Mo",
+   "jpl": 141.7382746,
+   "ours": 141.7390759,
+   "diff_arcsec": 2.885
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Mo",
+   "jpl": 61.5653669,
+   "ours": 61.5687238,
+   "diff_arcsec": 12.085
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Ma",
+   "jpl": 81.4308739,
+   "ours": 81.4309772,
+   "diff_arcsec": 0.372
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Ma",
+   "jpl": 51.470263,
+   "ours": 51.4703302,
+   "diff_arcsec": 0.242
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Ma",
+   "jpl": 182.8066003,
+   "ours": 182.8066268,
+   "diff_arcsec": 0.095
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Ma",
+   "jpl": 348.1171963,
+   "ours": 348.1172093,
+   "diff_arcsec": 0.047
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Ma",
+   "jpl": 327.9632921,
+   "ours": 327.9633025,
+   "diff_arcsec": 0.038
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Ma",
+   "jpl": 150.402852,
+   "ours": 150.402863,
+   "diff_arcsec": 0.04
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Ma",
+   "jpl": 5.3098113,
+   "ours": 5.309845,
+   "diff_arcsec": 0.121
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Ma",
+   "jpl": 134.842773,
+   "ours": 134.8428957,
+   "diff_arcsec": 0.442
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Me",
+   "jpl": 287.7134346,
+   "ours": 287.7135365,
+   "diff_arcsec": 0.367
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Me",
+   "jpl": 101.632976,
+   "ours": 101.6330432,
+   "diff_arcsec": 0.242
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Me",
+   "jpl": 353.4300203,
+   "ours": 353.4300468,
+   "diff_arcsec": 0.095
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Me",
+   "jpl": 38.0507304,
+   "ours": 38.0507443,
+   "diff_arcsec": 0.05
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Me",
+   "jpl": 271.8892699,
+   "ours": 271.889277,
+   "diff_arcsec": 0.026
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Me",
+   "jpl": 226.4226777,
+   "ours": 226.4226848,
+   "diff_arcsec": 0.026
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Me",
+   "jpl": 257.8545854,
+   "ours": 257.854646,
+   "diff_arcsec": 0.218
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Me",
+   "jpl": 80.6842463,
+   "ours": 80.6844511,
+   "diff_arcsec": 0.737
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Ju",
+   "jpl": 173.0056583,
+   "ours": 173.0057561,
+   "diff_arcsec": 0.352
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Ju",
+   "jpl": 243.7121397,
+   "ours": 243.7122024,
+   "diff_arcsec": 0.226
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Ju",
+   "jpl": 324.9357835,
+   "ours": 324.9358099,
+   "diff_arcsec": 0.095
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Ju",
+   "jpl": 99.4866024,
+   "ours": 99.4866181,
+   "diff_arcsec": 0.056
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Ju",
+   "jpl": 25.2530685,
+   "ours": 25.2530872,
+   "diff_arcsec": 0.067
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Ju",
+   "jpl": 146.608534,
+   "ours": 146.6085374,
+   "diff_arcsec": 0.012
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Ju",
+   "jpl": 155.6980512,
+   "ours": 155.6980292,
+   "diff_arcsec": -0.079
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Ju",
+   "jpl": 194.1655824,
+   "ours": 194.1655533,
+   "diff_arcsec": -0.105
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Ve",
+   "jpl": 265.5866183,
+   "ours": 265.5867206,
+   "diff_arcsec": 0.368
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Ve",
+   "jpl": 113.9614317,
+   "ours": 113.9615002,
+   "diff_arcsec": 0.247
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Ve",
+   "jpl": 315.8350682,
+   "ours": 315.835094,
+   "diff_arcsec": 0.093
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Ve",
+   "jpl": 12.485683,
+   "ours": 12.4856962,
+   "diff_arcsec": 0.047
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Ve",
+   "jpl": 241.5657794,
+   "ours": 241.5657884,
+   "diff_arcsec": 0.032
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Ve",
+   "jpl": 205.9694646,
+   "ours": 205.9694755,
+   "diff_arcsec": 0.039
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Ve",
+   "jpl": 233.4513769,
+   "ours": 233.451438,
+   "diff_arcsec": 0.22
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Ve",
+   "jpl": 57.9562096,
+   "ours": 57.9563776,
+   "diff_arcsec": 0.605
+  },
+  {
+   "date_ut": "1850-01-01 00:00",
+   "body": "Sa",
+   "jpl": 1.8658084,
+   "ours": 1.865913,
+   "diff_arcsec": 0.377
+  },
+  {
+   "date_ut": "1900-06-15 12:00",
+   "body": "Sa",
+   "jpl": 272.3492397,
+   "ours": 272.3493131,
+   "diff_arcsec": 0.264
+  },
+  {
+   "date_ut": "1950-03-21 06:00",
+   "body": "Sa",
+   "jpl": 164.9494048,
+   "ours": 164.9494252,
+   "diff_arcsec": 0.073
+  },
+  {
+   "date_ut": "1990-05-15 05:00",
+   "body": "Sa",
+   "jpl": 295.2542646,
+   "ours": 295.2542721,
+   "diff_arcsec": 0.027
+  },
+  {
+   "date_ut": "2000-01-01 12:00",
+   "body": "Sa",
+   "jpl": 40.3956366,
+   "ours": 40.3956635,
+   "diff_arcsec": 0.097
+  },
+  {
+   "date_ut": "2026-11-27 00:00",
+   "body": "Sa",
+   "jpl": 8.1080874,
+   "ours": 8.108094,
+   "diff_arcsec": 0.024
+  },
+  {
+   "date_ut": "2050-12-31 18:00",
+   "body": "Sa",
+   "jpl": 307.7579455,
+   "ours": 307.7579348,
+   "diff_arcsec": -0.038
+  },
+  {
+   "date_ut": "2100-07-04 00:00",
+   "body": "Sa",
+   "jpl": 200.0150716,
+   "ours": 200.0150223,
+   "diff_arcsec": -0.178
+  }
+ ]
+}

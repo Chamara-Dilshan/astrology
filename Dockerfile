@@ -29,6 +29,7 @@ COPY --from=build /ephe ephe/
 COPY fonts/ fonts/
 COPY jyotisha_*.py prices.json notes_sample.json docker-entrypoint.sh ./
 COPY web/ web/
+COPY docs/accuracy_jpl.json docs/
 
 RUN useradd --create-home --uid 1000 jyotisha && mkdir /out && chown jyotisha /out && chmod a+r ephe/* \
     && chmod +x docker-entrypoint.sh

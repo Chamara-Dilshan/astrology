@@ -74,6 +74,20 @@ def test_index_has_form_places_and_source_link(client):
     assert "{{" not in r.text            # every template placeholder was filled
 
 
+def test_accuracy_page(client):
+    r = client.get("/accuracy")
+    assert r.status_code == 200
+    page = r.text
+    assert "{{" not in page
+    assert "NASA" in page and "DE441" in page
+    assert page.count("<li>") >= 42 + 4                     # every selftest check, plus the 4 facts
+    assert "Ashtakavarga totals = 337" in page
+    data = json.loads((web.ROOT / "docs" / "accuracy_jpl.json").read_text(encoding="utf-8"))
+    assert f'{data["max_abs_diff_arcsec_to_today"]:.2f}″' in page
+    assert "script-src 'none'" in r.headers["content-security-policy"]
+    assert 'href="/accuracy"' in client.get("/").text        # linked from the form page
+
+
 def test_page_script_is_valid_javascript(client, tmp_path):
     """A syntax error would silently disable the whole form, and nothing server-side would notice."""
     import shutil

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6b1010">
+<title>නිරවද්‍යතාව · Accuracy — Jyothisha Insight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6ee; --card: #fffdf8; --ink: #1e1a1a; --muted: #6f6566; --line: #e4dccb;
+    --brand: #6b1010; --gold: #c9a55a; --good: #1f6b3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171314; --card: #211c1d; --ink: #f1ebe6; --muted: #b3a8a4; --line: #3a3233;
+            --brand: #c9a55a; --gold: #c9a55a; --good: #7fd19b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.6 "Noto Sans Sinhala", "Noto Sans", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { text-align: center; margin-bottom: 24px; }
+  .mark { font: 700 15px "Noto Sans", sans-serif; letter-spacing: 2.5px; color: var(--brand); text-transform: uppercase; }
+  .mark a { color: inherit; text-decoration: none; }
+  .rule { width: 120px; height: 2px; background: var(--gold); margin: 10px auto 12px; }
+  h1 { font-size: 26px; margin: 0; color: var(--brand); }
+  h2 { font-size: 19px; color: var(--brand); margin: 0 0 8px; }
+  .sub, .muted { color: var(--muted); }
+  .sub { margin: 6px 0 0; font-size: 15px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-top: 18px; }
+  .big { font-size: 34px; font-weight: 700; color: var(--good); line-height: 1.2; }
+  .tablewrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font: 14px/1.4 "Noto Sans", sans-serif; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-weight: 700; }
+  td.future { color: var(--muted); }
+  ol { padding-left: 22px; margin: 8px 0 0; columns: 2 280px; column-gap: 28px; font-size: 14px; }
+  li { break-inside: avoid; margin-bottom: 2px; }
+  .pass { color: var(--good); font-weight: 700; }
+  ul.facts { padding-left: 20px; margin: 8px 0 0; }
+  a { color: var(--brand); }
+  footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
+  footer a { color: inherit; display: inline-block; padding: 12px 4px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark"><a href="/">Jyothisha Insight</a></div>
+    <div class="rule"></div>
+    <h1>ගණනය කිරීම් කෙතරම් නිවැරදිද?</h1>
+    <p class="sub">How accurate are the calculations? Checked against NASA and against a textbook.</p>
+  </header>
+
+  <section>
+    <h2>NASA JPL සමඟ සසඳීම · Compared with NASA</h2>
+    <p>අද දක්වා දින {{N_PAST_DATES}}ක, ග්‍රහයන් 7ක ස්ථාන NASA JPL Horizons ({{REFERENCE}}) සමඟ සසඳා බැලුවෙමු. විශාලතම වෙනස:</p>
+    <div class="big">{{MAX_PAST}}″</div>
+    <p class="muted">For every date up to today, all seven bodies agree with NASA's {{REFERENCE}} ephemeris within {{MAX_PAST}} arcseconds.
+      One arcsecond is 1/3600 of a degree. A nakshatra pada is 3°20′ (12,000″), and the lagna moves about 1° every 4 minutes,
+      so {{MAX_PAST}}″ corresponds to about {{LAGNA_SECONDS}} seconds of birth time.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Date (UT)</th>{{BODY_HEADERS}}</tr></thead>
+        <tbody>{{ROWS}}</tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:14px">Differences in arcseconds (″). {{NOTE}}
+      Generated {{GENERATED}} with <code>tools/compare_jpl.py</code>; our side is re-checked on every change.</p>
+  </section>
+
+  <section>
+    <h2>පෙළපොතට එරෙහිව පරීක්ෂණ · Textbook checks</h2>
+    <p>ගණනය කිරීමේ එන්ජිම පෙළපොතක ඇති විසඳූ උදාහරණ {{N_CHECKS}}කට එරෙහිව සෑම වෙනසකදීම ස්වයංක්‍රීයව පරීක්ෂා කෙරේ.
+      <span class="pass">සියල්ල සමත් · all pass</span></p>
+    <p class="muted">The engine is tested against {{N_CHECKS}} worked examples and tables from a Vedic astrology textbook,
+      automatically on every change (<a href="{{CI_URL}}">see the latest test runs</a>):</p>
+    <ol>{{CHECKS}}</ol>
+  </section>
+
+  <section>
+    <h2>ගණනය කරන ආකාරය · How the charts are calculated</h2>
+    <ul class="facts">
+      <li><b>Planet positions:</b> Swiss Ephemeris, which is built on NASA JPL's ephemeris (compared above).</li>
+      <li><b>Ayanamsa:</b> Lahiri (Chitrapaksha), the standard used by the Government of India's Rashtriya Panchang.</li>
+      <li><b>Houses:</b> whole-sign (rashi) houses; Rahu and Ketu are the mean nodes.</li>
+      <li><b>Sri Lankan clock changes:</b> Sri Lanka's standard time changed several times (for example UTC+6:00 and +6:30 between 1996 and 2006).
+        The time zone database applies the right offset for each birth date, so enter the time as recorded.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <a href="/">← වාර්තාවක් සාදන්න · Make a report</a> · <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
+  </footer>
+</main>
+</body>
+</html>
