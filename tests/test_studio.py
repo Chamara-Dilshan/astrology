@@ -66,6 +66,45 @@ def test_studio_makes_a_paid_report_with_the_notes(studio, seen):
     assert json.loads(unquote(r.headers["X-Notes-Check"])) == []      # nothing printed: no disagreement
 
 
+def test_studio_keeps_only_the_notes_the_report_prints(studio, seen):
+    r = studio.post("/report", data={**BIRTH, "report": "M1", "task": "wedding", "m_from": "2026-12-05",
+                                     "m_to": "2026-12-31", "m_hours": "6-21",
+                                     "note_summary": "දෙසැම්බර් 11", "note_dosha": "not printed by M1"})
+    assert r.status_code == 200
+    assert json.loads(seen[0][1]["notes.json"]) == {"summary": "දෙසැම්බර් 11"}
+
+
+def test_studio_page_knows_each_reports_note_boxes(studio):
+    page = studio.get("/").text
+    data = json.loads(page.split('id="page-data">', 1)[1].split("</script>", 1)[0])
+    notes = {e["code"]: e["notes"] for e in data["catalog"]}
+    assert notes["D3"] == ["summary"] and notes["G"] == [] and "areas" in notes["A2"]
+    for key, _ in web.NOTE_SECTIONS:
+        assert f'data-note="{key}"' in page
+
+
+def test_note_keys_match_what_each_report_prints():
+    """NOTE_KEYS (the Studio's boxes per report) against the note_block calls in each build_* function."""
+    import inspect
+    import re
+    from web import catalog
+    jr = web.jr
+    builders = {"A1": [jr.build_a1], "A2": [jr.build_a2], "A3": [jr.build_a2], "C1": [jr.build_c1],
+                "C2": [jr.build_c2, jr.build_c1], "C3": [jr.build_c3], "C4": [jr.build_c4], "C6": [jr.build_c6],
+                "N": [jr.build_n], "E1": [jr.build_e1], "D1": [jr.build_d1], "D2": [jr.build_d2],
+                "D3": [jr.build_d3], "P1": [jr.build_p1], "P2": [jr.build_p1], "M1": [jr.build_m1],
+                "G": [jr.build_g], **{f"B{i}": [jr.build_b] for i in range(1, 9)}}
+    # a box that only fills in when another is empty is left out of the Studio, on purpose
+    fallback = {"A2": {"lagna2"}, "A3": {"lagna2"}, "C2": {"gochara"}, "D1": {"yogas"}}
+    sections = {k for k, _ in web.NOTE_SECTIONS}
+    assert set(jr.NOTE_KEYS) == set(catalog.REPORTS) == set(builders)
+    for code, fns in builders.items():
+        src = "".join(inspect.getsource(f) for f in fns)
+        printed = set(re.findall(r'note_block\(notes, "(\w+)"', src))
+        assert set(jr.NOTE_KEYS[code]) <= sections, code
+        assert set(jr.NOTE_KEYS[code]) == printed - fallback.get(code, set()), code
+
+
 def test_studio_without_notes_sends_none(studio, seen):
     r = studio.post("/report", data={**BIRTH, "report": "D1", "role": "boy", "p_name": "Sample Two",
                                      "p_date": "1992-08-20", "p_time": "07:45", "p_place": "Kandy",

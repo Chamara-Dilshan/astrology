@@ -185,10 +185,12 @@ Problems solved while getting Sinhala rendering right:
 
 Double-click **`Jyothisha Studio.bat`**: it starts the web app with `STUDIO=1` on
 `http://127.0.0.1:8765` and opens the browser. It is the same form, but every report is
-made, with a box for each section of the astrologer's notes, and a box that fills the form
-from a customer's pasted order (the message the public site's Order button builds). The
-"ready" card shows the notes cross-check (a note that contradicts the chart). Studio mode
-answers only requests from the computer itself; the public site never sets `STUDIO`.
+made, with a box for each section of the astrologer's notes that the chosen report prints
+(`NOTE_KEYS` in `jyotisha_report.py`, checked against the report code by `tests/test_studio.py`),
+and a box that fills the form from a customer's pasted order (the message the public site's
+Order button builds). Filling a different customer's order empties notes already used in the
+last PDF. The "ready" card shows the notes cross-check (a note that contradicts the chart).
+Studio mode answers only requests from the computer itself; the public site never sets `STUDIO`.
 
 ## Logo
 

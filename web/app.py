@@ -314,17 +314,19 @@ def _studio_top():
 
 def _studio_notes_html():
     """Studio only: a box for each section of the astrologer's notes."""
-    boxes = "".join(f'<label for="note_{k}">{html.escape(label)}</label>'
-                    f'<textarea id="note_{k}" name="note_{k}" class="q" rows="3" maxlength="{NOTE_MAX}"></textarea>'
+    boxes = "".join(f'<div class="nbox" data-note="{k}"><label for="note_{k}">{html.escape(label)}</label>'
+                    f'<textarea id="note_{k}" name="note_{k}" class="q" rows="3" maxlength="{NOTE_MAX}"></textarea></div>'
                     for k, label in NOTE_SECTIONS)
-    return ('<fieldset class="sec notes"><label class="ntitle">ජ්‍යොතිෂවේදියාගේ සටහන් · Astrologer’s notes</label>'
-            '<p class="hint small">හිස් කොටු වාර්තාවට එකතු නොවේ; හිස් පේළියක් නව ඡේදයක් අරඹයි. '
-            '· Empty boxes are left out; a blank line starts a new paragraph. A report shows the sections it has.</p>'
+    return ('<fieldset id="notes" class="sec notes"><label class="ntitle">ජ්‍යොතිෂවේදියාගේ සටහන් · Astrologer’s notes</label>'
+            '<p class="hint small">මෙම වාර්තාවේ ඇති කොටස් පමණක් පෙන්වයි; හිස් කොටු එකතු නොවේ; හිස් පේළියක් නව ඡේදයක් අරඹයි. '
+            '· Only the sections this report has are shown; empty boxes are left out; a blank line starts a new paragraph.</p>'
             + boxes + '</fieldset>')
 
 
 def _index_html():
     entries = _catalog()
+    if STUDIO:      # the note boxes each report prints
+        entries = [{**e, "notes": list(jr.NOTE_KEYS.get(e["code"], ()))} for e in entries]
     order_cfg = {"url": ORDER_URL if ORDER_URL.startswith(("https://", "http://")) else "",
                  "whatsapp": ORDER_WHATSAPP}
     order = ""
@@ -632,11 +634,14 @@ NOTE_SECTIONS = [("summary", "සාරාංශය · Summary"), ("lagna", "ල
 NOTE_MAX = 4000
 
 
-async def _studio_notes(request):
-    """The note boxes that have text, checked like the other fields (but keeping line breaks)."""
+async def _studio_notes(request, report):
+    """The note boxes that have text and that the report prints, checked like the other fields
+    (but keeping line breaks)."""
     form = await request.form()
     notes = {}
     for key, label in NOTE_SECTIONS:
+        if key not in jr.NOTE_KEYS.get(report, ()):
+            continue
         text = str(form.get(f"note_{key}", "")).replace("\r\n", "\n").strip()
         if len(text) > NOTE_MAX:
             raise HTTPException(400, f"Notes ({label}) must be at most {NOTE_MAX} characters")
@@ -803,7 +808,7 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args += extra
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")
-    notes = await _studio_notes(request) if STUDIO else {}
+    notes = await _studio_notes(request, report) if STUDIO else {}
     if notes:
         files = {**files, "notes.json": json.dumps(notes, ensure_ascii=False)}
         args.append("--notes={workdir}/notes.json")

@@ -519,6 +519,15 @@ function showReport() {
     const off = !!f.closest("[data-needs][hidden]");   // inside any hidden section
     f.disabled = off; f.required = !off && f.type !== "hidden" && !f.hasAttribute("data-optional");
   }
+  const notesBox = document.getElementById("notes");  // studio: only the note boxes this report prints
+  if (notesBox) {
+    const keys = c.notes || [];
+    notesBox.hidden = !keys.length;
+    for (const b of notesBox.querySelectorAll(".nbox")) {
+      b.hidden = !keys.includes(b.dataset.note);
+      b.querySelector("textarea").disabled = b.hidden;   // kept, but not sent, while hidden
+    }
+  }
 }
 
 // date and time now in the form's time zone (Sri Lanka by default), as YYYY-MM-DD and HH:MM
@@ -722,6 +731,7 @@ form.addEventListener("submit", async e => {
                                   : "✓ සටහන් කේන්දරයට ගැලපේ · Your notes match the chart";
     }
     openpdf.href = savepdf.href = pdfUrl; savepdf.download = fname;
+    if (PAGE_DATA.studio) notesUsedFor = person();
     working.hidden = true; done.hidden = false;
     document.getElementById("donetitle").focus({ preventScroll: true });
     done.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -745,6 +755,8 @@ const steps = [...working.querySelectorAll(".steps li")];
 const openpdf = document.getElementById("openpdf"), savepdf = document.getElementById("savepdf");
 const EXPECT = { G: 6, A1: 10, A2: 14, A3: 20, N: 8, C3: 10 };
 let pdfUrl = null;
+let notesUsedFor = null;     // studio: the person whose PDF the note boxes last went into
+const person = () => [document.getElementById("name").value.trim(), form.birth_date.value, form.birth_time.value].join("|");
 function progress(t, expect) {
   document.getElementById("barfill").style.width = (6 + 88 * (1 - Math.exp(-t / expect))).toFixed(1) + "%";
   const k = t < expect * 0.25 ? 0 : t < expect * 0.6 ? 1 : 2;
@@ -782,7 +794,7 @@ function fillFromOrder(text) {
   reportSel.value = code[1];
   showReport();                                  // shows that report's sections, partner and event rows
   const lang = one(/^භාෂාව \/ Language:\s*(.+)$/);
-  if (lang && !langSel.disabled) byText(langSel, lang[1]);
+  if (!langSel.disabled) { langSel.value = "si"; if (lang) byText(langSel, lang[1]); }   // no line: Sinhala
   const name = one(/^නම:\s*(.*)$/);
   if (name) document.getElementById("name").value = name[1];
   const born = one(/^උපන් දිනය:\s*(\d{4}-\d{2}-\d{2})/), time = one(/^උපන් වේලාව:\s*(\d{1,2}:\d{2})(.*)$/);
@@ -816,8 +828,9 @@ function fillFromOrder(text) {
     renumberPartners();
   }
   const question = one(/^ප්‍රශ්නය:\s*(.*)$/), topic = one(/^වර්ගය:\s*(.*)$/), matter = one(/^භාවය:\s*(.*)$/);
-  if (question) document.getElementById("question").value = question[1];
+  document.getElementById("question").value = question ? question[1] : "";
   if (topic) byText(document.getElementById("topic"), topic[1]);
+  document.getElementById("matter").value = "";          // no line: the customer left it as "not sure"
   if (matter) byText(document.getElementById("matter"), matter[1]);
   const task = one(/^කාර්යය:\s*(.*)$/), range = one(/^කාල පරාසය:\s*(\d{4}-\d{2}-\d{2})\s*–\s*(\d{4}-\d{2}-\d{2})\s*\((.*)\)$/);
   if (task) byText(document.getElementById("task"), task[1]);
@@ -837,8 +850,15 @@ function fillFromOrder(text) {
     });
     renumberEvents();
   }
+  let cleared = "";
+  if (notesUsedFor !== null && notesUsedFor !== person()) {   // another customer: the last one's notes go
+    const used = [...document.querySelectorAll("#notes textarea")].filter(t => t.value.trim());
+    used.forEach(t => { t.value = ""; });
+    if (used.length) cleared = " පෙර පාරිභෝගිකයාගේ සටහන් ඉවත් කළා. · The last customer's notes were cleared.";
+    notesUsedFor = null;
+  }
   return `✓ පෝරමය පිරවිණි: ${code[1]} · ${name ? name[1] : ""} — පරීක්ෂා කර, සටහන් එක් කර, PDF සාදන්න. ` +
-         "· Form filled from the order: check it, add your notes, then Make PDF.";
+         "· Form filled from the order: check it, add your notes, then Make PDF." + cleared;
 }
 if (PAGE_DATA.studio) {
   document.querySelector(".share").hidden = true;          // "tell a friend" is for customers

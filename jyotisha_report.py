@@ -457,6 +457,31 @@ def note_block(notes, key, label="ජ්‍යොතිෂවේදියාග�
     return f'<div class="note"><div class="lbl">{label}</div>{paras}</div>'
 
 
+# The notes.json sections each report prints (a note under any other key is not shown). The web
+# Studio offers only these boxes; tests/test_studio.py checks them against the build_* functions.
+_NATAL_NOTES = ("summary", "lagna", "yogas", "dasha", "gochara", "upcoming", "remedies")
+NOTE_KEYS = {
+    "G": (),
+    "A1": _NATAL_NOTES,
+    "A2": _NATAL_NOTES + ("areas",),
+    "A3": _NATAL_NOTES + ("areas",),
+    **{f"B{i}": _NATAL_NOTES for i in range(1, 9)},
+    "C1": ("summary", "yogas", "dasha", "upcoming", "remedies"),
+    "C2": ("summary", "yogas", "dasha", "upcoming", "remedies", "calendar"),
+    "C3": ("summary", "remedies"),
+    "C4": ("summary", "upcoming"),
+    "C6": ("summary", "upcoming"),
+    "N": ("summary",),
+    "E1": ("summary",),
+    "D1": ("summary", "dosha", "upcoming"),
+    "D2": ("summary", "upcoming"),
+    "D3": ("summary",),
+    "P1": ("summary", "upcoming"),
+    "P2": ("summary", "upcoming"),
+    "M1": ("summary",),
+}
+
+
 def build_a1(d, a, tr, changes, notes, now_local):
     P = d["planets"]
     ls = d["lagna"]["sign_idx"]
