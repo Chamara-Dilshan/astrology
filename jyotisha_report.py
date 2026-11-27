@@ -1060,6 +1060,8 @@ def build_d1(d, a, notes, now_local):
     inv = {s: i for i, s in enumerate(jc.SIGNS)}
     total = comp["ashtakoota_total"]
     verdict = ("හොඳ ගැලපීමක්" if total >= 24 else "මධ්‍යම ගැලපීමක්" if total >= 18 else "අඩු ලකුණු ගැලපීමක්")
+    visi_line = (f'<br><span style="font-size:12.5pt">විසි පොරොන්දම: <b>{comp["visi_summary"]["match"]} / 20</b></span>'
+                 if comp.get("visi_summary") else "")
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c])
@@ -1067,7 +1069,7 @@ def build_d1(d, a, notes, now_local):
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">පොරොන්දම් වාර්තාව</h1><div class="sub">අෂ්ටකූට ගැලපීම (D1)</div>
       <div class="name">{esc(a.name)} &nbsp;·&nbsp; {esc(a.match_name or "සහකරු")}</div>
-      <div style="margin:16pt auto; font-size:15pt"><b>{total} / 36</b> — {verdict}</div>
+      <div style="margin:16pt auto; font-size:15pt"><b>{total} / 36</b> — {verdict}{visi_line}</div>
       <div style="width:104mm; margin:0 auto">{south_indian_html_si(labels, "රාශි චක්‍රය (පළමු කේන්දරය)", 104)}</div></div>''']
     first, second = ("මනාලයා", "මනාලිය") if getattr(a, "role", "boy") == "boy" else ("මනාලිය", "මනාලයා")
     H.append('<div class="pb"></div><h2>1. උපන් දත්ත</h2><table>'
@@ -1078,7 +1080,8 @@ def build_d1(d, a, notes, now_local):
              f'<tr><td><b>ලග්නය</b></td><td>{SIGN_SI[ls]}</td><td>{SIGN_SI[inv[pt["lagna"]]]}</td></tr>'
              f'<tr><td><b>චන්ද්‍ර රාශිය</b></td><td>{SIGN_SI[P["Mo"]["sign_idx"]]}</td><td>{SIGN_SI[inv[pt["moon"]]]}</td></tr>'
              "</table>")
-    H.append("<h2>2. අෂ්ටකූට ලකුණු</h2>")
+    H.append(porondam_block(comp, title="2. විසි පොරොන්දම (ශ්‍රී ලාංකික ක්‍රමය)"))
+    H.append('<div class="pb"></div><h2>3. අෂ්ටකූට ලකුණු</h2>')
     krow = []
     for k in comp["kootas"]:
         si, meaning = KOOTA_SI.get(k["name"], (k["name"], ""))
@@ -1108,15 +1111,101 @@ def build_d1(d, a, notes, now_local):
     mangal = [y for y in d.get("yoga_indications", []) if "Mangal" in y]
     if mangal:
         dosha.append("<li><b>කුජ දෝෂ ඇඟවීම</b> (පළමු කේන්දරයේ) — දෙදෙනාගේම කේන්දර දෙකේම කුජ ස්ථානය සහ නිෂ්ප්‍රභ වීම් එකට පරීක්ෂා කළ යුතුයි.</li>")
-    H.append("<h2>3. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2><ul>" + ("".join(dosha) if dosha else "<li>ප්‍රධාන දෝෂ ඇඟවීම් නොමැත.</li>") + "</ul>")
+    H.append("<h2>4. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2><ul>" + ("".join(dosha) if dosha else "<li>ප්‍රධාන දෝෂ ඇඟවීම් නොමැත.</li>") + "</ul>")
     H.append(note_block(notes, "dosha") or note_block(notes, "yogas"))
-    H.append('<div class="pb"></div><h2>4. ජ්‍යොතිෂවේදියාගේ විග්‍රහය</h2>')
+    H.append('<div class="pb"></div><h2>5. ජ්‍යොතිෂවේදියාගේ විග්‍රහය</h2>')
     H.append(note_block(notes, "summary") or '<p class="muted">(සවිස්තර විග්‍රහය සඳහා සම්පූර්ණ පොරොන්දම් වාර්තාව — D2 — බලන්න.)</p>')
     H.append(note_block(notes, "upcoming", "විවාහ කාලය සහ ඉදිරි කාලය"))
     H.append(disclaimer_block("අෂ්ටකූට ගුණ මිලන ක්‍රමය සහ දෝෂ නිෂ්ප්‍රභ වීමේ නියම — P.V.R. Narasimha Rao, ch. 26. "
                               "මේ වාර්තාව ගැලපීම පිළිබඳ එක් දෘෂ්ටි කෝණයක් පමණි. විවාහය පිළිබඳ තීරණය දෙදෙනාගේ අවබෝධය, "
                               "සන්නිවේදනය සහ පවුල්වල එකඟතාව මත පදනම් විය යුතුයි — ලකුණු එකතුවක් මත නොවේ."))
     return "\n".join(H)
+
+
+# ---------------------------------------------------------------- visi porondam (D1, D2, D3)
+PORONDAM_SI = {"nakshatra": "නක්ෂත්‍ර", "gana": "ගණ", "mahendra": "මහේන්ද්‍ර", "stree_deergha": "ස්ත්‍රී දීර්ඝ",
+               "yoni": "යෝනි", "rashi": "රාශි", "rashyadhipati": "රාශ්‍යාධිපති", "vashya": "වශ්‍ය", "rajju": "රජ්ජු",
+               "vedha": "වේධ", "vriksha": "වෘක්ෂ", "ayushya": "ආයුෂ", "pakshi": "පක්ෂි", "bhuta": "භූත",
+               "gotra": "ගෝත්‍ර", "varna": "වර්ණ", "linga": "ලිංග", "nadi": "නාඩි", "dina": "දින", "graha": "ග්‍රහ"}
+GRADE_SI = {2: "ඉතා ශුභ", 1: "ශුභ", 0: "මධ්‍යම", -1: "අශුභ", -2: "ඉතා අශුභ", None: "—"}
+PR_YONI_SI = {"horse": "අශ්ව", "elephant": "ඇත්", "sheep": "එළු", "serpent": "සර්ප", "dog": "සුනඛ", "cat": "බළල්",
+              "rat": "මූසික", "cow": "ගව", "buffalo": "මී ගව", "tiger": "ව්‍යාඝ්‍ර", "deer": "මුව", "monkey": "වඳුරු",
+              "mongoose": "මුගටි", "lion": "සිංහ"}    # the litha's names (YONI_SI is the Ashtakoota set)
+PR_LABELS_SI = {
+    "rajju": ["පාද", "ඌරු", "නාභි", "බාහු", "ශිරෝ"],
+    "pakshi": {"Herunda": "හේරුණ්ඩ", "Pingala": "පිංගල", "Kaka": "කාක", "Kukkuta": "කුක්කුට", "Mayura": "මයුර"},
+    "bhuta": {"Pathavi": "පඨවි", "Apo": "ආපෝ", "Tejo": "තේජෝ", "Vayo": "වායෝ", "Akasha": "ආකාශ"},
+    "gotra": {"Marichi": "මරීචි", "Atri": "අත්‍රි", "Vasishta": "වශිෂ්ට", "Angira": "අංගිර", "Pulastya": "පුලස්ති",
+              "Pulaha": "පුලහ", "Kratu": "කෘතු"},
+    "varna": {"Brahmana": "බ්‍රාහ්මණ", "Kshatriya": "ක්ෂත්‍රිය", "Vaishya": "වෛශ්‍ය", "Shudra": "ශුද්‍ර",
+              "Panchama": "පංචම", "Sankara": "සංකර"},
+    "linga": {"M": "පුරුෂ", "F": "ස්ත්‍රී", "N": "නපුංසක"},
+    "nadi": {"Adi": "පූර්ව", "Madhya": "මධ්‍ය", "Antya": "අන්ත්‍ය"},
+}
+
+
+def _porondam_detail(r):
+    """Sinhala 'bride → groom' detail for one porondam row from the engine."""
+    k, b, g, c = r["key"], r["bride"], r["groom"], r["count"]
+    nak = lambda n: NAK_SI[jc.NAKSHATRAS.index(n)]  # noqa: E731
+    sign = lambda s: SIGN_SI[jc.SIGNS.index(s)]  # noqa: E731
+    arrow = lambda x, y: f"{x} → {y}"  # noqa: E731
+    if k == "nakshatra":
+        return f"{arrow(nak(b), nak(g))} ({c} වැනි නැකත)"
+    if k in ("mahendra", "stree_deergha"):
+        return f"මනාලියගේ නැකතේ සිට {c} වැනි නැකත"
+    if k == "gana":
+        return arrow(GANA_SI[b], GANA_SI[g])
+    if k == "yoni":
+        def y(v):
+            animal, sex = v.split(" ")
+            return f"{PR_YONI_SI[animal]} ({'පුරුෂ' if sex == '(m)' else 'ස්ත්‍රී'})"
+        return arrow(y(b), y(g))
+    if k == "rashi":
+        return f"{arrow(sign(b), sign(g))} ({c} වැනි රාශිය)"
+    if k == "vashya":
+        return arrow(sign(b), sign(g))
+    if k == "rashyadhipati":
+        return arrow(PLANET_SI[b], PLANET_SI[g]) + ("" if r["grade"] is not None else " — සම සම්බන්ධතාව; ලිතේ නියමයක් නැත")
+    if k == "vedha":
+        return "වේධ වන නැකත් දෙකකි" if r["grade"] == -1 else "වේධ නොවේ"
+    if k == "vriksha":
+        milk = lambda v: "කිරි වෘක්ෂ" if v else "කිරි නැති වෘක්ෂ"  # noqa: E731
+        return arrow(milk(b), milk(g)) + ("" if r["grade"] is not None else " — ලිතේ නියමයක් නැත")
+    if k == "ayushya":
+        return "ගණනය කිරීමේ ක්‍රමය ලිතේ දක්වා නැත"
+    if k == "dina":
+        return f"{arrow(VARA_SI2[b], VARA_SI2[g])} ({c} වැනි දිනය)"
+    if k == "graha":
+        def g_(v):
+            return f"{len(v)} ලක්ෂණ" if v else "නැත"
+        return f"මනාලිය: {g_(b)} · මනාලයා: {g_(g)}" + ("" if r["grade"] is not None else " — ලිතේ නියමයක් නැත")
+    if k in PR_LABELS_SI:
+        lab = PR_LABELS_SI[k]
+        return arrow(lab[b], lab[g]) + ("" if r["grade"] is not None else " — ලිතේ නියමයක් නැත")
+    return ""
+
+
+def porondam_block(comp, heading="h2", title="විසි පොරොන්දම (ශ්‍රී ලාංකික ක්‍රමය)"):
+    """The twenty porondam table with its tally. Empty if the engine gave none."""
+    rows = comp.get("visi_porondam")
+    if not rows:
+        return ""
+    s = comp["visi_summary"]
+    body = "".join(
+        f"<tr{' class=cur' if r['grade'] is not None and r['grade'] < 0 else ''}><td>{r['no']}</td>"
+        f"<td>{PORONDAM_SI[r['key']]}</td><td><b>{GRADE_SI[r['grade']]}</b></td><td>{esc(_porondam_detail(r))}</td></tr>"
+        for r in rows)
+    return (f"<{heading}>{title}</{heading}>"
+            f"<div class='box'><b>පොරොන්දම් 20න් {s['match']}ක් ගැලපේ</b> (ශුභ හෝ මධ්‍යම) · {s['no_match']}ක් නොගැලපේ"
+            + (f" · {s['no_rule']}ක් සඳහා ලිතේ නියමයක් නැත" if s["no_rule"] else "") + ". "
+            "සාමාන්‍යයෙන් 50%ට වැඩි ගැලපීමක් පොරොන්දම් ගැලපීමක් ලෙස සලකයි.</div>"
+            "<table><tr><th></th><th>පොරොන්දම</th><th>ප්‍රතිඵලය</th><th>විස්තරය (මනාලිය → මනාලයා)</th></tr>"
+            + body + "</table>"
+            "<p class='small muted'>නැකත්, රාශි සහ දින ගණන් කරන්නේ මනාලියගේ නැකතේ (රාශියේ, දිනයේ) සිට මනාලයාගේ දක්වාය. "
+            "යෝනි, ලිංග සහ ග්‍රහ පොරොන්දම් විශේෂයෙන් වැදගත් වන අතර අවසන් තීරණය ග්‍රහ පොරොන්දම අනුව ගත යුතු බව ලිත සඳහන් කරයි; "
+            "ග්‍රහ පොරොන්දමේ ග්‍රහයන්ගේ බලය ජ්‍යොතිෂවේදියා විසින් සලකා බැලිය යුතුය. "
+            "මූලාශ්‍රය: ලංකා පංචාංග සහ ඈපා පංචාංග ග්‍රහස්ඵුට ලිතවල නියම.</p>")
 
 
 # ================================================================ P1 — Prashna
@@ -2393,6 +2482,7 @@ def build_d2(dA, dB, a, notes, now_local):
     H.append('<div class="note"><div class="lbl">ලකුණු කියවන ආකාරය</div>'
              '<p>අෂ්ටකූට ලකුණු ගැලපීමේ එක් ස්තරයක් පමණි. පහත කේන්දර දෙකේ සංයෝජනය (synastry), 7 වන භාවය, උපපද ලග්නය සහ දශා ගැලපීම '
              'ලකුණු එකතුවට වඩා ප්‍රායෝගික තොරතුරු දෙයි.</p></div>')
+    H.append(porondam_block(comp, heading="h3"))
 
     # --- 3 doshas
     H.append('<h2>3. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2>')
@@ -2846,12 +2936,14 @@ def build_d3(dA, partners, a, notes, now_local):
                   if jc.house_from(lsA, PB[c]["sign_idx"]) in (6, 8, 12))
         mh, mc = mangal_check(PB, lsB)
         rows.append(dict(name=nm_, meta=meta, total=tot, kootas=comp["kootas"], doshas=doshas, good=good, bad=bad,
-                         lagna=lsB, moon=PB["Mo"]["sign_idx"], nak=PB["Mo"]["nakshatra"], mangal=bool(mh), mangal_c=bool(mc)))
+                         lagna=lsB, moon=PB["Mo"]["sign_idx"], nak=PB["Mo"]["nakshatra"], mangal=bool(mh), mangal_c=bool(mc),
+                         visi=(comp.get("visi_summary") or {}).get("match")))
     rows.sort(key=lambda r: (-r["total"], r["bad"] - r["good"]))
     H.append("<table><tr><th>යෝජනාව</th><th>උපන් දිනය</th><th>ලග්නය</th><th>චන්ද්‍ර රාශිය</th><th>අෂ්ටකූට</th>"
-             "<th>නිෂ්ප්‍රභ නොවූ දෝෂ</th><th>සංයෝජනය (හිතකර/ඝර්ෂණ)</th><th>කුජ දෝෂ</th></tr>"
+             "<th>විසි පොරොන්දම</th><th>නිෂ්ප්‍රභ නොවූ දෝෂ</th><th>සංයෝජනය (හිතකර/ඝර්ෂණ)</th><th>කුජ දෝෂ</th></tr>"
              + "".join(f"<tr{' class=cur' if i == 0 else ''}><td><b>{esc(r['name'])}</b></td><td>{esc(r['meta']['date'])}</td>"
                        f"<td>{SIGN_SI[r['lagna']]}</td><td>{SIGN_SI[r['moon']]}</td><td><b>{r['total']:g}</b>/36</td>"
+                       f"<td>{'—' if r['visi'] is None else str(r['visi']) + '/20'}</td>"
                        f"<td>{', '.join('භකූට' if x == 'Bhakoot' else 'නාඩි' for x in r['doshas']) or '—'}</td>"
                        f"<td>{r['good']} / {r['bad']}</td>"
                        f"<td>{'ඇත' + (' (නිෂ්ප්‍රභ සාධක ඇත)' if r['mangal_c'] else '') if r['mangal'] else 'නැත'}</td></tr>"

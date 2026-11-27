@@ -33,7 +33,8 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
 - **Report generator** (`jyotisha_report.py`): 25 report types, including a free
   1-page summary (G, also in English), natal reports (A1–A3, with the Sripati
   bhava chart and Shadbala from A2, and KP in A3), annual chart (C1), marriage
-  compatibility (D1) and horary (P1). Astrologers can add their own Sinhala
+  compatibility (D1–D3: the Sri Lankan 20 porondam, from the rules printed in the
+  Lanka and Epa Panchanga lithas, plus Ashtakoota) and horary (P1). Astrologers can add their own Sinhala
   notes to each section through a JSON file.
 - **Visual QA** (`--qa`): measures two rendered Sinhala probe strings (one
   general, one dense in ු/ූ and ්‍ර), renders every page to PNG, and flags

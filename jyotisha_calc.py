@@ -1361,6 +1361,139 @@ def ashtakoota(boy_moon, girl_moon):
     return total, rows
 
 
+# --------------------------------------------------------------------------
+# Visi porondam: the Sri Lankan twenty-fold marriage matching
+# --------------------------------------------------------------------------
+# Rules as printed in the Lanka Panchanga and Epa Panchanga lithas, transcribed in the Sinhala
+# Wikipedia article "පොරොන්දම්" (revision 604901, CC BY-SA 4.0), with the same tables where they
+# overlap in an independent Sri Lankan implementation (gana, nadi, rajju, yoni animals, vashya,
+# nakshatra and mahendra counts). Counts go from the bride's star (sign, weekday) to the groom's,
+# the bride's own counting as 1. Grade: 2 very good, 1 good, 0 medium, -1 bad, -2 very bad,
+# None = the litha gives no rule for this case (shown as such, never guessed).
+# Two slips in the article are corrected: its vedha list pairs Ashwini with Dhanishta, but every
+# other source pairs Ashwini with Jyeshtha (Jyeshtha would otherwise have no vedha partner, and
+# Dhanishta already has its own vedha group with Mrigashira and Chitra); and its Pulastya gotra runs
+# "Anuradha to P.Phalguni", where four stars from Anuradha end at P.Ashadha.
+PORONDAM_NAMES = ["nakshatra", "gana", "mahendra", "stree_deergha", "yoni", "rashi", "rashyadhipati", "vashya",
+                  "rajju", "vedha", "vriksha", "ayushya", "pakshi", "bhuta", "gotra", "varna", "linga", "nadi",
+                  "dina", "graha"]
+# yoni: (animal, male?) for each nakshatra, Ashwini first
+PR_YONI = [("horse", 1), ("elephant", 1), ("sheep", 0), ("serpent", 1), ("serpent", 0), ("dog", 1), ("cat", 1),
+           ("sheep", 1), ("cat", 0), ("rat", 1), ("rat", 0), ("cow", 0), ("buffalo", 0), ("tiger", 1),
+           ("buffalo", 1), ("tiger", 0), ("deer", 0), ("deer", 1), ("dog", 0), ("monkey", 0), ("mongoose", 0),
+           ("monkey", 1), ("lion", 1), ("horse", 0), ("lion", 0), ("cow", 1), ("elephant", 0)]
+PR_YONI_ENEMY = {frozenset(p) for p in (("horse", "buffalo"), ("elephant", "lion"), ("sheep", "monkey"),
+                                        ("serpent", "mongoose"), ("dog", "deer"), ("cat", "rat"), ("cow", "tiger"))}
+PR_RAJJU = [0, 1, 2, 3, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 0]  # pada uru nabhi bahu shiro
+PR_VEDHA = {frozenset(p) for p in ((0, 17), (1, 16), (2, 15), (3, 14), (5, 21), (6, 20), (7, 19), (8, 18), (9, 26),
+                                   (10, 25), (11, 24), (12, 23), (4, 13), (4, 22), (13, 22))}
+PR_MILK_TREE = {7, 8, 9, 10, 11, 17, 18, 20, 21, 24, 26}        # Pushya-Bo, Ashlesha-Dhemba, ... Revati-Mee
+PR_FIVE = [0] * 5 + [1] * 6 + [2] * 5 + [3] * 6 + [4] * 5       # birds and bhutas share these five groups
+PR_BIRDS = ["Herunda", "Pingala", "Kaka", "Kukkuta", "Mayura"]
+PR_BIRD_ENEMY = {frozenset(p) for p in ((1, 0), (1, 2), (1, 3), (1, 4), (0, 2), (0, 3), (0, 4))}
+PR_BIRD_FRIEND = {frozenset((2, 3))}                             # Kaka and Kukkuta
+PR_BHUTAS = ["Pathavi", "Apo", "Tejo", "Vayo", "Akasha"]
+PR_BHUTA_GRADE = {(0, 0): 2, (0, 1): 2, (0, 3): 1, (1, 1): 1, (1, 3): 0, (1, 4): 0, (1, 2): -2, (2, 2): 1,
+                  (2, 3): 1, (2, 4): 1, (3, 3): 1, (3, 4): 1, (4, 4): 1}   # (Pathavi, Tejo/Akasha): no rule
+PR_GOTRAS = ["Marichi"] * 4 + ["Atri"] * 4 + ["Vasishta"] * 4 + ["Angira"] * 4 + ["Pulastya"] * 4 + \
+            ["Pulaha"] * 3 + ["Kratu"] * 4
+PR_VARNAS = ["Brahmana", "Kshatriya", "Vaishya", "Shudra", "Panchama", "Sankara"]   # by star index mod 6, highest first
+PR_LINGA = ["M", "M", "F", "M", "N", "M", "M", "M", "F", "M", "F", "F", "F", "M", "M", "F", "F", "M", "N", "F",
+            "F", "M", "F", "N", "M", "M", "F"]
+PR_VASHYA = {0: {4, 7}, 1: {3, 6}, 2: {5}, 3: {7, 8}, 4: {6}, 5: {11, 2}, 6: {9, 5}, 7: {3}, 8: {11}, 9: {0, 10},
+             10: {0}, 11: {9}}
+# planetary friendship as printed with the rashyadhipati rule (Saturn counts Mars and Jupiter as neutral)
+PR_FRIENDS = {"Su": {"Mo", "Ma", "Ju"}, "Mo": {"Su", "Me"}, "Ma": {"Su", "Mo", "Ju"}, "Me": {"Su", "Ve"},
+              "Ju": {"Su", "Mo", "Ma"}, "Ve": {"Me", "Sa"}, "Sa": {"Me", "Ve"}}
+PR_ENEMIES = {"Su": {"Ve", "Sa"}, "Mo": set(), "Ma": {"Me"}, "Me": {"Mo"}, "Ju": {"Me", "Ve"}, "Ve": {"Su", "Mo"},
+              "Sa": {"Su", "Mo"}}
+PR_MALEFICS = ("Ma", "Sa", "Ra")
+
+
+def birth_weekday(jd, lat, lon, tzname):
+    """Weekday of birth by the Sinhala day, which begins at sunrise (0 = Sunday)."""
+    sr = sunrise_before(jd, lat, lon)
+    return (jd_to_datetime(sr if sr else jd).astimezone(ZoneInfo(tzname)).weekday() + 1) % 7
+
+
+def graha_dosha(pos, lagna_sign):
+    """Graha porondam conditions in one chart: Mars, Saturn or Rahu in the 7th or 8th from the Lagna, the
+    Moon or Venus, or in the Lagna; the Moon or Venus with one of them (whole signs)."""
+    out = []
+    for p in PR_MALEFICS:
+        s = sign_of(pos[p]["lon"])
+        for ref, rs in (("Lagna", lagna_sign), ("Mo", sign_of(pos["Mo"]["lon"])), ("Ve", sign_of(pos["Ve"]["lon"]))):
+            h = house_from(rs, s)
+            if h in (1, 7, 8):
+                out.append(f"{p} {h} from {ref}" if h != 1 else (f"{p} in Lagna" if ref == "Lagna" else f"{p} with {ref}"))
+    return out
+
+
+def visi_porondam(bride, groom):
+    """The twenty porondam. bride/groom: {"moon": Moon longitude, "weekday": 0-6 (Sunday 0), "pos": positions,
+    "lagna_sign": index}. Returns [{"no", "key", "grade", "bride", "groom", "count"}] in the litha's order."""
+    bn, gn = nakshatra_of(bride["moon"])[0], nakshatra_of(groom["moon"])[0]
+    bs, gs = sign_of(bride["moon"]), sign_of(groom["moon"])
+    count = (gn - bn) % 27 + 1
+    rcount = (gs - bs) % 12 + 1
+    res = {}
+
+    def put(key, grade, b=None, g=None, c=None):
+        res[key] = {"grade": grade, "bride": b, "groom": g, "count": c}
+
+    put("nakshatra", 1 if count % 9 in (0, 2, 4, 6, 8) else -1, NAKSHATRAS[bn], NAKSHATRAS[gn], count)
+    bg, gg = NAK_GANA[bn], NAK_GANA[gn]
+    put("gana", 2 if bg == gg else (0 if {bg, gg} == {"Deva", "Manushya"} else -1), bg, gg)
+    put("mahendra", 2 if count in (4, 7, 10, 13, 16, 19, 22, 25) else -1, c=count)
+    put("stree_deergha", -1 if count <= 9 else (0 if count <= 13 else 2), c=count)
+    (ba, bm), (ga, gm) = PR_YONI[bn], PR_YONI[gn]
+    if ba == ga:          # same animal: very good when the bride's yoni is female; otherwise medium
+        yoni = 2 if not bm else 0
+    elif frozenset((ba, ga)) in PR_YONI_ENEMY:
+        yoni = -1 if not bm and not gm else -2
+    else:
+        yoni = {(1, 0): 1, (0, 0): 1, (1, 1): 0}.get((gm, bm))       # groom male & bride female, both female, both male
+    put("yoni", yoni, f"{ba}{' (m)' if bm else ' (f)'}", f"{ga}{' (m)' if gm else ' (f)'}")
+    put("rashi", {1: 2, 7: 1, 9: 1, 10: 1, 11: 1, 3: 0, 4: 0, 8: 0, 12: 0, 2: -1, 5: -1, 6: -1}[rcount],
+        SIGNS[bs], SIGNS[gs], rcount)
+    bl, gl = SIGN_LORD[bs], SIGN_LORD[gs]
+    if bl == gl or (gl in PR_FRIENDS[bl] and bl in PR_FRIENDS[gl]):
+        lord = 1
+    elif gl in PR_ENEMIES[bl] or bl in PR_ENEMIES[gl]:
+        lord = -1
+    else:
+        lord = None                                                   # a neutral relation: no rule given
+    put("rashyadhipati", lord, bl, gl)
+    put("vashya", 1 if bs == gs or gs in PR_VASHYA[bs] or bs in PR_VASHYA[gs] else -1, SIGNS[bs], SIGNS[gs])
+    put("rajju", -1 if PR_RAJJU[bn] == PR_RAJJU[gn] else 1, PR_RAJJU[bn], PR_RAJJU[gn])
+    put("vedha", -1 if frozenset((bn, gn)) in PR_VEDHA else 1)
+    bmilk, gmilk = bn in PR_MILK_TREE, gn in PR_MILK_TREE
+    put("vriksha", 1 if bmilk and gmilk else (-1 if not bmilk and not gmilk else None), bmilk, gmilk)
+    put("ayushya", None)                                              # the litha gives no method
+    b5, g5 = PR_FIVE[bn], PR_FIVE[gn]
+    pair = frozenset((b5, g5))
+    put("pakshi", -1 if pair in PR_BIRD_ENEMY else (1 if pair in PR_BIRD_FRIEND else None), PR_BIRDS[b5], PR_BIRDS[g5])
+    put("bhuta", PR_BHUTA_GRADE.get(tuple(sorted((b5, g5)))), PR_BHUTAS[b5], PR_BHUTAS[g5])
+    put("gotra", -1 if PR_GOTRAS[bn] == PR_GOTRAS[gn] else 1, PR_GOTRAS[bn], PR_GOTRAS[gn])
+    bv, gv = bn % 6, gn % 6
+    put("varna", 1 if gv <= bv else -1, PR_VARNAS[bv], PR_VARNAS[gv])
+    bli, gli = PR_LINGA[bn], PR_LINGA[gn]
+    put("linga", {("M", "F"): 1, ("F", "F"): 1, ("M", "M"): -1, ("N", "N"): -1}.get((gli, bli)), bli, gli)
+    put("nadi", -1 if NAK_NADI[bn] == NAK_NADI[gn] else 1, NAK_NADI[bn], NAK_NADI[gn])
+    dcount = (groom["weekday"] - bride["weekday"]) % 7 + 1
+    put("dina", 1 if dcount <= 5 else -1, VARA[bride["weekday"]], VARA[groom["weekday"]], dcount)
+    bd, gd = graha_dosha(bride["pos"], bride["lagna_sign"]), graha_dosha(groom["pos"], groom["lagna_sign"])
+    put("graha", 1 if not bd and not gd else (0 if bd and gd else (-1 if bd else None)), bd, gd)
+    return [{"no": i + 1, "key": k, **res[k]} for i, k in enumerate(PORONDAM_NAMES)]
+
+
+def porondam_summary(rows):
+    """(matching, not matching, no rule): medium and better count as matching, as in the lithas' tally."""
+    return (sum(1 for r in rows if r["grade"] is not None and r["grade"] >= 0),
+            sum(1 for r in rows if r["grade"] is not None and r["grade"] < 0),
+            sum(1 for r in rows if r["grade"] is None))
+
+
 def synastry_overlay(posA, lagnaA, posB, lagnaB, label_a, label_b, div=1):
     """Where B's planets fall from A's lagna and Moon (in D-n), and vice versa."""
     pa = varga_positions(posA, div) if div != 1 else posA
@@ -4349,10 +4482,24 @@ def main():
         print("  Synastry overlay D9:")
         for ln in synastry_overlay(pos, lagna, pos2, lagna2, args.name, args.match_name, 9):
             print(ln)
+        me = {"moon": pos["Mo"]["lon"], "weekday": birth_weekday(jd, args.lat, args.lon, args.tz),
+              "pos": pos, "lagna_sign": lagna_sign}
+        other = {"moon": pos2["Mo"]["lon"], "weekday": birth_weekday(jd2, args.match_lat, args.match_lon, mtz),
+                 "pos": pos2, "lagna_sign": l2s}
+        groom, bride = (me, other) if args.role == "boy" else (other, me)
+        visi = visi_porondam(bride, groom)
+        ok_, bad_, none_ = porondam_summary(visi)
+        print(f"  VISI PORONDAM (Sri Lankan 20; counted from the bride): {ok_} match, {bad_} do not, "
+              f"{none_} without a rule in the litha")
+        for r in visi:
+            g = {2: "very good", 1: "good", 0: "medium", -1: "bad", -2: "very bad", None: "no rule"}[r["grade"]]
+            extra = f"  count {r['count']}" if r["count"] else ""
+            print(f"   {r['no']:2}. {r['key']:14} {g:10}{extra}  (bride {r['bride']}, groom {r['groom']})")
         match_out = {"partner": {"date": args.match_date, "time": args.match_time, "tz": mtz,
                                  "lagna": SIGNS[l2s], "moon": SIGNS[sign_of(pos2["Mo"]["lon"])]},
                      "ashtakoota_total": total,
-                     "kootas": [{"name": r[0], "points": r[1], "max": r[2], "detail": r[3]} for r in rows]}
+                     "kootas": [{"name": r[0], "points": r[1], "max": r[2], "detail": r[3]} for r in rows],
+                     "visi_porondam": visi, "visi_summary": {"match": ok_, "no_match": bad_, "no_rule": none_}}
 
     # --- transit with ashtakavarga ---
     if args.transit:
