@@ -66,7 +66,7 @@ def arg(args, flag):
 
 # ---------------------------------------------------------------- pages
 
-def test_index_has_form_places_and_source_link(client):
+def test_index_has_form_and_places(client):
     r = client.get("/")
     assert r.status_code == 200
     for code in web.REPORTS:
@@ -74,8 +74,14 @@ def test_index_has_form_places_and_source_link(client):
     assert json.dumps(web.placesearch.DEFAULT) in r.text                                   # default place
     assert web.placesearch.DEFAULT["name"] == "Colombo" and web.placesearch.DEFAULT["lat"] == 6.9271
     assert 'role="combobox"' in r.text and "geonames.org" in r.text                          # search + credit
-    assert web.SOURCE_URL in r.text
     assert "{{" not in r.text            # every template placeholder was filled
+
+
+def test_no_page_links_to_the_source_code(client):
+    """The owner's choice (2026-11-27): the public pages don't link to the code repository."""
+    for path in ("/", "/accuracy", "/panchanga"):
+        page = client.get(path).text
+        assert "github.com" not in page and "Source code" not in page and "{{" not in page, path
 
 
 def test_accuracy_page(client):

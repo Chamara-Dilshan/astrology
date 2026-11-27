@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
+    color-scheme: light dark;   /* the browser's own controls (date and time pickers, dropdown lists, scrollbars) follow the theme */
     --bg: #faf6ee; --card: #fffdf8; --ink: #1e1a1a; --muted: #6f6566; --line: #e4dccb;
     --brand: #6b1010; --brand-ink: #ffffff; --gold: #c9a55a; --focus: #b07a1a; --rahu: #fbeee0;
   }
@@ -26,10 +27,16 @@
   .rule { width: 120px; height: 2px; background: var(--gold); margin: 10px auto 12px; }
   h1 { font-size: 24px; margin: 0; color: var(--brand); }
   .sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
-  form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 20px; }
+  /* date | town on one row (the town gets the rest, so "පොළොන්නරුව · Polonnaruwa" fits), the button below */
+  form { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: end; margin-bottom: 20px; }
+  form button { grid-column: 1 / -1; }
   label { display: block; font-weight: 700; font-size: 13px; margin: 0 0 6px; }
   input, select, button { width: 100%; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink);
                           background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  select option { background: var(--card); color: var(--ink); }
+  input[type=date] { -webkit-appearance: none; appearance: none; text-align: left; }
+  input::-webkit-date-and-time-value { text-align: left; }
+  input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .8; }
   button { background: var(--brand); color: var(--brand-ink); border: 0; font-weight: 700; padding: 8px 16px; cursor: pointer; }
   input:focus, select:focus, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
@@ -42,15 +49,18 @@
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 400; width: 38%; }
   .week th { width: auto; font-weight: 700; color: var(--ink); }
-  .week td { white-space: nowrap; }
-  .week tr.today td { font-weight: 700; }
+  .nw { white-space: nowrap; }   /* one time, e.g. "පෙ.ව. 11.55"; a range may wrap only at its dash */
+  .week tr.today td { background: var(--rahu); color: var(--brand); font-weight: 700; }
+  .fit { overflow-x: auto; }   /* last resort on very narrow screens: the table scrolls inside its card */
   h2 { font-size: 17px; margin: 0 0 8px; color: var(--brand); }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
   footer a { color: inherit; display: inline-block; padding: 10px 4px; }
   .week td { vertical-align: middle; }
+  @media (max-width: 520px) { form { grid-template-columns: 1fr; } }
   @media (max-width: 420px) {
-    form { grid-template-columns: 1fr 1fr; } form button { grid-column: 1 / -1; }
     .card { padding: 14px; } th, td { padding: 8px 4px; }
+    th { width: 44%; }
+    .week { font-size: 14px; } .week .muted { font-size: 13px; } .week tr.today td { font-weight: 400; }
   }
 </style>
 </head>
@@ -89,7 +99,7 @@
 
   <div class="card">
     <h2>සතියේ රාහු කාලය · This week</h2>
-    <table class="week">{{WEEK_ROWS}}</table>
+    <div class="fit"><table class="week">{{WEEK_ROWS}}</table></div>
   </div>
 
   <p class="muted">හිරු උදාවේ සිට හිරු බැසීම දක්වා දවස සමාන කොටස් අටකට බෙදා, සතියේ දිනය අනුව රාහු කාලය, යමගණ්ඩය
@@ -99,8 +109,7 @@
 
   <footer>
     <a href="/">ජන්ම පත්‍රය සාදන්න · Make your birth chart</a> ·
-    <a href="/accuracy">How accurate is this?</a> ·
-    <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
+    <a href="/accuracy">How accurate is this?</a>
   </footer>
 </main>
 </body>

@@ -168,7 +168,7 @@ Noto Sans Sinhala (SIL OFL)
 
 Code: [AGPL-3.0](LICENSE), the same licence as pyswisseph and the Swiss Ephemeris.
 If you run a modified version as a public web service, the AGPL requires you to
-offer its source to users; the web app's footer links to the source for this reason.
+offer its source to users (for example a link on the site; this deployment's pages carry none).
 Fonts in `fonts/`: Noto, [SIL Open Font License 1.1](https://openfontlicense.org).
 
 ## Disclaimer

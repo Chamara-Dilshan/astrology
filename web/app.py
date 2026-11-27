@@ -35,7 +35,6 @@ from web import catalog, placesearch
 
 ROOT = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
-SOURCE_URL = "https://github.com/Chamara-Dilshan/astrology"
 ALL_REPORTS = {c: v[2] for c, v in catalog.REPORTS.items()}   # every report the site shows
 # Reports the site makes for free. The owner chose G and A1-A3; N and C3 are added as free samples.
 # Every other catalogue report is shown with its price and an Order button.
@@ -269,12 +268,10 @@ def _index_html():
                .replace("{{PAGE_DATA_JSON}}", _script_json({"place": placesearch.DEFAULT, "catalog": entries,
                                                             "order": order_cfg})) \
                .replace("{{PANCHANGA_LINK}}", '<a href="/panchanga">අද රාහු කාලය · Today’s Rahu kalaya</a><br>'
-                         if PANCHANGA_PAGE else "") \
-               .replace("{{SOURCE_URL}}", SOURCE_URL)
+                         if PANCHANGA_PAGE else "")
 
 
 ACCURACY_PAGE = (HERE / "accuracy.html").read_text(encoding="utf-8")
-CI_URL = SOURCE_URL + "/actions/workflows/ci.yml"
 
 
 @lru_cache(maxsize=1)
@@ -305,8 +302,6 @@ def _accuracy_html():
         "{{GENERATED}}": html.escape(data["generated_utc"]) + " UTC",
         "{{N_CHECKS}}": str(len(checks)),
         "{{CHECKS}}": "".join(f"<li>{html.escape(c)}</li>" for c in checks),
-        "{{CI_URL}}": CI_URL,
-        "{{SOURCE_URL}}": SOURCE_URL,
     }
     page = ACCURACY_PAGE
     for k, v in fill.items():
@@ -350,6 +345,13 @@ def _span(pair, day):
     return f"{a} – {b}"
 
 
+def _span_html(pair, day):
+    """_span for the page: each time stays in one piece, so on a narrow phone a long range
+    ('පෙ.ව. 11.55 – ප.ව. 1.23') wraps at the dash and never between 'පෙ.ව.' and its time."""
+    a, b = _span(pair, day).split(" – ")
+    return f'<span class="nw">{a}</span> – <span class="nw">{b}</span>'
+
+
 def _panchanga_html(day, town):
     name, lat, lon, si = town
     jc = jr.jc
@@ -365,22 +367,22 @@ def _panchanga_html(day, town):
         row("යෝගය · Yoga", html.escape(names["yoga"]) + until("yoga")),
         row("කරණය · Karana", html.escape(names["karana"]) + until("karana")),
         row("චන්ද්‍ර රාශිය · Moon sign", jr.SIGN_SI[jc.SIGNS.index(p["moon_sign"])]),
-        row("යමගණ්ඩය · Yamaganda", _span(p["yamaganda"], day)),
-        row("ගුලික කාලය · Gulika kalaya", _span(p["gulika"], day)),
+        row("යමගණ්ඩය · Yamaganda", _span_html(p["yamaganda"], day)),
+        row("ගුලික කාලය · Gulika kalaya", _span_html(p["gulika"], day)),
     ])
     week = []
     for i in range(7):
         d = day + timedelta(days=i)
         w = p if i == 0 else jc.day_panchanga(d, lat, lon, SL_TZ)
         week.append(f"<tr{' class=today' if i == 0 else ''}><td>{d.day}/{d.month}<br>"
-                    f"<span class=muted>{WEEKDAY_SI[w['weekday']]}</span></td><td>{_span(w['rahu'], d)}</td></tr>")
+                    f"<span class=muted>{WEEKDAY_SI[w['weekday']]}</span></td><td>{_span_html(w['rahu'], d)}</td></tr>")
     town_opts = "".join(f'<option value="{html.escape(t[0])}"{" selected" if t[0] == name else ""}>'
                         f"{html.escape(t[3])} · {html.escape(t[0])}</option>" for t in TOWNS)
     fill = {
         "{{TITLE_DATE}}": day.isoformat(), "{{DATE_VALUE}}": day.isoformat(), "{{TOWN_OPTIONS}}": town_opts,
         "{{HEADING_DATE}}": f"{day.isoformat()} · {WEEKDAY_SI[p['weekday']]}",
-        "{{RAHU}}": _span(p["rahu"], day), "{{TOWN}}": f"{html.escape(si)} · {html.escape(name)}",
-        "{{ROWS}}": rows, "{{WEEK_ROWS}}": "".join(week), "{{SOURCE_URL}}": SOURCE_URL,
+        "{{RAHU}}": _span_html(p["rahu"], day), "{{TOWN}}": f"{html.escape(si)} · {html.escape(name)}",
+        "{{ROWS}}": rows, "{{WEEK_ROWS}}": "".join(week),
     }
     page = PANCHANGA_TEMPLATE
     for k, v in fill.items():

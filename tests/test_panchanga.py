@@ -122,3 +122,6 @@ def test_clock_format():
     assert web._clock(jd(0, 5, 28), day) == "හෙට පෙ.ව. 12.05"
     assert web._span((jd(10, 30), jd(11, 58)), day) == "පෙ.ව. 10.30 – 11.58"
     assert web._span((jd(11, 59), jd(13, 26)), day) == "පෙ.ව. 11.59 – ප.ව. 1.26"
+    # on the page a range may wrap at its dash only, never between "පෙ.ව." and its time
+    assert web._span_html((jd(11, 59), jd(13, 26)), day) == \
+        '<span class="nw">පෙ.ව. 11.59</span> – <span class="nw">ප.ව. 1.26</span>'
