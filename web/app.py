@@ -6,7 +6,9 @@ Nothing is stored: each request runs jyotisha_report.py in a temporary folder th
 deleted as soon as the PDF has been read back.
 """
 import asyncio
+import base64
 import collections
+import hashlib
 import html
 import json
 import os
@@ -91,11 +93,43 @@ def _client_ip(request):
     ip = request.headers.get(CLIENT_IP_HEADER)
     return ip.strip() if ip else (request.client.host if request.client else "unknown")
 
-app = FastAPI(title="Jyothisha Insight", docs_url=None, redoc_url=None)
+app = FastAPI(title="Jyothisha Insight", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+def _csp(page_html):
+    """Content-Security-Policy for the form page: nothing loads or runs except our own inline
+    script (allowed by hash, so an injected script would not run), Google Fonts, and fetch() to
+    this site. The page also can't be framed (clickjacking)."""
+    scripts = re.findall(r"<script>(.*?)</script>", page_html, re.S)
+    hashes = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode()).digest()).decode() for s in scripts)
+    return ("default-src 'none'; "
+            f"script-src {hashes}; "
+            "style-src 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; "
+            "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
+            "base-uri 'none'; frame-ancestors 'none'")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    h = response.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("Referrer-Policy", "no-referrer")
+    h.setdefault("X-Frame-Options", "DENY")
+    h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        h.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
 def index():
+    page = _index_html()
+    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
+
+
+def _index_html():
     opts = "".join(f'<option value="{c}">{c} — {label}</option>' for c, label in REPORTS.items())
     order = ""
     if ORDER_URL.startswith(("https://", "http://")):
@@ -115,15 +149,28 @@ def healthz():
     return {"ok": True, "version": os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]}
 
 
+def _clean_text(value, field, required):
+    """Collapse whitespace; 1-60 chars (0 allowed if optional); no control chars and no < >.
+    Names and places never need markup characters, and refusing them keeps HTML out of the
+    report even if some template forgot to escape (the report also escapes, and its PDF
+    renderer can't load files or URLs; see jyotisha_report.safe_url_fetcher)."""
+    value = " ".join(value.split())
+    if not (1 if required else 0) <= len(value) <= 60:
+        raise HTTPException(400, f"{field} must be {'1' if required else '0'}–60 characters")
+    if any(ord(c) < 32 or c in "<>" for c in value):
+        raise HTTPException(400, f"{field} contains characters that aren't allowed")
+    return value
+
+
 def _validate(name, birth_date, birth_time, lat, lon, tz, report):
     if report in ALL_REPORTS and report not in REPORTS:
         raise HTTPException(400, "This report is available by order only")
     if report not in REPORTS:
         raise HTTPException(400, "Unknown report type")
-    name = " ".join(name.split())
-    if not 1 <= len(name) <= 60 or any(ord(c) < 32 for c in name):
-        raise HTTPException(400, "Name must be 1–60 characters")
+    name = _clean_text(name, "Name", required=True)
     try:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", birth_date):   # fromisoformat also takes 19900515
+            raise ValueError
         d = date.fromisoformat(birth_date)
     except ValueError:
         raise HTTPException(400, "Date must be YYYY-MM-DD")
@@ -146,7 +193,9 @@ def _render(args, workdir):
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                        env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=TIMEOUT_S)
     if r.returncode != 0 or not out.exists():
-        print(r.stderr[-2000:], file=sys.stderr)
+        # Log only the error type, never the output: it can contain the client's name and birth data
+        last = (r.stderr.strip().splitlines() or ["?"])[-1]
+        print(f"report failed: exit {r.returncode}: {last.split(':')[0][:80]}", file=sys.stderr)
         raise HTTPException(500, "Report generation failed")
     return out.read_bytes()
 
@@ -156,12 +205,13 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                  place: str = Form(""), lat: float = Form(...), lon: float = Form(...),
                  tz: str = Form("Asia/Colombo"), time_exact: str = Form("yes"), report: str = Form("G")):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
-    place = " ".join(place.split())[:60]
-    args = ["--report", report, "--name", name, "--date", birth_date, "--time", birth_time,
-            "--lat", f"{lat:.4f}", "--lon", f"{lon:.4f}", "--tz", tz, "--place", place,
-            "--time-exact", "yes" if time_exact == "yes" else "approx", "--brand", "Jyothisha Insight"]
+    place = _clean_text(place, "Place", required=False)
+    # --opt=value form: a value starting with "-" can't be taken for another option
+    args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
+            f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
+            f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
     if BRAND_CONTACT:
-        args += ["--brand-contact", BRAND_CONTACT]
+        args.append(f"--brand-contact={BRAND_CONTACT}")
     if _slots.locked():
         raise HTTPException(503, "Busy, please try again in a minute")
     # counted only once the request is valid and a slot is free, so typos and "busy" don't use it up

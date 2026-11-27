@@ -478,7 +478,7 @@ def build_a1(d, a, tr, changes, notes, now_local):
     H.append(note_block(notes, "summary"))
     if approx:
         H.append('<div class="note"><div class="lbl">උපන් වේලාව ගැන</div><p>උපන් වේලාව ආසන්න වශයෙන් දී ඇති නිසා මේ වාර්තාවේ D1 කේන්දරය, දශා සහ ගෝචරය ප්‍රමුඛ කර ඇත; සියුම් වර්ග (D9, D10) කේන්දර වල ලග්නය මිනිත්තු කිහිපයකින් වෙනස් විය හැක.</p></div>')
-    H.append("<h2>2. උපන් දත්ත</h2><table>" + "".join(f"<tr><td style='width:34%'><b>{k}</b></td><td>{v}</td></tr>" for k, v in birth_rows) + "</table>")
+    H.append("<h2>2. උපන් දත්ත</h2><table>" + "".join(f"<tr><td style='width:34%'><b>{k}</b></td><td>{esc(v)}</td></tr>" for k, v in birth_rows) + "</table>")
     H.append('<p class="small muted">දත්ත වැරදි නම් වහාම දන්වන්න — වේලාව මිනිත්තු 10ක් වෙනස් වුවත් සමහර ප්‍රතිඵල වෙනස් විය හැක.</p>')
 
     H.append("<h2>3. ලග්නය සහ ග්‍රහ ස්ථාන (D1)</h2>")
@@ -2708,6 +2708,36 @@ def font_uri(fontdir=None):
 CHILD_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
 
+def safe_url_fetcher():
+    """WeasyPrint URL fetcher that may load only data: URIs and files inside fonts/.
+
+    Report HTML contains client input (name, place). It is escaped, but if markup ever got
+    through, WeasyPrint would otherwise follow it: <a rel=attachment href=file:///...> embeds a
+    server file in the PDF, and <img src=http://...> makes the server fetch URLs (SSRF). This
+    fetcher makes both impossible regardless of escaping."""
+    from urllib.parse import urlsplit
+    from urllib.request import url2pathname
+    from weasyprint.urls import URLFetcher
+
+    fonts = Path(fontdir_global()).resolve()
+
+    class FontsOnly(URLFetcher):
+        def __init__(self):
+            super().__init__(timeout=5, allowed_protocols={"file", "data"}, allow_redirects=False)
+
+        def fetch(self, url, headers=None):
+            parts = urlsplit(url)
+            if parts.scheme == "file":
+                path = Path(url2pathname(parts.path)).resolve()
+                if parts.netloc not in ("", "localhost") or not path.is_relative_to(fonts):
+                    raise ValueError(f"blocked: {url}")
+            elif parts.scheme != "data":
+                raise ValueError(f"blocked: {url}")
+            return super().fetch(url, headers)
+
+    return FontsOnly()
+
+
 # ---------------------------------------------------------------------------
 # Visual QA (--qa). Sinhala shaping failures produce NO error anywhere in the
 # stack, so the only defences are (a) measuring a rendered probe string and
@@ -2750,7 +2780,7 @@ def shaping_probe(text=QA_PROBE, ref=QA_PROBE_REF, fontdir=None):
     css = CSS.replace("FONTDIR", font_uri(fontdir)).replace("BRANDNAME", "QA")
     html = (f'<html><head><style>{css} @page{{size:220mm 40mm;margin:5mm}}</style></head>'
             f'<body><p style="font-size:{QA_PROBE_PT}pt;white-space:nowrap">{text}</p></body></html>')
-    pdf = HTML(string=html, base_url=HERE).write_pdf()
+    pdf = HTML(string=html, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf()
     page = pymupdf.open(stream=pdf, filetype="pdf")[0]
     for s in _text_spans(page):
         if abs(s["size"] - QA_PROBE_PT) < 0.5:
@@ -2905,7 +2935,7 @@ def main():
         if a.html:
             open(a.html, "w", encoding="utf-8").write(page)
         from weasyprint import HTML
-        HTML(string=page, base_url=HERE).write_pdf(a.out)
+        HTML(string=page, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf(a.out)
         print(f"PDF written: {a.out}")
         if a.qa and not run_qa(a.out, a.qa_dir):
             sys.exit(3)
@@ -3018,7 +3048,7 @@ def main():
     if a.html:
         open(a.html, "w", encoding="utf-8").write(page)
     from weasyprint import HTML
-    HTML(string=page, base_url=HERE).write_pdf(a.out)
+    HTML(string=page, base_url=HERE, url_fetcher=safe_url_fetcher()).write_pdf(a.out)
     print(f"PDF written: {a.out}")
     if a.qa and not run_qa(a.out, a.qa_dir):
         sys.exit(3)

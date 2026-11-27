@@ -52,7 +52,8 @@ def post(client, headers=None, **changes):
 
 
 def arg(args, flag):
-    return args[args.index(flag) + 1]
+    """Value of --flag=value in the report's argument list."""
+    return next(a.split("=", 1)[1] for a in args if a.startswith(flag + "="))
 
 
 # ---------------------------------------------------------------- pages
@@ -85,8 +86,12 @@ def test_healthz(client, monkeypatch):
     ("tz", "Mars/Base", "Unknown time zone"),
     ("lat", "95", "Latitude must be within"),
     ("lon", "-181", "Latitude must be within"),
+    ("birth_date", "19900515", "Date must be YYYY-MM-DD"),
     ("name", "x" * 61, "Name must be 1–60 characters"),
-    ("name", "bad\x07name", "Name must be 1–60 characters"),
+    ("name", "bad\x07name", "Name contains characters that aren't allowed"),
+    ("name", "<a rel=attachment href=file:///etc/passwd>x</a>", "Name contains characters"),
+    ("place", "<img src=http://169.254.169.254/>", "Place contains characters"),
+    ("place", "y" * 61, "Place must be 0–60 characters"),
 ])
 def test_rejects_bad_input(client, calls, field, value, message):
     r = post(client, **{field: value})
@@ -171,7 +176,43 @@ def test_contact_line_reaches_the_pdf(client, calls, monkeypatch):
 
 def test_no_contact_line_by_default(client, calls):
     post(client)
-    assert "--brand-contact" not in calls[0]
+    assert not any(a.startswith("--brand-contact") for a in calls[0])
+
+
+def test_value_starting_with_dash_stays_a_value(client, calls):
+    post(client, name="-Nimal", place="--out=/tmp/x.pdf")
+    assert arg(calls[0], "--name") == "-Nimal"
+    assert arg(calls[0], "--place") == "--out=/tmp/x.pdf"
+    assert not any(a.startswith("--out") for a in calls[0])   # the app adds --out itself, in _render
+
+
+# ---------------------------------------------------------------- security headers
+
+def test_security_headers_and_csp(client):
+    r = client.get("/")
+    h = r.headers
+    assert h["x-content-type-options"] == "nosniff"
+    assert h["x-frame-options"] == "DENY"
+    assert h["referrer-policy"] == "no-referrer"
+    csp = h["content-security-policy"]
+    assert "default-src 'none'" in csp and "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp.split("script-src")[1].split(";")[0]   # scripts by hash only
+    import base64, hashlib
+    script = re.search(r"<script>(.*?)</script>", r.text, re.S).group(1)
+    digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+    assert f"'sha256-{digest}'" in csp
+    assert client.get("/healthz").headers["x-content-type-options"] == "nosniff"
+    for hidden in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(hidden).status_code == 404
+
+
+def test_failed_report_does_not_log_birth_data(client, monkeypatch, capsys):
+    class R:
+        returncode, stderr = 1, "Traceback ...\nValueError: bad date for Nimali Senanayake 1985-03-21\n"
+    monkeypatch.setattr(web.subprocess, "run", lambda *a, **k: R())
+    assert post(client, name="Nimali Senanayake").status_code == 500
+    logged = capsys.readouterr().err
+    assert "ValueError" in logged and "Nimali" not in logged and "1985" not in logged
 
 
 def test_order_button_shown_only_for_web_urls(client, monkeypatch):

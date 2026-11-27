@@ -98,8 +98,7 @@ repo can be deployed by hand without it, so a missing grant fails silently.
 sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b   # macOS: brew install pango
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-mkdir -p ephe && for f in sepl_18 semo_18 seas_18; do
-  curl -fsSL -o ephe/$f.se1 https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f.se1; done
+python3 fetch_ephe.py          # ephemeris data, pinned and SHA-256 checked
 
 python jyotisha_calc.py --selftest
 python jyotisha_report.py --report A1 --name Sample --date 1990-05-15 --time 10:30 \

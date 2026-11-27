@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read   # CI only reads the repo; no write token
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,12 +23,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Download Swiss Ephemeris data
-        run: |
-          mkdir -p ephe
-          for f in sepl_18 semo_18 seas_18; do
-            curl -fsSL -o ephe/$f.se1 https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f.se1
-          done
+      - name: Download Swiss Ephemeris data (pinned, SHA-256 checked)
+        run: python fetch_ephe.py
+
+      - name: Audit dependencies for known vulnerabilities
+        run: pip install pip-audit && pip-audit
 
       - name: Selftest (textbook examples)
         run: python jyotisha_calc.py --selftest

@@ -3,3 +3,5 @@ pyswisseph>=2.10
 # 1.x: PyMuPDF 2.0 adds ~200 MB of required ML dependencies (onnxruntime, numpy, ...) we don't use
 pymupdf>=1.24,<2
 tzdata
+# security floors for transitive dependencies (pip-audit, 2026-11-27)
+brotli>=1.2.1             # PYSEC-2026-4322; via weasyprint -> fonttools[woff]

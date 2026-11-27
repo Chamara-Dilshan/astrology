@@ -10,6 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt requirements-web.txt /tmp/
 RUN pip wheel --no-cache-dir --wheel-dir /wheels -r /tmp/requirements.txt -r /tmp/requirements-web.txt
+# Swiss Ephemeris data (1800-2400 AD), pinned to one upstream commit and SHA-256 checked;
+# the build fails if a file doesn't match
+COPY fetch_ephe.py /tmp/
+RUN python /tmp/fetch_ephe.py /ephe
 
 # ---- runtime stage ----
 FROM python:3.13-slim-trixie
@@ -21,10 +25,7 @@ COPY --from=build /wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 WORKDIR /app
-# Swiss Ephemeris data (1800-2400 AD); without it pyswisseph falls back to Moshier
-ADD https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/sepl_18.se1 \
-    https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/semo_18.se1 \
-    https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/seas_18.se1 ephe/
+COPY --from=build /ephe ephe/
 COPY fonts/ fonts/
 COPY jyotisha_*.py prices.json notes_sample.json docker-entrypoint.sh ./
 COPY web/ web/
