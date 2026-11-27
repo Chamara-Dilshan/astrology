@@ -203,6 +203,32 @@ def real_person(date_, time_, lat, lon):
             "lagna_sign": jc.sign_of(jc.compute_lagna(jd, lat, lon))}
 
 
+PORONDAM_LK_LAGNAS = [("Mesha", "Mithuna"), ("Kanya", "Meena"), ("Mithuna", "Kumbha"), ("Vrishabha", "Karka")]
+
+
+@pytest.mark.parametrize("couple, lagnas", list(zip(PORONDAM_LK, PORONDAM_LK_LAGNAS)))
+def test_lagnas_agree_with_porondam_lk(couple, lagnas):
+    """porondam.lk printed each person's Lagna: ours is the same for all eight."""
+    bride, groom, _ = couple
+    assert (jc.SIGNS[real_person(*bride)["lagna_sign"]], jc.SIGNS[real_person(*groom)["lagna_sign"]]) == lagnas
+
+
+def test_lagna_results_shown_alongside():
+    """Rashi, rashyadhipati and vashya: the verdict comes from the Moon signs (the litha's rule); the same
+    rules on the two Lagnas are given alongside, and the tally ignores them."""
+    bride = dict(person("Krittika", "Vrishabha"), lagna_sign=SIGN["Makara"])
+    groom = dict(person("Ashwini", "Mesha"), lagna_sign=SIGN["Simha"])
+    rows = {r["key"]: r for r in jc.visi_porondam(bride, groom)}
+    moon, lagna = jc.sign_rules(SIGN["Vrishabha"], SIGN["Mesha"]), jc.sign_rules(SIGN["Makara"], SIGN["Simha"])
+    for key in ("rashi", "rashyadhipati", "vashya"):
+        assert {k: v for k, v in rows[key].items() if k in moon[key]} == moon[key]
+        assert rows[key]["lagna"] == lagna[key]
+    assert rows["rashyadhipati"]["lagna"]["grade"] == -1          # Saturn and the Sun: the litha's own example
+    assert [k for k, r in rows.items() if "lagna" in r] == ["rashi", "rashyadhipati", "vashya"]
+    plain = dict(groom, lagna_sign=SIGN["Mesha"])
+    assert jc.porondam_summary(jc.visi_porondam(bride, groom)) == jc.porondam_summary(jc.visi_porondam(bride, plain))
+
+
 @pytest.mark.parametrize("bride, groom, expected", PORONDAM_LK)
 def test_agrees_with_porondam_lk_where_the_moon_decides(bride, groom, expected):
     rows = {r["key"]: r["grade"] for r in jc.visi_porondam(real_person(*bride), real_person(*groom))}
@@ -245,4 +271,5 @@ def test_d1_report_shows_the_twenty(tmp_path):
     h = page.read_text(encoding="utf-8")
     assert "2. විසි පොරොන්දම (ශ්‍රී ලාංකික ක්‍රමය)" in h and "පොරොන්දම් 20න් 12ක් ගැලපේ" in h
     assert "විසි පොරොන්දම: <b>12 / 20</b>" in h                               # on the cover
+    assert h.count("ලග්න අනුව:") == 3                                        # rashi, rashyadhipati, vashya
     assert h.count("<td>") >= 20 * 4 and "3. අෂ්ටකූට ලකුණු" in h

@@ -1192,9 +1192,20 @@ def porondam_block(comp, heading="h2", title="විසි පොරොන්ද
     if not rows:
         return ""
     s = comp["visi_summary"]
+
+    def lagna_line(r):
+        """Second line for rashi, rashyadhipati, vashya: the same rule on the two Lagnas."""
+        lg = r.get("lagna")
+        if not lg:
+            return ""
+        grade = GRADE_SI[lg["grade"]] if lg["grade"] is not None else "ලිතේ නියමයක් නැත"
+        detail = _porondam_detail({**lg, "key": r["key"], "grade": lg["grade"] if lg["grade"] is not None else 0})
+        return f"<br><span class='muted'>ලග්න අනුව: {esc(detail)} — <b>{grade}</b></span>"
+
     body = "".join(
         f"<tr{' class=cur' if r['grade'] is not None and r['grade'] < 0 else ''}><td>{r['no']}</td>"
-        f"<td>{PORONDAM_SI[r['key']]}</td><td><b>{GRADE_SI[r['grade']]}</b></td><td>{esc(_porondam_detail(r))}</td></tr>"
+        f"<td>{PORONDAM_SI[r['key']]}</td><td><b>{GRADE_SI[r['grade']]}</b></td>"
+        f"<td>{esc(_porondam_detail(r))}{lagna_line(r)}</td></tr>"
         for r in rows)
     return (f"<{heading}>{title}</{heading}>"
             f"<div class='box'><b>පොරොන්දම් 20න් {s['match']}ක් ගැලපේ</b> (ශුභ හෝ මධ්‍යම) · {s['no_match']}ක් නොගැලපේ"
@@ -1203,6 +1214,8 @@ def porondam_block(comp, heading="h2", title="විසි පොරොන්ද
             "<table><tr><th></th><th>පොරොන්දම</th><th>ප්‍රතිඵලය</th><th>විස්තරය (මනාලිය → මනාලයා)</th></tr>"
             + body + "</table>"
             "<p class='small muted'>නැකත්, රාශි සහ දින ගණන් කරන්නේ මනාලියගේ නැකතේ (රාශියේ, දිනයේ) සිට මනාලයාගේ දක්වාය. "
+            "රාශි, රාශ්‍යාධිපති සහ වශ්‍ය පොරොන්දම් ලිතේ නියමය අනුව චන්ද්‍ර රාශි දෙකෙන් තීරණය වන අතර එකතුවට ගැනෙන්නේ එයයි; "
+            "සමහර ජ්‍යොතිෂවේදීන් ලග්න දෙකද සලකන බැවින් එම නියමයම ලග්න දෙකට යෙදූ ප්‍රතිඵලයද දක්වා ඇත. "
             "යෝනි, ලිංග සහ ග්‍රහ පොරොන්දම් විශේෂයෙන් වැදගත් වන අතර අවසන් තීරණය ග්‍රහ පොරොන්දම අනුව ගත යුතු බව ලිත සඳහන් කරයි; "
             "ග්‍රහ පොරොන්දමේ ග්‍රහයන්ගේ බලය ජ්‍යොතිෂවේදියා විසින් සලකා බැලිය යුතුය. "
             "මූලාශ්‍රය: ලංකා පංචාංග සහ ඈපා පංචාංග ග්‍රහස්ඵුට ලිතවල නියම.</p>")

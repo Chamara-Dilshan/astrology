@@ -1429,13 +1429,32 @@ def graha_dosha(pos, lagna_sign):
     return out
 
 
+def sign_rules(bs, gs):
+    """Rashi, rashyadhipati and vashya porondam for a bride's and a groom's sign (Moon or Lagna)."""
+    rcount = (gs - bs) % 12 + 1
+    bl, gl = SIGN_LORD[bs], SIGN_LORD[gs]
+    if bl == gl or (gl in PR_FRIENDS[bl] and bl in PR_FRIENDS[gl]):
+        lord = 1
+    elif gl in PR_ENEMIES[bl] or bl in PR_ENEMIES[gl]:
+        lord = -1
+    else:
+        lord = None                                                   # a neutral relation: no rule given
+    return {
+        "rashi": {"grade": {1: 2, 7: 1, 9: 1, 10: 1, 11: 1, 3: 0, 4: 0, 8: 0, 12: 0, 2: -1, 5: -1, 6: -1}[rcount],
+                  "bride": SIGNS[bs], "groom": SIGNS[gs], "count": rcount},
+        "rashyadhipati": {"grade": lord, "bride": bl, "groom": gl, "count": None},
+        "vashya": {"grade": 1 if bs == gs or gs in PR_VASHYA[bs] or bs in PR_VASHYA[gs] else -1,
+                   "bride": SIGNS[bs], "groom": SIGNS[gs], "count": None},
+    }
+
+
 def visi_porondam(bride, groom):
     """The twenty porondam. bride/groom: {"moon": Moon longitude, "weekday": 0-6 (Sunday 0), "pos": positions,
-    "lagna_sign": index}. Returns [{"no", "key", "grade", "bride", "groom", "count"}] in the litha's order."""
+    "lagna_sign": index}. Returns [{"no", "key", "grade", "bride", "groom", "count"}] in the litha's order;
+    rashi, rashyadhipati and vashya also carry "lagna": the same fields worked out from the two Lagnas."""
     bn, gn = nakshatra_of(bride["moon"])[0], nakshatra_of(groom["moon"])[0]
     bs, gs = sign_of(bride["moon"]), sign_of(groom["moon"])
     count = (gn - bn) % 27 + 1
-    rcount = (gs - bs) % 12 + 1
     res = {}
 
     def put(key, grade, b=None, g=None, c=None):
@@ -1454,17 +1473,12 @@ def visi_porondam(bride, groom):
     else:
         yoni = {(1, 0): 1, (0, 0): 1, (1, 1): 0}.get((gm, bm))       # groom male & bride female, both female, both male
     put("yoni", yoni, f"{ba}{' (m)' if bm else ' (f)'}", f"{ga}{' (m)' if gm else ' (f)'}")
-    put("rashi", {1: 2, 7: 1, 9: 1, 10: 1, 11: 1, 3: 0, 4: 0, 8: 0, 12: 0, 2: -1, 5: -1, 6: -1}[rcount],
-        SIGNS[bs], SIGNS[gs], rcount)
-    bl, gl = SIGN_LORD[bs], SIGN_LORD[gs]
-    if bl == gl or (gl in PR_FRIENDS[bl] and bl in PR_FRIENDS[gl]):
-        lord = 1
-    elif gl in PR_ENEMIES[bl] or bl in PR_ENEMIES[gl]:
-        lord = -1
-    else:
-        lord = None                                                   # a neutral relation: no rule given
-    put("rashyadhipati", lord, bl, gl)
-    put("vashya", 1 if bs == gs or gs in PR_VASHYA[bs] or bs in PR_VASHYA[gs] else -1, SIGNS[bs], SIGNS[gs])
+    # rashi, rashyadhipati, vashya: the litha matches the Moon signs, and that is the verdict; the same
+    # rules applied to the two Lagnas are given alongside, since some astrologers weigh those too.
+    moon_signs = sign_rules(bs, gs)
+    lagna_signs = sign_rules(bride["lagna_sign"], groom["lagna_sign"])
+    for key in ("rashi", "rashyadhipati", "vashya"):
+        res[key] = {**moon_signs[key], "lagna": lagna_signs[key]}
     put("rajju", -1 if PR_RAJJU[bn] == PR_RAJJU[gn] else 1, PR_RAJJU[bn], PR_RAJJU[gn])
     put("vedha", -1 if frozenset((bn, gn)) in PR_VEDHA else 1)
     bmilk, gmilk = bn in PR_MILK_TREE, gn in PR_MILK_TREE
@@ -4494,6 +4508,10 @@ def main():
         for r in visi:
             g = {2: "very good", 1: "good", 0: "medium", -1: "bad", -2: "very bad", None: "no rule"}[r["grade"]]
             extra = f"  count {r['count']}" if r["count"] else ""
+            if r.get("lagna"):
+                lg = r["lagna"]
+                extra += (f"  [by Lagna: {lg['bride']} -> {lg['groom']}: "
+                          f"{ {2: 'very good', 1: 'good', 0: 'medium', -1: 'bad', -2: 'very bad', None: 'no rule'}[lg['grade']]}]")
             print(f"   {r['no']:2}. {r['key']:14} {g:10}{extra}  (bride {r['bride']}, groom {r['groom']})")
         match_out = {"partner": {"date": args.match_date, "time": args.match_time, "tz": mtz,
                                  "lagna": SIGNS[l2s], "moon": SIGNS[sign_of(pos2["Mo"]["lon"])]},
