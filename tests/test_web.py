@@ -248,7 +248,8 @@ def test_catalogue_lists_reports_in_groups(client):
     for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N",
                  "C1", "C2", "C6"]:
         assert f'value="{code}"' in page
-    assert page.count("<optgroup") == 6
+    report_menu = page.split('<select id="report"', 1)[1].split("</select>", 1)[0]
+    assert report_menu.count("<optgroup") == 6
     needs = {e["code"]: e["needs"] for e in web._catalog() if e["needs"]}
     assert needs == {"C1": "year", "C2": "year", "C6": "year_month",
                      "D1": "partner", "D2": "partner", "D3": "partners",
@@ -332,6 +333,24 @@ def test_partner_details_are_checked(client, calls, fields, message):
     r = post(client, **fields)
     assert r.status_code == 400 and message in r.json()["detail"]
     assert calls == []
+
+
+def test_time_zone_is_a_menu_the_server_accepts(client):
+    """A menu, not a text box (no typo to make): Sri Lanka first and chosen, then places abroad, then
+    every zone; every choice is one the server accepts. Partners get the same menu (filled in by the page)."""
+    page = client.get("/").text
+    menu = page.split('<select id="tz" name="tz"', 1)[1].split("</select>", 1)[0]
+    values = re.findall(r'<option(?: value="([^"]+)")?(?: selected)?>([^<]*)</option>', menu)
+    zones = [v or text for v, text in values]
+    assert zones[0] == "Asia/Colombo" and 'value="Asia/Colombo" selected' in menu
+    assert {"Asia/Dubai", "Europe/London", "Australia/Melbourne", "America/Toronto"} <= set(zones)
+    assert len(zones) > 400 and set(zones) <= web.TIME_ZONES
+    assert '<select data-f="tz" name="p_tz">' in page and 'type="hidden" name="p_tz"' not in page
+
+
+def test_births_abroad_use_their_time_zone(client, calls):
+    assert post(client, report="D1", tz="Europe/London", **partner(p_tz="Asia/Dubai")).status_code == 200
+    assert arg(calls[0], "--tz") == "Europe/London" and arg(calls[0], "--match-tz") == "Asia/Dubai"
 
 
 def test_partner_fields_are_ignored_for_other_reports(client, calls):

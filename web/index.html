@@ -214,8 +214,10 @@
         </div>
       </div>
     </div>
-    <label for="tz">Time zone</label>
-    <input id="tz" name="tz" value="Asia/Colombo" required autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label for="tz">වේලා කලාපය <span class="hint">· Time zone</span></label>
+    <select id="tz" name="tz" required aria-describedby="tz-help">{{TZ_OPTIONS}}</select>
+    <p id="tz-help" class="hint small">ලංකාව තුළ නම් ශ්‍රී ලංකාව ම තබන්න (1996–2006 ඔරලෝසු වෙනස්කම් ස්වයංක්‍රීයව ගැලපේ); විදේශයක නම් පමණක් වෙනස් කරන්න.
+      · Keep Sri Lanka for anywhere in Sri Lanka (its 1996–2006 clock changes are handled); change it only for somewhere abroad.</p>
 
     <!-- extra inputs, shown only for the reports that need them (catalog "needs") -->
     <fieldset id="sec-year" class="sec" data-needs="year year_month" hidden>
@@ -335,7 +337,8 @@
             </div>
           </div>
         </div>
-        <input type="hidden" name="p_tz" value="Asia/Colombo">
+        <label data-for="tz">වේලා කලාපය <span class="hint">· Time zone</span></label>
+        <select data-f="tz" name="p_tz"></select>
         <button type="button" class="removep secondary">ඉවත් කරන්න · Remove</button>
       </div>
     </template>
@@ -490,6 +493,9 @@ document.getElementById("approx").addEventListener("change", e => {
 });
 
 const form = document.getElementById("f"), go = document.getElementById("go"), status = document.getElementById("status");
+const HOME_TZ = form.tz.options[0].value;      // Sri Lanka
+// set a time zone menu from an order; one the menu doesn't have goes back to Sri Lanka (and is reported)
+const setTz = (sel, z) => { const ok = [...sel.options].some(o => o.value === z); sel.value = ok ? z : HOME_TZ; return ok; };
 
 // ---- report catalogue: free reports make a PDF here; the others build an order message
 const CATALOG = PAGE_DATA.catalog, ORDER = PAGE_DATA.order;
@@ -571,6 +577,8 @@ function addPartner() {
   el.querySelectorAll("label[data-for]").forEach(l => { l.htmlFor = id + l.dataset.for; });
   el.setPlace = placePicker(el.querySelector(".placebox"));
   el.setPlace(DEFAULT_PLACE);
+  const ptz = el.querySelector("[name=p_tz]");
+  ptz.innerHTML = form.tz.innerHTML; ptz.value = HOME_TZ;   // the same menu, Sri Lanka first
   el.querySelector(".removep").addEventListener("click", () => { el.remove(); renumberPartners(); });
   partnersBox.append(el);
   renumberPartners();
@@ -664,7 +672,8 @@ function partnerLines() {
   [...partnersBox.children].forEach((el, i) => {
     const v = n => el.querySelector(`[name=${n}]`).value.trim();
     lines.push(`${current().needs === "partners" ? "යෝජනාව " + (i + 1) : "සහකරු"}: ${v("p_name")}, ` +
-               `${v("p_date")} ${v("p_time")}, ${v("p_place") || "-"} (${v("p_lat")}, ${v("p_lon")})`);
+               `${v("p_date")} ${v("p_time")}, ${v("p_place") || "-"} (${v("p_lat")}, ${v("p_lon")})` +
+               (v("p_tz") !== HOME_TZ ? `, ${v("p_tz")}` : ""));      // born abroad
   });
   return lines;
 }
@@ -807,8 +816,8 @@ function fillFromOrder(text) {
   document.getElementById("time_exact").value = approx ? "approx" : "yes";
   const where = one(/^(?:උපන් ස්ථානය|ප්‍රශ්නය ඇසූ ස්ථානය):\s*(.*)$/), p = where && placeOf(where[1]);
   if (p) setMainPlace(p);
-  const tzl = one(/^Time zone:\s*(\S+)/);
-  if (tzl) form.tz.value = tzl[1];
+  const tzl = one(/^Time zone:\s*(\S+)/), badTz = [];
+  if (!setTz(form.tz, tzl ? tzl[1] : HOME_TZ)) badTz.push(tzl[1]);
   const yr = one(/^වර්ෂය:\s*(\d{4})/), mo = one(/^මාසය:\s*(\d{1,2})/);
   if (yr) yearIn.value = yr[1];
   if (mo) monthSel.value = mo[1];
@@ -819,7 +828,9 @@ function fillFromOrder(text) {
     while (partnersBox.children.length < partners.length) addPartner();
     while (partnersBox.children.length > Math.max(partners.length, current().needs === "partners" ? 2 : 1)) partnersBox.lastElementChild.remove();
     partners.forEach((m, i) => {
-      const el = partnersBox.children[i], q = placeOf(m[4]);
+      const t = m[4].match(/^(.*\))\s*,\s*([A-Za-z]+\/[\w+\-\/]+)$/);   // "Place (lat, lon), Zone/Name": born abroad
+      const el = partnersBox.children[i], q = placeOf(t ? t[1] : m[4]);
+      if (!setTz(el.querySelector("[name=p_tz]"), t ? t[2] : HOME_TZ)) badTz.push(t[2]);
       el.querySelector("[name=p_name]").value = m[1];
       el.querySelector("[name=p_date]").value = m[2];
       el.querySelector("[name=p_time]").value = m[3].padStart(5, "0");
@@ -857,6 +868,9 @@ function fillFromOrder(text) {
     if (used.length) cleared = " පෙර පාරිභෝගිකයාගේ සටහන් ඉවත් කළා. · The last customer's notes were cleared.";
     notesUsedFor = null;
   }
+  if (badTz.length)
+    cleared += ` ⚠ නොදන්නා වේලා කලාපයක් (${badTz.join(", ")}) — ශ්‍රී ලංකාව ලෙස තැබුවා, පරීක්ෂා කරන්න. · ` +
+               "Unknown time zone in the order: set to Sri Lanka, please check it.";
   return `✓ පෝරමය පිරවිණි: ${code[1]} · ${name ? name[1] : ""} — පරීක්ෂා කර, සටහන් එක් කර, PDF සාදන්න. ` +
          "· Form filled from the order: check it, add your notes, then Make PDF." + cleared;
 }

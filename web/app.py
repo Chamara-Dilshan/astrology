@@ -315,12 +315,26 @@ def _studio_top():
 def _studio_notes_html():
     """Studio only: a box for each section of the astrologer's notes."""
     boxes = "".join(f'<div class="nbox" data-note="{k}"><label for="note_{k}">{html.escape(label)}</label>'
-                    f'<textarea id="note_{k}" name="note_{k}" class="q" rows="3" maxlength="{NOTE_MAX}"></textarea></div>'
+                    f'<textarea id="note_{k}" name="note_{k}" class="q" rows="3" maxlength="{NOTE_MAX}" '
+                    f'placeholder="{html.escape(NOTE_HINTS[k])}"></textarea></div>'
                     for k, label in NOTE_SECTIONS)
     return ('<fieldset id="notes" class="sec notes"><label class="ntitle">ජ්‍යොතිෂවේදියාගේ සටහන් · Astrologer’s notes</label>'
-            '<p class="hint small">මෙම වාර්තාවේ ඇති කොටස් පමණක් පෙන්වයි; හිස් කොටු එකතු නොවේ; හිස් පේළියක් නව ඡේදයක් අරඹයි. '
-            '· Only the sections this report has are shown; empty boxes are left out; a blank line starts a new paragraph.</p>'
+            '<p class="hint small">මෙම පාරිභෝගිකයාට ඔබේම විග්‍රහය: PDF එකේ “ජ්‍යොතිෂවේදියාගේ සටහන” කොටුවක මුද්‍රණය වේ. '
+            'හිස් කොටු මඟ හැරේ; හිස් පේළියක් නව ඡේදයක් අරඹයි; මෙම වාර්තාවේ ඇති කොටස් පමණක් පෙන්වයි. '
+            '· Your own reading for this customer, printed in the PDF in an “Astrologer’s note” box. Empty boxes are '
+            'left out; a blank line starts a new paragraph; only the sections this report has are shown. '
+            'Customers never see these boxes.</p>'
             + boxes + '</fieldset>')
+
+
+def _tz_options():
+    """The time zone menu (a menu, so there is no typo to make): Sri Lanka, common places abroad, every zone."""
+    home = catalog.HOME_TZ
+    common = "".join(f'<option value="{z}">{html.escape(c)}</option>' for z, c in catalog.COMMON_TIME_ZONES.items())
+    every = "".join(f"<option>{z}</option>" for z in sorted(t for t in TIME_ZONES if t.startswith(catalog.TZ_REGIONS)))
+    return (f'<option value="{home}" selected>ශ්‍රී ලංකාව · Sri Lanka</option>'   # short: phones cut long labels
+            f'<optgroup label="විදේශ රටවල් · Common places abroad">{common}</optgroup>'
+            f'<optgroup label="සියලු වේලා කලාප · All time zones">{every}</optgroup>')
 
 
 def _index_html():
@@ -342,6 +356,7 @@ def _index_html():
                .replace("{{TASK_OPTIONS}}", opt(jr.MUHURTA_TASK_SI.items())) \
                .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
                .replace("{{LANG_OPTIONS}}", opt(catalog.LANG_NAMES.items())) \
+               .replace("{{TZ_OPTIONS}}", TZ_OPTIONS) \
                .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
                .replace("{{ORDER_LINK}}", "" if STUDIO else order) \
                .replace("{{STUDIO_TOP}}", _studio_top() if STUDIO else "") \
@@ -550,6 +565,7 @@ def healthz():
 # overrides that would let a name display reversed); Sinhala needs the two joiners, so they stay.
 SINHALA_JOINERS = {"‌", "‍"}
 TIME_ZONES = frozenset(zoneinfo.available_timezones())
+TZ_OPTIONS = _tz_options()
 
 
 def _clean_text(value, field, required, max_len=60):
@@ -632,6 +648,18 @@ NOTE_SECTIONS = [("summary", "සාරාංශය · Summary"), ("lagna", "ල
                  ("areas", "ජීවිත ක්ෂේත්‍ර · Life areas (A2, A3)"), ("calendar", "මාසයෙන් මාසය · Month by month (C2)"),
                  ("dosha", "දෝෂ · Doshas (porondam)")]
 NOTE_MAX = 4000
+NOTE_HINTS = {   # shown in the empty box: what to write there
+    "summary": "මෙම පුද්ගලයා ගැන ඔබේ සමස්ත විග්‍රහය · Your overall reading for this person",
+    "lagna": "ලග්නය සහ පෞරුෂය ගැන ඔබේ අදහස · Your view of the ascendant and personality",
+    "yogas": "කේන්දරයේ යෝග ගැන · About the yogas in the chart",
+    "dasha": "දැන් ගතවන සහ ඊළඟ දශාව ගැන · About the current and the next dasha",
+    "gochara": "දැනට ගෝචර ග්‍රහයන්ගේ බලපෑම · About the current transits",
+    "upcoming": "ඉදිරි කාලයේ බලාපොරොත්තු විය හැකි දේ · What to expect in the coming period",
+    "remedies": "ප්‍රතිකර්ම, පිළිවෙත් සහ උපදෙස් · Remedies, practices and advice",
+    "areas": "රැකියාව, විවාහය, සෞඛ්‍යය වැනි ක්ෂේත්‍ර ගැන · About career, marriage, health and other areas",
+    "calendar": "විශේෂ මාස ගැන සටහන් · Remarks on particular months",
+    "dosha": "දෝෂ සහ පොරොන්දම් ගැලපීම ගැන · About the doshas and how well the two match",
+}
 
 
 async def _studio_notes(request, report):

@@ -53,6 +53,7 @@ def test_studio_page_has_the_order_box_and_note_boxes(studio):
     assert 'id="orderpaste"' in page and 'id="fillorder"' in page and '"studio": true' in page
     for key, _ in web.NOTE_SECTIONS:
         assert f'name="note_{key}"' in page
+        assert f'placeholder="{web.html.escape(web.NOTE_HINTS[key])}"' in page   # says what to write there
     assert "Order on Messenger" not in page                       # no ordering from yourself
 
 

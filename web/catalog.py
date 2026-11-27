@@ -55,6 +55,24 @@ PRASHNA_TOPICS = ["general", "travel", "abroad", "lost", "dispute", "health", "m
 MUHURTA_HOURS = {"6-21": "6:00 – 21:00", "0-24": "දවස පුරා · all day"}
 MUHURTA_MAX_DAYS = 62
 EVENTS_MIN, EVENTS_MAX = 3, 12          # E1: the plan recommends 8-12 past events
+# Time zone menu: Sri Lanka (the default), then places where Sri Lankans are often born or living
+# abroad, then every zone. Asia/Colombo also covers Sri Lanka's clock changes of 1996-2006.
+HOME_TZ = "Asia/Colombo"
+COMMON_TIME_ZONES = {
+    "Asia/Kolkata": "India", "Indian/Maldives": "Maldives", "Asia/Dubai": "UAE", "Asia/Qatar": "Qatar",
+    "Asia/Riyadh": "Saudi Arabia", "Asia/Kuwait": "Kuwait", "Asia/Muscat": "Oman", "Asia/Bahrain": "Bahrain",
+    "Asia/Jerusalem": "Israel", "Asia/Nicosia": "Cyprus", "Asia/Singapore": "Singapore",
+    "Asia/Kuala_Lumpur": "Malaysia", "Asia/Seoul": "South Korea", "Asia/Tokyo": "Japan",
+    "Australia/Sydney": "Australia – Sydney", "Australia/Melbourne": "Australia – Melbourne",
+    "Australia/Brisbane": "Australia – Brisbane", "Australia/Adelaide": "Australia – Adelaide",
+    "Australia/Perth": "Australia – Perth", "Pacific/Auckland": "New Zealand",
+    "Europe/London": "United Kingdom", "Europe/Rome": "Italy", "Europe/Paris": "France",
+    "Europe/Berlin": "Germany", "Europe/Zurich": "Switzerland", "Europe/Oslo": "Norway",
+    "Europe/Stockholm": "Sweden", "America/Toronto": "Canada – Toronto", "America/Vancouver": "Canada – Vancouver",
+    "America/New_York": "USA – Eastern", "America/Chicago": "USA – Central", "America/Denver": "USA – Mountain",
+    "America/Los_Angeles": "USA – Pacific",
+}
+TZ_REGIONS = ("Africa/", "America/", "Antarctica/", "Asia/", "Atlantic/", "Australia/", "Europe/", "Indian/", "Pacific/")
 # Report languages: every report is in Sinhala; these can also be made in English (jyotisha_report --lang).
 LANGS = {"G": ("si", "en")}
 LANG_NAMES = {"si": "සිංහල · Sinhala", "en": "English"}
