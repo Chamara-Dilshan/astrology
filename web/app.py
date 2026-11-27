@@ -234,16 +234,34 @@ def _render(args, workdir):
     return out.read_bytes()
 
 
+def _extra_args(report, birth_date, year, month):
+    """Checked arguments for the report's extra input (see catalog.REPORTS); [] if it needs none."""
+    needs = catalog.REPORTS[report][3]
+    args = []
+    if needs in ("year", "year_month"):
+        birth_year = int(birth_date[:4])
+        if year is None or not birth_year <= year <= min(birth_year + 120, 2399):
+            raise HTTPException(400, f"Year must be between {birth_year} and {min(birth_year + 120, 2399)}")
+        args.append(f"--year={year}")
+    if needs == "year_month":
+        if month is None or not 1 <= month <= 12:
+            raise HTTPException(400, "Month must be 1–12 (counted from the birthday)")
+        args.append(f"--month={month}")
+    return args
+
+
 @app.post("/report")
 async def report(request: Request, name: str = Form(...), birth_date: str = Form(...), birth_time: str = Form(...),
                  place: str = Form(""), lat: float = Form(...), lon: float = Form(...),
-                 tz: str = Form("Asia/Colombo"), time_exact: str = Form("yes"), report: str = Form("G")):
+                 tz: str = Form("Asia/Colombo"), time_exact: str = Form("yes"), report: str = Form("G"),
+                 year: int | None = Form(None), month: int | None = Form(None)):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
     place = _clean_text(place, "Place", required=False)
     # --opt=value form: a value starting with "-" can't be taken for another option
     args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
             f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
             f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
+    args += _extra_args(report, birth_date, year, month)
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")
     if _slots.locked():

@@ -53,6 +53,8 @@
               border: 2px solid var(--brand); border-radius: 8px; color: var(--brand); font-weight: 700;
               text-decoration: none; }
   .orderbtn:hover, .orderbtn:focus-visible { background: var(--brand); color: var(--brand-ink); }
+  .sec { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .hint.small { display: block; margin: 8px 0 0; font-size: 13px; }
   .reportinfo { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
   .reportinfo .tag { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px;
                      border: 1px solid var(--gold); color: var(--ink); font-weight: 700; font-size: 13px; }
@@ -119,6 +121,22 @@
     <label for="tz">Time zone</label>
     <input id="tz" name="tz" value="Asia/Colombo" required autocapitalize="off" autocorrect="off" spellcheck="false">
 
+    <!-- extra inputs, shown only for the reports that need them (catalog "needs") -->
+    <fieldset id="sec-year" class="sec" data-needs="year year_month" hidden>
+      <div class="row">
+        <div>
+          <label for="year">වර්ෂය <span class="hint">· Year</span></label>
+          <input id="year" name="year" type="number" inputmode="numeric" min="1800" max="2399">
+        </div>
+        <div data-needs="year_month">
+          <label for="month">මාසය <span class="hint">· Month</span></label>
+          <select id="month" name="month"></select>
+        </div>
+      </div>
+      <p class="hint small">වර්ෂ ඵලය ගණන් කරන්නේ එම වසරේ ඔබේ උපන්දිනයේ සිට වසරකටයි. මාසය 1 = උපන්දිනයෙන් පසු පළමු මාසය.<br>
+        The year runs from your birthday in that year; month 1 is the first month after the birthday.</p>
+    </fieldset>
+
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
 
@@ -176,7 +194,19 @@ function showReport() {
   info.append(tag, c.en + (c.free ? "" : " · prepared with the astrologer's own notes"));
   go.textContent = c.free ? "PDF සාදන්න · Make PDF" : "ඇණවුම් කරන්න · Order" + (c.price ? " – " + rs(c.price) : "");
   orderbox.hidden = true; status.textContent = "";
+  // show only the extra inputs this report needs; hidden ones are disabled so they aren't sent
+  for (const el of document.querySelectorAll("[data-needs]")) el.hidden = !el.dataset.needs.split(" ").includes(c.needs);
+  for (const f of document.querySelectorAll("[data-needs] input, [data-needs] select")) {
+    const off = !!f.closest("[data-needs][hidden]");   // inside any hidden section
+    f.disabled = off; f.required = !off;
+  }
 }
+const yearIn = document.getElementById("year"), monthSel = document.getElementById("month");
+yearIn.value = new Date().getFullYear();
+for (let m = 1; m <= 12; m++) monthSel.add(new Option(m === 1 ? "1 – උපන්දිනයෙන් පළමු මාසය" : String(m), m));
+document.getElementById("birth_date").addEventListener("change", e => {
+  if (e.target.value) yearIn.min = e.target.value.slice(0, 4);
+});
 reportSel.addEventListener("change", showReport);
 showReport();
 
@@ -190,6 +220,8 @@ function orderMessage(c) {
     `උපන් වේලාව: ${form.birth_time.value}` + (approx ? " (ආසන්න / approximate)" : ""),
     `උපන් ස්ථානය: ${place.value || "-"} (${lat.value}, ${lon.value})`,
     `Time zone: ${form.tz.value}`,
+    ...(!yearIn.disabled ? [`වර්ෂය: ${yearIn.value}`] : []),
+    ...(!monthSel.disabled ? [`මාසය: ${monthSel.value} (උපන්දිනයෙන් / from birthday)`] : []),
   ].join("\n");
 }
 async function copyOrder() {

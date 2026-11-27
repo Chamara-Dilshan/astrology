@@ -171,13 +171,54 @@ def test_paid_report_refused_when_not_offered(client, calls, monkeypatch):
     assert "නොමිලේ" in re.search(r'<option value="G">[^<]*</option>', page).group(0)
 
 
-def test_catalogue_lists_phase_1_reports_in_groups(client):
+def test_catalogue_lists_reports_in_groups(client):
     page = client.get("/").text
-    for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N"]:
+    for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N",
+                 "C1", "C2", "C6"]:
         assert f'value="{code}"' in page
-    assert page.count("<optgroup") == 3
-    entries = web._catalog()
-    assert [e["code"] for e in entries if e["needs"]] == []          # phase 1: birth details only
+    assert page.count("<optgroup") == 4
+    needs = {e["code"]: e["needs"] for e in web._catalog() if e["needs"]}
+    assert needs == {"C1": "year", "C2": "year", "C6": "year_month"}
+
+
+# ---------------------------------------------------------------- phase 2: year / month
+
+@pytest.mark.parametrize("report", ["C1", "C2"])
+def test_year_reports_pass_the_year(client, calls, report):
+    assert post(client, report=report, year="2027").status_code == 200
+    assert arg(calls[0], "--year") == "2027"
+    assert not any(a.startswith("--month") for a in calls[0])
+
+
+def test_month_report_passes_year_and_month(client, calls):
+    assert post(client, report="C6", year="2027", month="3").status_code == 200
+    assert (arg(calls[0], "--year"), arg(calls[0], "--month")) == ("2027", "3")
+
+
+@pytest.mark.parametrize("fields, message", [
+    ({"report": "C1"}, "Year must be between 1990 and 2110"),                  # missing
+    ({"report": "C1", "year": "1989"}, "Year must be between 1990 and 2110"),  # before birth
+    ({"report": "C1", "year": "2111"}, "Year must be between 1990 and 2110"),
+    ({"report": "C6", "year": "2027"}, "Month must be 1–12"),                  # month missing
+    ({"report": "C6", "year": "2027", "month": "13"}, "Month must be 1–12"),
+])
+def test_year_and_month_are_checked(client, calls, fields, message):
+    r = post(client, **fields)
+    assert r.status_code == 400 and message in r.json()["detail"]
+    assert calls == []
+
+
+def test_year_is_ignored_for_reports_that_dont_need_it(client, calls):
+    post(client, report="A1", year="2027", month="5")
+    assert not any(a.startswith(("--year", "--month")) for a in calls[0])
+
+
+def test_real_report_c1_is_a_pdf(client):
+    pymupdf = pytest.importorskip("pymupdf")
+    r = post(client, report="C1", year="2027", name="Test")
+    assert r.status_code == 200
+    doc = pymupdf.open(stream=r.content, filetype="pdf")
+    assert len(doc) >= 3 and "2027" in "".join(p.get_text() for p in doc)
 
 
 def test_catalogue_prices_come_from_prices_json(monkeypatch):
