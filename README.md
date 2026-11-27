@@ -99,9 +99,9 @@ Settings, all environment variables:
 | Variable | Default | |
 |---|---|---|
 | `WEB_REPORTS` | `G,A1,A2,A3,N,C3` | reports the site makes for free; every other catalogue report (`web/catalog.py`) is listed with its `prices.json` price and an Order button |
-| `ORDER_WHATSAPP` | (none) | WhatsApp number for orders (e.g. `9471…`): the Order button opens WhatsApp with the details filled in. Without it, the details are shown and copied for pasting on Facebook. Order details never reach the server |
+| `ORDER_WHATSAPP` | (none) | WhatsApp number for orders (e.g. `9471…`): the Order button opens WhatsApp with the details filled in. Without it, the details are shown and copied for pasting in Messenger. Order details never reach the server |
 | `BRAND_CONTACT` | the Jyothisha Insight Facebook page | contact line printed at the bottom of each PDF (`""` hides it) |
-| `ORDER_URL` | the same page | "order a personal reading" button under the form (http/https only; `""` hides it) |
+| `ORDER_URL` | `https://m.me/JyothishaInsight` | where the order buttons go: a Messenger chat with the Page, so orders land in its inbox (http/https only; `""` hides the "personal reading" button) |
 | `REPORTS_PER_HOUR_PER_IP` | 10 | per visitor, sliding one-hour window (HTTP 429 + `Retry-After`) |
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
 | `SEARCHES_PER_HOUR_PER_IP` | 600 | town searches per visitor (the place box asks as you type) |

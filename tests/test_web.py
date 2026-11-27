@@ -215,7 +215,7 @@ def test_defaults_offer_all_reports_with_facebook_contact(monkeypatch):
     try:
         assert list(fresh.REPORTS) == ["G", "A1", "A2", "A3", "N", "C3"]   # owner's free set + samples
         assert "facebook.com/JyothishaInsight" in fresh.BRAND_CONTACT
-        assert fresh.ORDER_URL == fresh.FACEBOOK_PAGE == "https://www.facebook.com/JyothishaInsight"
+        assert fresh.ORDER_URL == fresh.MESSENGER == "https://m.me/JyothishaInsight"   # opens the Page's chat
     finally:
         importlib.reload(web)
 
@@ -542,13 +542,13 @@ def test_failed_report_does_not_log_birth_data(client, monkeypatch, capsys):
 
 
 def test_order_button_shown_only_for_web_urls(client, monkeypatch):
-    assert "Order on Facebook" not in client.get("/").text
+    assert "Order on Messenger" not in client.get("/").text
     monkeypatch.setattr(web, "ORDER_URL", "https://facebook.com/example?a=1&b=2")
     page = client.get("/").text
-    assert "Order on Facebook" in page
+    assert "Order on Messenger" in page
     assert 'href="https://facebook.com/example?a=1&amp;b=2"' in page
     monkeypatch.setattr(web, "ORDER_URL", "javascript:alert(1)")
-    assert "Order on Facebook" not in client.get("/").text
+    assert "Order on Messenger" not in client.get("/").text
 
 
 # ---------------------------------------------------------------- limits

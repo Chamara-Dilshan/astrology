@@ -45,7 +45,10 @@ REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", "G,A1,A2,A3,
 # The Page's username (set 2026-11-28); facebook.com/profile.php?id=61594028591573 is the same Page.
 FACEBOOK_PAGE = "https://www.facebook.com/JyothishaInsight"
 BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "Facebook: Jyothisha Insight · facebook.com/JyothishaInsight").strip()
-ORDER_URL = os.environ.get("ORDER_URL", FACEBOOK_PAGE).strip()
+# Order buttons open a Messenger chat with the Page (owner's choice, 2026-11-28): the customer only
+# pastes the order and sends it, and it lands in the Page inbox
+MESSENGER = "https://m.me/JyothishaInsight"
+ORDER_URL = os.environ.get("ORDER_URL", MESSENGER).strip()
 # Optional WhatsApp number (international digits, e.g. 9471xxxxxxx) for orders: the order button then
 # opens WhatsApp with the details filled in. Without it, the details are copied for pasting on Facebook.
 ORDER_WHATSAPP = re.sub(r"\D", "", os.environ.get("ORDER_WHATSAPP", ""))
@@ -279,7 +282,7 @@ def _index_html():
         order = ('<div class="order"><p>ජ්‍යොතිෂවේදියාගේ සටහන් සහිත පුද්ගලික වාර්තාවක් අවශ්‍යද?<br>'
                  '<span class="hint">Want a personal reading with the astrologer\'s own notes?</span></p>'
                  f'<a class="orderbtn" href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">'
-                 'Facebook හරහා ඇණවුම් කරන්න · Order on Facebook</a></div>')
+                 'Messenger හරහා ඇණවුම් කරන්න · Order on Messenger</a></div>')
     opt = lambda pairs: "".join(f'<option value="{html.escape(str(k))}">{html.escape(v)}</option>' for k, v in pairs)
     return PAGE.replace("{{REPORT_OPTIONS}}", _report_options(entries)) \
                .replace("{{TOPIC_OPTIONS}}", opt((t, jr.PRASHNA_TOPIC_SI[t]) for t in catalog.PRASHNA_TOPICS)) \

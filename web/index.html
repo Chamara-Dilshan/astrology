@@ -366,12 +366,12 @@
     </div>
 
     <div id="orderbox" class="orderbox" hidden>
-      <p><b>ඇණවුම් විස්තර සූදානම්.</b> පහත පණිවිඩය copy කර අපගේ Facebook පිටුවට message කරන්න.<br>
-        <span class="hint">Your order details are ready: copy this message and send it to our Facebook page.</span></p>
+      <p><b>ඇණවුම් විස්තර සූදානම්.</b> පහත පණිවිඩය copy කර, Messenger විවෘත කර අපට යවන්න.<br>
+        <span class="hint">Your order details are ready: copy this message, open Messenger and send it to us.</span></p>
       <textarea id="ordermsg" rows="9" readonly></textarea>
       <div class="row">
         <button type="button" id="copybtn" class="secondary">Copy කරන්න · Copy</button>
-        <a id="orderlink" class="orderbtn" target="_blank" rel="noopener">Facebook විවෘත කරන්න · Open Facebook</a>
+        <a id="orderlink" class="orderbtn" target="_blank" rel="noopener">Messenger විවෘත කරන්න · Open Messenger</a>
       </div>
     </div>
   </form>
@@ -648,7 +648,7 @@ async function copyOrder() {
   catch (_) { ordermsg.select(); return false; }
 }
 document.getElementById("copybtn").addEventListener("click", async () => {
-  status.className = ""; status.textContent = (await copyOrder()) ? "Copied — paste it in the Facebook message." : "Select the text above and copy it.";
+  status.className = ""; status.textContent = (await copyOrder()) ? "Copied — now open Messenger and paste it." : "Select the text above and copy it.";
 });
 document.getElementById("orderlink").href = ORDER.url || "#";
 
