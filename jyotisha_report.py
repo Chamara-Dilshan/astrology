@@ -13,6 +13,7 @@ Requires: weasyprint, pymupdf (for --qa), fonts/ next to this script: NotoSansSi
 All calculations come from jyotisha_calc.py (Lahiri, whole-sign, mean nodes, Swiss Ephemeris).
 """
 import argparse
+import base64
 import collections
 import html
 import json
@@ -30,6 +31,26 @@ BRAND = "Jyothisha Insight"
 BRAND_SI = "ජ්‍යොතිෂ ඉන්සයිට්"
 BRAND_TAGLINE = "පාරම්පරික ජ්‍යොතිෂය · නවීන නිරවද්‍යතාව"
 BRAND_CONTACT = ""   # e.g. "facebook.com/JyothishaInsight · 07X XXX XXXX"
+LOGO_MAROON, LOGO_GOLD = "#6b1010", "#c9a24d"
+
+
+def logo_svg(rounded=True, background=True, stroke=20):
+    """The Jyothisha Insight mark, 512x512: the South Indian chart frame (the 12 houses around an empty
+    centre, as on every report) with the Sun in the middle. Chosen by the owner on 2026-11-28; the PDF
+    covers, the site's icons and the Facebook images (tools/brand_assets.py) are all drawn from this.
+    rounded: app-icon corners (off for Facebook, which crops to a circle)."""
+    bg = f'<rect width="512" height="512" rx="{104 if rounded else 0}" fill="{LOGO_MAROON}"/>' if background else ""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{bg}'
+            f'<g fill="none" stroke="{LOGO_GOLD}" stroke-width="{stroke}" stroke-linecap="square">'
+            '<rect x="76" y="76" width="360" height="360"/><rect x="166" y="166" width="180" height="180"/>'
+            '<path d="M166 76V166M256 76V166M346 76V166M166 346V436M256 346V436M346 346V436'
+            'M76 166H166M76 256H166M76 346H166M346 166H436M346 256H436M346 346H436"/></g>'
+            f'<circle cx="256" cy="256" r="34" fill="{LOGO_GOLD}"/></svg>')
+
+
+_LOGO_URI = "data:image/svg+xml;base64," + base64.b64encode(logo_svg().encode()).decode()
+LOGO_IMG = f'<img class="logo" alt="" src="{_LOGO_URI}">'                 # report covers
+LOGO_IMG_SMALL = f'<img class="logo small" alt="" src="{_LOGO_URI}">'     # the one-page G summary
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -409,6 +430,8 @@ tr:nth-child(even) td { background: #faf6ee; }
 ul { margin: 4pt 0 6pt 16pt; padding: 0; }
 li { margin: 2pt 0; }
 .disc { font-size: 8.8pt; color: #4a4040; }
+.logo { display: block; width: 17mm; height: 17mm; margin: 0 auto 7pt auto; }
+.logo.small { width: 11mm; height: 11mm; margin-bottom: 4pt; }
 .brandmark { font-family: "Noto Sans", sans-serif; font-size: 15pt; letter-spacing: 2.5px; color: #6b1010; font-weight: 700; text-transform: uppercase; }
 .brandline { width: 46mm; height: 2px; background: #c9a24d; margin: 7pt auto 5pt auto; }
 .brandtag { font-size: 9.5pt; color: #8a7f7f; letter-spacing: .5px; }
@@ -559,7 +582,7 @@ def build_a1(d, a, tr, changes, notes, now_local):
                   ("වාර්තා දිනය", now_local.strftime("%Y-%m-%d"))]
 
     H = []
-    H.append(f"""<div class="cover"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H.append(f"""<div class="cover">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:20pt">ජන්ම කේන්දර වාර්තාව</h1><div class="sub">කේන්දර සාර — මූලික විග්‍රහය (A1)</div>
       <div class="name">{esc(a.name)}</div>
@@ -1084,7 +1107,7 @@ def build_g(d, a, now_local):
                 if datetime.fromisoformat(s["start"]) <= now_utc < datetime.fromisoformat(s["end"]):
                     ad = s
     nak_si = NAK_SI[jc.NAKSHATRAS.index(moon["nakshatra"])]
-    H = [f'''<div style="text-align:center"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div style="text-align:center">{LOGO_IMG_SMALL}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:14pt; font-size:17pt">ඔබේ කේන්දරයේ මූලික තොරතුරු</h1>
       <div class="muted">{esc(a.name)} · {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div></div>''']
@@ -1146,7 +1169,7 @@ def build_g_en(d, a, now_local):
     nama = jc.nama_nakshatra(moon["lon"])
     pch = pch_en(d["panchanga"])
     span = lambda x: f" ({fmt_date(x['start'], a.tz)} – {fmt_date(x['end'], a.tz)})"  # noqa: E731
-    H = [f'''<div style="text-align:center"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div style="text-align:center">{LOGO_IMG_SMALL}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE_EN)}</div>
       <h1 style="margin-top:14pt; font-size:17pt">Your Birth Chart at a Glance</h1>
       <div class="muted">{esc(a.name)} · {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div></div>''']
@@ -1189,7 +1212,7 @@ def build_c1(d, a, notes, now_local, year):
     natal = d["planets"]
     nls = d["lagna"]["sign_idx"]
     vsh = v["varshesha"]
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">වාර්ෂික ඵල වාර්තාව</h1><div class="sub">වර්ෂ ඵල — තාජක ක්‍රමය (C1) · {year}–{year + 1}</div>
       <div class="name">{esc(a.name)}</div>
@@ -1289,7 +1312,7 @@ def build_d1(d, a, notes, now_local):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c])
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">පොරොන්දම් වාර්තාව</h1><div class="sub">අෂ්ටකූට ගැලපීම (D1)</div>
       <div class="name">{esc(a.name)} &nbsp;·&nbsp; {esc(a.match_name or "සහකරු")}</div>
@@ -1446,7 +1469,7 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">ප්‍රශ්න වාර්තාව</h1><div class="sub">ප්‍රශ්න ජ්‍යොතිෂය (P1) — තාජක සහ ෂට්පංචාශිකා</div>
       <div class="name" style="font-size:14pt">{esc(a.question or a.name)}</div>
@@ -2089,7 +2112,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">ජන්ම කේන්දර වාර්තාව</h1><div class="sub">{title}</div>
       <div class="name">{esc(a.name)}</div>
@@ -2414,7 +2437,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">{spec["title"]}</h1><div class="sub">{spec["sub"]}</div>
       <div class="name">{esc(a.name)}</div>
@@ -2698,7 +2721,7 @@ def build_c3(d, a, notes, now_local, tr):
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
     status = (f"දැනට <b>{cur_sp[2]}</b> කාලය තුළ ({cur_sp[0].astimezone(ZoneInfo(tz)).strftime('%Y-%m')} – {cur_sp[1].astimezone(ZoneInfo(tz)).strftime('%Y-%m')})"
               if cur_sp else (f"දැනට සඩේ සති හෝ ධයියා නැත. ඊළඟ කාලය <b>{nxt[2]}</b> — {nxt[0].astimezone(ZoneInfo(tz)).strftime('%Y-%m')} සිට" if nxt else "දැනට සඩේ සති හෝ ධයියා නැත."))
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">සඩේ සති වාර්තාව</h1><div class="sub">ශනි ගෝචරය සහ ධයියා කාල (C3)</div>
       <div class="name">{esc(a.name)}</div>
@@ -2780,7 +2803,7 @@ def build_c4(d, a, notes, now_local, tr):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c])
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">දශා සන්ධි වාර්තාව</h1><div class="sub">මහා දශා මාරුව (C4)</div>
       <div class="name">{esc(a.name)}</div>
@@ -2849,7 +2872,7 @@ def build_c6(d, a, notes, now_local, year, month):
     for c, sgn in m["planets"].items():
         labels.setdefault(inv[sgn], []).append(PLANET_SI[c])
     P, ls = d["planets"], d["lagna"]["sign_idx"]
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">මාස ඵල වාර්තාව</h1><div class="sub">තාජක මාසික කේන්දරය (C6) · {year} වර්ෂයේ {month} වන මාසය</div>
       <div class="name">{esc(a.name)}</div>
@@ -2931,7 +2954,7 @@ def build_d2(dA, dB, a, notes, now_local):
             lab.setdefault(inv[v[c]], []).append(PLANET_SI[c])
         return south_indian_html_si(lab, title, size)
 
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">සම්පූර්ණ පොරොන්දම් වාර්තාව</h1><div class="sub">අෂ්ටකූට + කේන්දර දෙකේ සංයෝජන විග්‍රහය (D2)</div>
       <div class="name">{esc(nameA)} &nbsp;·&nbsp; {esc(nameB)}</div>
@@ -3194,7 +3217,7 @@ def build_e1(d, a, notes, now_local, events, scan):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c])
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">ජන්ම කාල ශුද්ධි වාර්තාව</h1><div class="sub">උපන් වේලාව නිවැරදි කිරීම (E1)</div>
       <div class="name">{esc(a.name)}</div>
@@ -3334,7 +3357,7 @@ def muhurta_chart_html(a, when, best):
 def build_m1(a, notes, now_local, task, out_text, natal=None):
     rows, best, note = parse_muhurta_output(out_text)
     tsi = MUHURTA_TASK_SI.get(task, task)
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">මුහූර්ත වාර්තාව</h1><div class="sub">සුබ මොහොත් (M1) — {esc(tsi)}</div>
       <div class="name" style="font-size:15pt">{esc(a.name)}</div>
@@ -3389,7 +3412,7 @@ def build_n(d, a, notes, now_local):
     labels = {ls: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c])
-    H = [f'''<div class="cover" style="padding-top:14mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:14mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:16pt">නාම නක්ෂත්‍ර වාර්තාව</h1><div class="sub">නම් තැබීම සඳහා අකුරු (N)</div>
       <div class="name">{esc(a.name)}</div>
@@ -3427,7 +3450,7 @@ def build_d3(dA, partners, a, notes, now_local):
     labels = {lsA: ["ලග්න"]}
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(PA[c]["sign_idx"], []).append(PLANET_SI[c])
-    H = [f'''<div class="cover" style="padding-top:12mm"><div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
+    H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
       <h1 style="margin-top:18pt">පොරොන්දම් සංසන්දනය</h1><div class="sub">යෝජනා කිහිපයක් එකට (D3)</div>
       <div class="name">{esc(a.name)}</div>

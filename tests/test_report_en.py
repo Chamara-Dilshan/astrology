@@ -27,6 +27,7 @@ def test_english_g_has_the_same_chart_as_the_sinhala_one(tmp_path):
     r_si, si = render(tmp_path)
     assert r_en.returncode == 0 and r_si.returncode == 0, r_en.stderr[-400:] + r_si.stderr[-400:]
     assert '<html lang="en">' in en and "Your Birth Chart at a Glance" in en
+    assert 'class="logo small"' in en and 'class="logo small"' in si   # the logo above the brand name
     assert 'content: "Page " counter(page)' in en
     # Karka lagna 04°19′, Moon in Dhanu, Uttara Ashadha pada 1, Rahu maha dasha: in both languages
     assert "Karka (Cancer) 04°19′" in en and "කටක (04°19′)" in si

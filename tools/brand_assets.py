@@ -18,19 +18,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-MAROON, GOLD, GOLD_SOFT, CREAM = "#6b1010", "#c9a24d", "#8c5a2b", "#fbf7ea"
+from jyotisha_report import LOGO_GOLD as GOLD, LOGO_MAROON as MAROON  # noqa: E402
+CREAM = "#fbf7ea"
 SITE = "jyotisha-insight.onrender.com"
 
 
-def mark_svg(rounded=True, background=True, stroke=20):
-    """The logo mark, 512x512. rounded: app-icon corners (off for Facebook, which crops to a circle)."""
-    bg = (f'<rect width="512" height="512" rx="{104 if rounded else 0}" fill="{MAROON}"/>' if background else "")
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{bg}'
-            f'<g fill="none" stroke="{GOLD}" stroke-width="{stroke}" stroke-linecap="square">'
-            '<rect x="76" y="76" width="360" height="360"/><rect x="166" y="166" width="180" height="180"/>'
-            '<path d="M166 76V166M256 76V166M346 76V166M166 346V436M256 346V436M346 346V436'
-            'M76 166H166M76 256H166M76 346H166M346 166H436M346 256H436M346 346H436"/></g>'
-            f'<circle cx="256" cy="256" r="34" fill="{GOLD}"/></svg>')
+from jyotisha_report import logo_svg as mark_svg  # noqa: E402  (the one drawing of the mark)
 
 
 def small_mark_svg():
