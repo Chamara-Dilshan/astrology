@@ -98,8 +98,17 @@ def test_every_page_has_the_logo_and_the_home_page_a_share_preview(client):
         page = client.get(path).text
         assert 'rel="icon" href="/favicon.svg"' in page and 'rel="apple-touch-icon"' in page, path
     home = client.get("/").text
-    # absolute, as Facebook needs; ?v= changes with the picture so Facebook and WhatsApp fetch the new one
-    assert f'property="og:image" content="{web.SITE_URL}/og-image.png?v=' in home
+    # absolute, as Facebook needs; the file is renamed for each new picture (no ?query: WhatsApp)
+    assert f'property="og:image" content="{web.SITE_URL}/og-image-2.png"' in home
+    assert 'property="og:image:type" content="image/png"' in home
+
+
+@pytest.mark.parametrize("path", ["/", "/og-image-2.png", "/favicon.ico", "/healthz"])
+def test_head_is_answered_like_get(client, path):
+    """Link-preview fetchers may ask HEAD first; it was refused with 405."""
+    get, head = client.get(path), client.head(path)
+    assert head.status_code == 200 == get.status_code and head.content == b""
+    assert head.headers["content-type"] == get.headers["content-type"]
     assert web.SITE_URL.startswith("https://")
 
 

@@ -216,6 +216,29 @@ class BodyLimit:
 app.add_middleware(BodyLimit)
 
 
+class HeadAsGet:
+    """Answer HEAD like GET, without the body. Link-preview fetchers (WhatsApp, Facebook and others)
+    may ask HEAD first to see what a page or image is; FastAPI's GET routes answered 405."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] != "HEAD":
+            return await self.app(scope, receive, send)
+
+        async def headers_only(msg):
+            if msg["type"] == "http.response.body":
+                if msg.get("more_body"):
+                    return
+                msg = {"type": "http.response.body", "body": b"", "more_body": False}
+            await send(msg)
+        await self.app({**scope, "method": "GET"}, receive, headers_only)
+
+
+app.add_middleware(HeadAsGet)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return HTMLResponse(_index_html(), headers={"Content-Security-Policy": INDEX_CSP})
@@ -442,7 +465,7 @@ async def places(request: Request, q: str = Form("")):
 # picture Facebook and WhatsApp show when the site's link is shared (needs an absolute URL: SITE_URL).
 SITE_URL = os.environ.get("SITE_URL", "https://jyotisha-insight.onrender.com").rstrip("/")
 STATIC_FILES = {"/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
-                "/apple-touch-icon.png": "image/png", "/og-image.png": "image/png"}
+                "/apple-touch-icon.png": "image/png", "/og-image-2.png": "image/png"}
 
 
 def _static_route(path, media_type):

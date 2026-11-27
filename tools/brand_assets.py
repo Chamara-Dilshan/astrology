@@ -6,7 +6,7 @@ with the Sun in the middle, in the reports' maroon and gold. Chosen by the owner
     python tools/brand_assets.py [out_dir]
 
 Writes into web/static/ (served by the site) and brand/ (to upload to Facebook):
-  web/static/favicon.svg, favicon.ico (16/32/48), apple-touch-icon.png (180), og-image.png (1200x630)
+  web/static/favicon.svg, favicon.ico (16/32/48), apple-touch-icon.png (180), og-image-2.png (1200x630)
   brand/logo.svg, logo_1024.png          the mark on its own
   brand/fb_profile_1080.png              Facebook profile picture (Facebook shows it as a circle)
   brand/fb_cover_1640x624.png            Facebook Page cover photo
@@ -135,7 +135,8 @@ def main():
         os.path.join(web, "favicon.ico"): favicon_ico(),
         # iOS rounds the corners itself, so the home-screen icon is square
         os.path.join(web, "apple-touch-icon.png"): svg_png(mark_svg(rounded=False), 180),
-        os.path.join(web, "og-image.png"): og_image(),
+        # a new name for each new picture: WhatsApp and Facebook keep old previews per image URL
+        os.path.join(web, "og-image-2.png"): og_image(),
         os.path.join(brand, "logo.svg"): mark_svg().encode(),
         os.path.join(brand, "logo_1024.png"): svg_png(mark_svg(), 1024, transparent=True),
         os.path.join(brand, "fb_profile_1080.png"): fb_profile(),
