@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
+import jyotisha_report as jr   # only for its Sinhala labels (topics, houses, muhurta purposes)
 from web import catalog
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -169,7 +170,12 @@ def _index_html():
                  '<span class="hint">Want a personal reading with the astrologer\'s own notes?</span></p>'
                  f'<a class="orderbtn" href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">'
                  'Facebook හරහා ඇණවුම් කරන්න · Order on Facebook</a></div>')
+    opt = lambda pairs: "".join(f'<option value="{html.escape(str(k))}">{html.escape(v)}</option>' for k, v in pairs)
     return PAGE.replace("{{REPORT_OPTIONS}}", _report_options(entries)) \
+               .replace("{{TOPIC_OPTIONS}}", opt((t, jr.PRASHNA_TOPIC_SI[t]) for t in catalog.PRASHNA_TOPICS)) \
+               .replace("{{HOUSE_OPTIONS}}", opt((h, f"{h} – {jr.HOUSE_SI[h]}") for h in range(1, 13))) \
+               .replace("{{TASK_OPTIONS}}", opt(jr.MUHURTA_TASK_SI.items())) \
+               .replace("{{HOURS_OPTIONS}}", opt(catalog.MUHURTA_HOURS.items())) \
                .replace("{{ORDER_LINK}}", order) \
                .replace("{{PLACES_JSON}}", _script_json(PLACES)) \
                .replace("{{CATALOG_JSON}}", _script_json(entries)) \
@@ -183,14 +189,14 @@ def healthz():
     return {"ok": True, "version": os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]}
 
 
-def _clean_text(value, field, required):
-    """Collapse whitespace; 1-60 chars (0 allowed if optional); no control chars and no < >.
+def _clean_text(value, field, required, max_len=60):
+    """Collapse whitespace; 1-max_len chars (0 allowed if optional); no control chars and no < >.
     Names and places never need markup characters, and refusing them keeps HTML out of the
     report even if some template forgot to escape (the report also escapes, and its PDF
     renderer can't load files or URLs; see jyotisha_report.safe_url_fetcher)."""
     value = " ".join(value.split())
-    if not (1 if required else 0) <= len(value) <= 60:
-        raise HTTPException(400, f"{field} must be {'1' if required else '0'}–60 characters")
+    if not (1 if required else 0) <= len(value) <= max_len:
+        raise HTTPException(400, f"{field} must be {'1' if required else '0'}–{max_len} characters")
     if any(ord(c) < 32 or c in "<>" for c in value):
         raise HTTPException(400, f"{field} contains characters that aren't allowed")
     return value
@@ -268,11 +274,41 @@ def _partners(p_name, p_date, p_time, p_place, p_lat, p_lon, p_tz):
     return rows
 
 
-def _extra_args(report, birth_date, year, month, role="boy", partners=()):
+def _iso_date(value, field):
+    try:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value or ""):
+            raise ValueError
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(400, f"{field} must be YYYY-MM-DD")
+
+
+def _extra_args(report, birth_date, year, month, role="boy", partners=(), question="", topic="general",
+                matter=None, task="general", m_from="", m_to="", m_hours="6-21"):
     """Checked arguments for the report's extra input (see catalog.REPORTS), plus any files the
     report needs written into its temporary folder: ([args], {filename: text})."""
     needs = catalog.REPORTS[report][3]
     args, files = [], {}
+    if needs == "prashna":
+        args.append(f"--question={_clean_text(question, 'Question', required=True, max_len=150)}")
+        if topic not in catalog.PRASHNA_TOPICS:
+            raise HTTPException(400, "Unknown question topic")
+        args.append(f"--shat-topic={topic}")
+        if matter is not None:
+            if not 1 <= matter <= 12:
+                raise HTTPException(400, "House of the matter must be 1–12")
+            args.append(f"--matter={matter}")
+    if needs == "muhurta":
+        if task not in jr.MUHURTA_TASK_SI:
+            raise HTTPException(400, "Unknown purpose")
+        start, end = _iso_date(m_from, "Start date"), _iso_date(m_to, "End date")
+        if not 0 <= (end - start).days < catalog.MUHURTA_MAX_DAYS:
+            raise HTTPException(400, f"The date range must run forwards and be under {catalog.MUHURTA_MAX_DAYS} days")
+        if not (1800 <= start.year and end.year <= 2399):
+            raise HTTPException(400, "Dates must be between 1800 and 2399")
+        if m_hours not in catalog.MUHURTA_HOURS:
+            raise HTTPException(400, "Unknown hours choice")
+        args += [f"--task={task}", f"--muhurta-from={start}", f"--muhurta-to={end}", f"--muhurta-hours={m_hours}"]
     if needs in ("partner", "partners"):
         if role not in ("boy", "girl"):
             raise HTTPException(400, "Say whether the first person is the groom or the bride")
@@ -308,7 +344,9 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                  year: int | None = Form(None), month: int | None = Form(None), role: str = Form("boy"),
                  p_name: list[str] = Form([]), p_date: list[str] = Form([]), p_time: list[str] = Form([]),
                  p_place: list[str] = Form([]), p_lat: list[str] = Form([]), p_lon: list[str] = Form([]),
-                 p_tz: list[str] = Form([])):
+                 p_tz: list[str] = Form([]), question: str = Form(""), topic: str = Form("general"),
+                 matter: int | None = Form(None), task: str = Form("general"), m_from: str = Form(""),
+                 m_to: str = Form(""), m_hours: str = Form("6-21")):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
     place = _clean_text(place, "Place", required=False)
     partners = ()
@@ -320,7 +358,8 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
             f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
             f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
-    extra, files = _extra_args(report, birth_date, year, month, role, partners)
+    extra, files = _extra_args(report, birth_date, year, month, role, partners, question, topic, matter,
+                               task, m_from, m_to, m_hours)
     args += extra
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")

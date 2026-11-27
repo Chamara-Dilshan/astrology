@@ -16,6 +16,7 @@ GROUPS = {
     "timing": "කාල විග්‍රහ · Timing",
     "year": "වාර්ෂික / මාසික · Year and month ahead",
     "match": "පොරොන්දම් · Marriage matching",
+    "ask": "ප්‍රශ්න සහ මුහූර්ත · Questions and auspicious times",
 }
 
 # code: (group, Sinhala title, English line, extra input needed)
@@ -42,7 +43,16 @@ REPORTS = {
     "D1": ("match", "පොරොන්දම් වාර්තාව", "Marriage matching: Ashtakoota score out of 36", "partner"),
     "D2": ("match", "සම්පූර්ණ පොරොන්දම් වාර්තාව", "Full matching: Ashtakoota plus both charts compared", "partner"),
     "D3": ("match", "පොරොන්දම් සංසන්දනය", "Compare 2–5 marriage proposals side by side", "partners"),
+    "P1": ("ask", "ප්‍රශ්න වාර්තාව", "Prashna: an answer from the chart of the moment you ask", "prashna"),
+    "P2": ("ask", "ප්‍රශ්න වාර්තාව – ෂට්පංචාශිකා", "Detailed prashna with the Shatpanchasika rules", "prashna"),
+    "M1": ("ask", "මුහූර්ත වාර්තාව", "Auspicious times for a purpose within a date range", "muhurta"),
 }
+
+# Choices for the prashna and muhurta inputs, with the report's own Sinhala labels
+# (filled in from jyotisha_report by the web app, so the two never disagree).
+PRASHNA_TOPICS = ["general", "travel", "abroad", "lost", "dispute", "health", "marriage", "subject", "rain"]
+MUHURTA_HOURS = {"6-21": "6:00 – 21:00", "0-24": "දවස පුරා · all day"}
+MUHURTA_MAX_DAYS = 62
 
 
 def prices():

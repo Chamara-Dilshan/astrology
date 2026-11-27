@@ -54,6 +54,12 @@
               text-decoration: none; }
   .orderbtn:hover, .orderbtn:focus-visible { background: var(--brand); color: var(--brand-ink); }
   .sec { border: 0; margin: 0; padding: 0; min-width: 0; }
+  /* prashna mode (form.ask): birth wording swaps for "when/where the question was asked" */
+  .lbl-ask { display: none; }
+  form.ask .lbl-ask { display: inline; }
+  form:not(.ask) .ask-only, form.ask .lbl-birth, form.ask .birth-only { display: none !important; }
+  textarea.q { width: 100%; font-family: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+               border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; resize: vertical; }
   .partner { margin-top: 20px; padding: 4px 14px 14px; border: 1px solid var(--line); border-radius: 10px; }
   .ptitle { margin: 12px 0 0; font-size: 16px; color: var(--brand); }
   .partner .removep, #addpartner { margin-top: 14px; min-height: 44px; font-size: 15px; }
@@ -93,18 +99,20 @@
 
     <div class="row">
       <div>
-        <label for="birth_date">උපන් දිනය <span class="hint">· Date</span></label>
+        <label for="birth_date"><span class="lbl-birth">උපන් දිනය <span class="hint">· Date</span></span><span class="lbl-ask">ප්‍රශ්නය ඇසූ දිනය <span class="hint">· Date asked</span></span></label>
         <input id="birth_date" name="birth_date" type="date" min="1800-01-01" max="2399-12-31" required>
       </div>
       <div>
-        <label for="birth_time">උපන් වේලාව <span class="hint">· Time</span></label>
+        <label for="birth_time"><span class="lbl-birth">උපන් වේලාව <span class="hint">· Time</span></span><span class="lbl-ask">ඇසූ වේලාව <span class="hint">· Time asked</span></span></label>
         <input id="birth_time" name="birth_time" type="time" required>
       </div>
     </div>
-    <label class="check"><input type="checkbox" id="approx"> වේලාව නිශ්චිත නැත · time is approximate</label>
+    <label class="check birth-only"><input type="checkbox" id="approx"> වේලාව නිශ්චිත නැත · time is approximate</label>
+    <p class="hint small ask-only">ප්‍රශ්න ජ්‍යොතිෂයේදී කේන්දරය සාදන්නේ ප්‍රශ්නය ඇසූ මොහොතටයි; දැන් වේලාව ස්වයංක්‍රීයව ඇතුළත් වේ.<br>
+      A prashna chart is cast for the moment the question is asked; the current time is filled in.</p>
     <input type="hidden" name="time_exact" id="time_exact" value="yes">
 
-    <label for="placesel">උපන් ස්ථානය <span class="hint">· Place</span></label>
+    <label for="placesel"><span class="lbl-birth">උපන් ස්ථානය <span class="hint">· Place</span></span><span class="lbl-ask">ප්‍රශ්නය ඇසූ ස්ථානය <span class="hint">· Where asked</span></span></label>
     <select id="placesel"></select>
     <input type="hidden" name="place" id="place">
     <div id="otherbox" hidden>
@@ -150,6 +158,37 @@
       <div id="partners"></div>
       <button type="button" id="addpartner" class="secondary" data-needs="partners">+ තවත් යෝජනාවක් · Add a proposal</button>
     </fieldset>
+    <fieldset id="sec-prashna" class="sec" data-needs="prashna" hidden>
+      <label for="question">ඔබේ ප්‍රශ්නය <span class="hint">· Your question</span></label>
+      <textarea id="question" name="question" class="q" rows="3" maxlength="150"
+                placeholder="උදා: මට මේ රැකියාව ලැබේද? · e.g. Will I get this job?"></textarea>
+      <label for="topic">ප්‍රශ්නයේ වර්ගය <span class="hint">· Kind of question</span></label>
+      <select id="topic" name="topic">{{TOPIC_OPTIONS}}</select>
+      <label for="matter">අදාළ භාවය <span class="hint">· House of the matter (optional)</span></label>
+      <select id="matter" name="matter" data-optional>
+        <option value="">— නොදනිමි · not sure</option>{{HOUSE_OPTIONS}}
+      </select>
+    </fieldset>
+
+    <fieldset id="sec-muhurta" class="sec" data-needs="muhurta" hidden>
+      <label for="task">කාර්යය <span class="hint">· Purpose</span></label>
+      <select id="task" name="task">{{TASK_OPTIONS}}</select>
+      <div class="row">
+        <div>
+          <label for="m_from">සිට <span class="hint">· From</span></label>
+          <input id="m_from" name="m_from" type="date">
+        </div>
+        <div>
+          <label for="m_to">දක්වා <span class="hint">· To</span></label>
+          <input id="m_to" name="m_to" type="date">
+        </div>
+      </div>
+      <label for="m_hours">වේලාවන් <span class="hint">· Hours</span></label>
+      <select id="m_hours" name="m_hours">{{HOURS_OPTIONS}}</select>
+      <p class="hint small">දින 62කට අඩු කාල පරාසයක්. ඉහත උපන් විස්තර ඔබේ නැකතට ගැළපෙන කාල තේරීමට යොදා ගැනේ.<br>
+        A range under 62 days. Your birth details above are used to suit the times to your birth star.</p>
+    </fieldset>
+
     <template id="partner-tpl">
       <div class="partner">
         <h3 class="ptitle"></h3>
@@ -243,10 +282,34 @@ function showReport() {
   // show only the extra inputs this report needs; hidden ones are disabled so they aren't sent
   for (const el of document.querySelectorAll("[data-needs]")) el.hidden = !el.dataset.needs.split(" ").includes(c.needs);
   syncPartners();
-  for (const f of document.querySelectorAll("[data-needs] input, [data-needs] select")) {
+  setAskMode(c.needs === "prashna");
+  for (const f of document.querySelectorAll("[data-needs] input, [data-needs] select, [data-needs] textarea")) {
     const off = !!f.closest("[data-needs][hidden]");   // inside any hidden section
-    f.disabled = off; f.required = !off && f.type !== "hidden";
+    f.disabled = off; f.required = !off && f.type !== "hidden" && !f.hasAttribute("data-optional");
   }
+}
+
+// date and time now in the form's time zone (Sri Lanka by default), as YYYY-MM-DD and HH:MM
+function nowIn(tz, addDays = 0) {
+  const t = new Date(Date.now() + addDays * 86400000);
+  let p;
+  try { p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit",
+          day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(t).map(x => [x.type, x.value])); }
+  catch (_) { return nowIn(Intl.DateTimeFormat().resolvedOptions().timeZone, addDays); }
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+}
+// prashna: the chart is for the moment of asking, so date/time default to now; birth values come back after
+let savedBirth = null;
+function setAskMode(ask) {
+  const bd = document.getElementById("birth_date"), bt = document.getElementById("birth_time");
+  if (ask && !form.classList.contains("ask")) {
+    savedBirth = { date: bd.value, time: bt.value };
+    const n = nowIn(form.tz.value);
+    bd.value = n.date; bt.value = n.time;
+  } else if (!ask && form.classList.contains("ask") && savedBirth) {
+    bd.value = savedBirth.date; bt.value = savedBirth.time; savedBirth = null;
+  }
+  form.classList.toggle("ask", ask);
 }
 const yearIn = document.getElementById("year"), monthSel = document.getElementById("month");
 yearIn.value = new Date().getFullYear();
@@ -302,14 +365,29 @@ function orderMessage(c) {
     "Jyothisha Insight – ඇණවුම / Order",
     `වාර්තාව: ${c.code} – ${c.si}` + (c.price ? ` (${rs(c.price)})` : ""),
     `නම: ${document.getElementById("name").value.trim()}`,   // not form.name: that's the form's own name
-    `උපන් දිනය: ${form.birth_date.value}`,
-    `උපන් වේලාව: ${form.birth_time.value}` + (approx ? " (ආසන්න / approximate)" : ""),
-    `උපන් ස්ථානය: ${place.value || "-"} (${lat.value}, ${lon.value})`,
+    ...(form.classList.contains("ask") ? [
+      `ප්‍රශ්නය ඇසූ මොහොත: ${form.birth_date.value} ${form.birth_time.value}`,
+      `ප්‍රශ්නය ඇසූ ස්ථානය: ${place.value || "-"} (${lat.value}, ${lon.value})`,
+    ] : [
+      `උපන් දිනය: ${form.birth_date.value}`,
+      `උපන් වේලාව: ${form.birth_time.value}` + (approx ? " (ආසන්න / approximate)" : ""),
+      `උපන් ස්ථානය: ${place.value || "-"} (${lat.value}, ${lon.value})`,
+    ]),
     `Time zone: ${form.tz.value}`,
     ...(!yearIn.disabled ? [`වර්ෂය: ${yearIn.value}`] : []),
     ...(!monthSel.disabled ? [`මාසය: ${monthSel.value} (උපන්දිනයෙන් / from birthday)`] : []),
     ...partnerLines(),
+    ...sectionLines(),
   ].join("\n");
+}
+function sectionLines() {
+  const val = id => document.getElementById(id), text = id => val(id).selectedOptions[0]?.textContent || "";
+  if (!val("sec-prashna").hidden)
+    return [`ප්‍රශ්නය: ${val("question").value.trim()}`, `වර්ගය: ${text("topic")}`,
+            ...(val("matter").value ? [`භාවය: ${text("matter")}`] : [])];
+  if (!val("sec-muhurta").hidden)
+    return [`කාර්යය: ${text("task")}`, `කාල පරාසය: ${val("m_from").value} – ${val("m_to").value} (${text("m_hours")})`];
+  return [];
 }
 function partnerLines() {
   if (document.getElementById("sec-partner").hidden) return [];
@@ -371,6 +449,10 @@ form.addEventListener("submit", async e => {
     status.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 });
+{ // muhurta range defaults: the next 30 days
+  const a = nowIn(form.tz.value), b = nowIn(form.tz.value, 30);
+  document.getElementById("m_from").value = a.date; document.getElementById("m_to").value = b.date;
+}
 showReport();   // first render, after everything it uses is defined
 </script>
 </body>

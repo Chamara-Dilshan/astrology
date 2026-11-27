@@ -74,6 +74,20 @@ def test_index_has_form_places_and_source_link(client):
     assert "{{" not in r.text            # every template placeholder was filled
 
 
+def test_page_script_is_valid_javascript(client, tmp_path):
+    """A syntax error would silently disable the whole form, and nothing server-side would notice."""
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    script = re.search(r"<script>(.*?)</script>", client.get("/").text, re.S).group(1)
+    path = tmp_path / "page.js"
+    path.write_text(script, encoding="utf-8")
+    r = subprocess.run([node, "--check", str(path)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
+
 def test_healthz(client, monkeypatch):
     monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
     assert client.get("/healthz").json() == {"ok": True, "version": "dev"}
@@ -182,10 +196,11 @@ def test_catalogue_lists_reports_in_groups(client):
     for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N",
                  "C1", "C2", "C6"]:
         assert f'value="{code}"' in page
-    assert page.count("<optgroup") == 5
+    assert page.count("<optgroup") == 6
     needs = {e["code"]: e["needs"] for e in web._catalog() if e["needs"]}
     assert needs == {"C1": "year", "C2": "year", "C6": "year_month",
-                     "D1": "partner", "D2": "partner", "D3": "partners"}
+                     "D1": "partner", "D2": "partner", "D3": "partners",
+                     "P1": "prashna", "P2": "prashna", "M1": "muhurta"}
 
 
 # ---------------------------------------------------------------- phase 2: year / month
@@ -276,6 +291,68 @@ def test_partner_fields_are_ignored_for_other_reports(client, calls):
 def test_real_matching_reports_are_pdfs(client, report, proposals):
     pymupdf = pytest.importorskip("pymupdf")
     r = post(client, report=report, name="Test", **partner(proposals))
+    assert r.status_code == 200, r.text[:200]
+    assert len(pymupdf.open(stream=r.content, filetype="pdf")) >= 3
+
+
+# ---------------------------------------------------------------- phase 4: prashna and muhurta
+
+def test_page_has_prashna_and_muhurta_choices(client):
+    page = client.get("/").text
+    for value in ('value="lost"', 'value="abroad"', 'value="wedding"', 'value="griha_pravesha"', 'value="0-24"'):
+        assert value in page
+    assert "10 – රැකියාව" in page                          # houses with the report's own meanings
+
+
+@pytest.mark.parametrize("report", ["P1", "P2"])
+def test_prashna_passes_question_topic_and_matter(client, calls, report):
+    r = post(client, report=report, question="මට මේ රැකියාව ලැබේද?", topic="lost", matter="10")
+    assert r.status_code == 200
+    a = calls[0]
+    assert (arg(a, "--question"), arg(a, "--shat-topic"), arg(a, "--matter")) == ("මට මේ රැකියාව ලැබේද?", "lost", "10")
+
+
+def test_prashna_house_is_optional(client, calls):
+    assert post(client, report="P1", question="Will it rain?", topic="rain", matter="").status_code == 200
+    assert not any(a.startswith("--matter") for a in calls[0])
+
+
+def test_muhurta_passes_task_range_and_hours(client, calls):
+    r = post(client, report="M1", task="wedding", m_from="2027-01-01", m_to="2027-01-31", m_hours="0-24")
+    assert r.status_code == 200
+    a = calls[0]
+    assert (arg(a, "--task"), arg(a, "--muhurta-from"), arg(a, "--muhurta-to"), arg(a, "--muhurta-hours")) == \
+           ("wedding", "2027-01-01", "2027-01-31", "0-24")
+
+
+MUH = dict(report="M1", task="wedding", m_from="2027-01-01", m_to="2027-01-31", m_hours="6-21")
+
+
+@pytest.mark.parametrize("fields, message", [
+    (dict(report="P1", question=""), "Question must be 1–150 characters"),
+    (dict(report="P1", question="x" * 151), "Question must be 1–150 characters"),
+    (dict(report="P1", question="<script>"), "Question contains characters"),
+    (dict(report="P1", question="ok?", topic="astral"), "Unknown question topic"),
+    (dict(report="P1", question="ok?", matter="13"), "House of the matter must be 1–12"),
+    ({**MUH, "task": "heist"}, "Unknown purpose"),
+    ({**MUH, "m_from": "2027-02-01"}, "must run forwards"),
+    ({**MUH, "m_to": "2027-03-15"}, "under 62 days"),
+    ({**MUH, "m_from": "01/01/2027"}, "Start date must be YYYY-MM-DD"),
+    ({**MUH, "m_hours": "3-4"}, "Unknown hours choice"),
+])
+def test_prashna_and_muhurta_inputs_are_checked(client, calls, fields, message):
+    r = post(client, **fields)
+    assert r.status_code == 400 and message in r.json()["detail"]
+    assert calls == []
+
+
+@pytest.mark.parametrize("fields", [
+    dict(report="P1", question="මට මේ රැකියාව ලැබේද?", topic="general", matter="10"),
+    dict(report="M1", task="travel", m_from="2027-01-01", m_to="2027-01-20", m_hours="6-21"),
+])
+def test_real_prashna_and_muhurta_reports_are_pdfs(client, fields):
+    pymupdf = pytest.importorskip("pymupdf")
+    r = post(client, name="Test", **fields)
     assert r.status_code == 200, r.text[:200]
     assert len(pymupdf.open(stream=r.content, filetype="pdf")) >= 3
 
