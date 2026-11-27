@@ -15,6 +15,7 @@ GROUPS = {
     "life": "ජීවන ක්ෂේත්‍ර · Life areas",
     "timing": "කාල විග්‍රහ · Timing",
     "year": "වාර්ෂික / මාසික · Year and month ahead",
+    "match": "පොරොන්දම් · Marriage matching",
 }
 
 # code: (group, Sinhala title, English line, extra input needed)
@@ -38,6 +39,9 @@ REPORTS = {
     "C1": ("year", "වාර්ෂික ඵල වාර්තාව", "Year ahead from your birthday (Tajaka annual chart)", "year"),
     "C2": ("year", "වාර්ෂික ඵල සහ ගෝචර", "Year ahead with transits and a month-by-month calendar", "year"),
     "C6": ("year", "මාස ඵල වාර්තාව", "One month ahead (Tajaka monthly chart)", "year_month"),
+    "D1": ("match", "පොරොන්දම් වාර්තාව", "Marriage matching: Ashtakoota score out of 36", "partner"),
+    "D2": ("match", "සම්පූර්ණ පොරොන්දම් වාර්තාව", "Full matching: Ashtakoota plus both charts compared", "partner"),
+    "D3": ("match", "පොරොන්දම් සංසන්දනය", "Compare 2–5 marriage proposals side by side", "partners"),
 }
 
 

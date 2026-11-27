@@ -54,6 +54,9 @@
               text-decoration: none; }
   .orderbtn:hover, .orderbtn:focus-visible { background: var(--brand); color: var(--brand-ink); }
   .sec { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .partner { margin-top: 20px; padding: 4px 14px 14px; border: 1px solid var(--line); border-radius: 10px; }
+  .ptitle { margin: 12px 0 0; font-size: 16px; color: var(--brand); }
+  .partner .removep, #addpartner { margin-top: 14px; min-height: 44px; font-size: 15px; }
   .hint.small { display: block; margin: 8px 0 0; font-size: 13px; }
   .reportinfo { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
   .reportinfo .tag { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px;
@@ -137,6 +140,49 @@
         The year runs from your birthday in that year; month 1 is the first month after the birthday.</p>
     </fieldset>
 
+    <fieldset id="sec-partner" class="sec" data-needs="partner partners" hidden>
+      <label for="role">ඉහත විස්තර ඇත්තේ <span class="hint">· The person above is the</span></label>
+      <select id="role" name="role">
+        <option value="boy">මනාලයා · Groom</option>
+        <option value="girl">මනාලිය · Bride</option>
+      </select>
+      <p class="hint small">අෂ්ටකූට ලකුණු මනාලයා සහ මනාලිය අනුව වෙනස් වේ. · Ashtakoota scores depend on who is the groom.</p>
+      <div id="partners"></div>
+      <button type="button" id="addpartner" class="secondary" data-needs="partners">+ තවත් යෝජනාවක් · Add a proposal</button>
+    </fieldset>
+    <template id="partner-tpl">
+      <div class="partner">
+        <h3 class="ptitle"></h3>
+        <label data-for="name">නම <span class="hint">· Name</span></label>
+        <input data-f="name" name="p_name" maxlength="60" autocomplete="off" autocapitalize="words">
+        <div class="row">
+          <div>
+            <label data-for="date">උපන් දිනය <span class="hint">· Date</span></label>
+            <input data-f="date" name="p_date" type="date" min="1800-01-01" max="2399-12-31">
+          </div>
+          <div>
+            <label data-for="time">වේලාව <span class="hint">· Time</span></label>
+            <input data-f="time" name="p_time" type="time">
+          </div>
+        </div>
+        <label data-for="psel">උපන් ස්ථානය <span class="hint">· Place</span></label>
+        <select data-f="psel" class="psel"></select>
+        <input type="hidden" name="p_place">
+        <div class="row">
+          <div>
+            <label data-for="lat">Latitude</label>
+            <input data-f="lat" name="p_lat" type="number" inputmode="decimal" step="0.0001" min="-66" max="66">
+          </div>
+          <div>
+            <label data-for="lon">Longitude</label>
+            <input data-f="lon" name="p_lon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180">
+          </div>
+        </div>
+        <input type="hidden" name="p_tz" value="Asia/Colombo">
+        <button type="button" class="removep secondary">ඉවත් කරන්න · Remove</button>
+      </div>
+    </template>
+
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
 
@@ -196,9 +242,10 @@ function showReport() {
   orderbox.hidden = true; status.textContent = "";
   // show only the extra inputs this report needs; hidden ones are disabled so they aren't sent
   for (const el of document.querySelectorAll("[data-needs]")) el.hidden = !el.dataset.needs.split(" ").includes(c.needs);
+  syncPartners();
   for (const f of document.querySelectorAll("[data-needs] input, [data-needs] select")) {
     const off = !!f.closest("[data-needs][hidden]");   // inside any hidden section
-    f.disabled = off; f.required = !off;
+    f.disabled = off; f.required = !off && f.type !== "hidden";
   }
 }
 const yearIn = document.getElementById("year"), monthSel = document.getElementById("month");
@@ -208,7 +255,46 @@ document.getElementById("birth_date").addEventListener("change", e => {
   if (e.target.value) yearIn.min = e.target.value.slice(0, 4);
 });
 reportSel.addEventListener("change", showReport);
-showReport();
+
+// ---- partner blocks: 1 for D1/D2, 2–5 proposals for D3
+const partnersBox = document.getElementById("partners"), partnerTpl = document.getElementById("partner-tpl");
+const addBtn = document.getElementById("addpartner"), MAX_PROPOSALS = 5;
+let partnerSeq = 0;
+function addPartner() {
+  if (partnersBox.children.length >= MAX_PROPOSALS) return;
+  const el = partnerTpl.content.firstElementChild.cloneNode(true), id = "p" + (++partnerSeq) + "_";
+  el.querySelectorAll("[data-f]").forEach(f => { f.id = id + f.dataset.f; });
+  el.querySelectorAll("label[data-for]").forEach(l => { l.htmlFor = id + l.dataset.for; });
+  const ps = el.querySelector(".psel"), plat = el.querySelector("[name=p_lat]"),
+        plon = el.querySelector("[name=p_lon]"), pplace = el.querySelector("[name=p_place]");
+  for (const [n] of PLACES) ps.add(new Option(n, n));
+  ps.add(new Option("Other (enter coordinates)", ""));
+  const ppick = () => {
+    const p = PLACES.find(([n]) => n === ps.value);
+    pplace.value = p ? p[0] : "";
+    if (p) { plat.value = p[1]; plon.value = p[2]; } else { plat.value = ""; plon.value = ""; plat.focus(); }
+  };
+  ps.addEventListener("change", ppick); ps.value = "Colombo"; ppick();
+  el.querySelector(".removep").addEventListener("click", () => { el.remove(); renumberPartners(); });
+  partnersBox.append(el);
+  renumberPartners();
+}
+function renumberPartners() {
+  const multi = current().needs === "partners", blocks = [...partnersBox.children];
+  blocks.forEach((el, i) => {
+    el.querySelector(".ptitle").textContent = multi ? `යෝජනාව ${i + 1} · Proposal ${i + 1}` : "සහකරුගේ විස්තර · Partner";
+    el.querySelector(".removep").hidden = !multi || blocks.length <= 2;
+  });
+  addBtn.hidden = !multi || blocks.length >= MAX_PROPOSALS;
+}
+function syncPartners() {
+  const need = current().needs;
+  if (need === "partner") { while (partnersBox.children.length > 1) partnersBox.lastElementChild.remove(); }
+  const want = need === "partner" ? 1 : need === "partners" ? 2 : 0;
+  while (partnersBox.children.length < want) addPartner();
+  renumberPartners();
+}
+addBtn.addEventListener("click", () => { addPartner(); showReport(); });
 
 function orderMessage(c) {
   const approx = document.getElementById("time_exact").value === "approx";
@@ -222,7 +308,19 @@ function orderMessage(c) {
     `Time zone: ${form.tz.value}`,
     ...(!yearIn.disabled ? [`වර්ෂය: ${yearIn.value}`] : []),
     ...(!monthSel.disabled ? [`මාසය: ${monthSel.value} (උපන්දිනයෙන් / from birthday)`] : []),
+    ...partnerLines(),
   ].join("\n");
+}
+function partnerLines() {
+  if (document.getElementById("sec-partner").hidden) return [];
+  const role = document.getElementById("role").value;
+  const lines = [`ඉහත අය: ${role === "boy" ? "මනාලයා / Groom" : "මනාලිය / Bride"}`];
+  [...partnersBox.children].forEach((el, i) => {
+    const v = n => el.querySelector(`[name=${n}]`).value.trim();
+    lines.push(`${current().needs === "partners" ? "යෝජනාව " + (i + 1) : "සහකරු"}: ${v("p_name")}, ` +
+               `${v("p_date")} ${v("p_time")}, ${v("p_place") || "-"} (${v("p_lat")}, ${v("p_lon")})`);
+  });
+  return lines;
 }
 async function copyOrder() {
   try { await navigator.clipboard.writeText(ordermsg.value); return true; }
@@ -273,6 +371,7 @@ form.addEventListener("submit", async e => {
     status.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 });
+showReport();   // first render, after everything it uses is defined
 </script>
 </body>
 </html>

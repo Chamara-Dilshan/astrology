@@ -953,7 +953,9 @@ def build_d1(d, a, notes, now_local):
       <div class="name">{esc(a.name)} &nbsp;·&nbsp; {esc(a.match_name or "සහකරු")}</div>
       <div style="margin:16pt auto; font-size:15pt"><b>{total} / 36</b> — {verdict}</div>
       <div style="width:104mm; margin:0 auto">{south_indian_html_si(labels, "රාශි චක්‍රය (පළමු කේන්දරය)", 104)}</div></div>''']
-    H.append('<div class="pb"></div><h2>1. උපන් දත්ත</h2><table><tr><th></th><th>පළමු අය</th><th>දෙවන අය</th></tr>'
+    first, second = ("මනාලයා", "මනාලිය") if getattr(a, "role", "boy") == "boy" else ("මනාලිය", "මනාලයා")
+    H.append('<div class="pb"></div><h2>1. උපන් දත්ත</h2><table>'
+             f'<tr><th></th><th>පළමු අය ({first})</th><th>දෙවන අය ({second})</th></tr>'
              f'<tr><td><b>නම</b></td><td>{esc(a.name)}</td><td>{esc(a.match_name or "—")}</td></tr>'
              f'<tr><td><b>උපන් දිනය</b></td><td>{esc(a.date)}</td><td>{esc(pt["date"])}</td></tr>'
              f'<tr><td><b>වේලාව</b></td><td>{esc(a.time)}</td><td>{esc(pt["time"])}</td></tr>'
@@ -2891,6 +2893,8 @@ def main():
     ap.add_argument("--match-lat", type=float)
     ap.add_argument("--match-lon", type=float)
     ap.add_argument("--match-tz", default="Asia/Colombo")
+    ap.add_argument("--role", choices=["boy", "girl"], default="boy",
+                    help="D1/D2/D3: the main person is the groom (boy) or the bride (girl); Ashtakoota depends on it")
     # P1
     ap.add_argument("--events", help="E1: JSON file — [{\"type\":\"marriage\",\"date\":\"2022-03-04\",\"note\":\"...\"}, ...]; "
                                      "types: " + ", ".join(EVENT_TYPES))
@@ -2957,7 +2961,8 @@ def main():
         if not (a.match_date and a.match_time and a.match_lat is not None and a.match_lon is not None):
             sys.exit("D1 needs --match-date --match-time --match-lat --match-lon")
         extra += ["--match-name", a.match_name or "", "--match-date", a.match_date, "--match-time", a.match_time,
-                  "--match-lat", str(a.match_lat), "--match-lon", str(a.match_lon), "--match-tz", a.match_tz]
+                  "--match-lat", str(a.match_lat), "--match-lon", str(a.match_lon), "--match-tz", a.match_tz,
+                  "--role", a.role]
     if a.report in ("P1", "P2"):
         extra += ["--chart-type", "prashna", "--prashna-shat", a.shat_topic]
         if a.matter:
@@ -3034,7 +3039,8 @@ def main():
             pa.match_lat, pa.match_lon, pa.match_tz = p["lat"], p["lon"], p.get("tz", a.tz)
             dj = run_calc(pa, now_local.year, now_local.year + 1, workdir,
                           ["--match-name", pa.match_name, "--match-date", pa.match_date, "--match-time", pa.match_time,
-                           "--match-lat", str(pa.match_lat), "--match-lon", str(pa.match_lon), "--match-tz", pa.match_tz])
+                           "--match-lat", str(pa.match_lat), "--match-lon", str(pa.match_lon), "--match-tz", pa.match_tz,
+                           "--role", a.role])
             pb = _copy.copy(a)
             pb.report, pb.name = "A1", p.get("name", "—")
             pb.date, pb.time, pb.lat, pb.lon, pb.tz = p["date"], p["time"], p["lat"], p["lon"], p.get("tz", a.tz)

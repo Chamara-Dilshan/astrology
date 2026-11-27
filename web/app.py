@@ -202,27 +202,37 @@ def _validate(name, birth_date, birth_time, lat, lon, tz, report):
     if report not in REPORTS:
         raise HTTPException(400, "Unknown report type")
     name = _clean_text(name, "Name", required=True)
+    _validate_birth(birth_date, birth_time, lat, lon, tz)
+    return name
+
+
+def _validate_birth(birth_date, birth_time, lat, lon, tz, who=""):
+    """Date, time, place and time zone of a birth (the main person's or a partner's)."""
+    p = f"{who}: " if who else ""
     try:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", birth_date):   # fromisoformat also takes 19900515
             raise ValueError
         d = date.fromisoformat(birth_date)
     except ValueError:
-        raise HTTPException(400, "Date must be YYYY-MM-DD")
+        raise HTTPException(400, f"{p}Date must be YYYY-MM-DD")
     if not 1800 <= d.year <= 2399:
-        raise HTTPException(400, "Date must be between 1800 and 2399 (ephemeris range)")
+        raise HTTPException(400, f"{p}Date must be between 1800 and 2399 (ephemeris range)")
     if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", birth_time):
-        raise HTTPException(400, "Time must be HH:MM (24-hour)")
+        raise HTTPException(400, f"{p}Time must be HH:MM (24-hour)")
     if not (-66 <= lat <= 66 and -180 <= lon <= 180):
-        raise HTTPException(400, "Latitude must be within ±66°, longitude within ±180°")
+        raise HTTPException(400, f"{p}Latitude must be within ±66°, longitude within ±180°")
     try:
         ZoneInfo(tz)
     except (ZoneInfoNotFoundError, ValueError):
-        raise HTTPException(400, "Unknown time zone")
-    return name
+        raise HTTPException(400, f"{p}Unknown time zone")
 
 
-def _render(args, workdir):
+def _render(args, workdir, files=None):
     out = Path(workdir) / "report.pdf"
+    for fname, text in (files or {}).items():                   # e.g. matches.json for D3
+        (Path(workdir) / fname).write_text(text, encoding="utf-8")
+    # point file arguments at this request's own temporary folder
+    args = [a.replace("{workdir}", workdir) if a.startswith("--matches=") else a for a in args]
     r = subprocess.run([sys.executable, str(ROOT / "jyotisha_report.py"), *args, "--out", str(out)],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                        env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=TIMEOUT_S)
@@ -234,10 +244,51 @@ def _render(args, workdir):
     return out.read_bytes()
 
 
-def _extra_args(report, birth_date, year, month):
-    """Checked arguments for the report's extra input (see catalog.REPORTS); [] if it needs none."""
+MAX_PROPOSALS = 5
+
+
+def _partners(p_name, p_date, p_time, p_place, p_lat, p_lon, p_tz):
+    """Checked partner rows from the repeated p_* form fields."""
+    n = len(p_date)
+    if not all(len(x) == n for x in (p_name, p_time, p_lat, p_lon)):
+        raise HTTPException(400, "Partner details are incomplete")
+    rows = []
+    for i in range(n):
+        label = f"Partner {i + 1}"
+        name = _clean_text(p_name[i], f"{label} name", required=False) or f"සහකරු {i + 1}"
+        place = _clean_text(p_place[i] if i < len(p_place) else "", f"{label} place", required=False)
+        try:
+            lat, lon = float(p_lat[i]), float(p_lon[i])
+        except ValueError:
+            raise HTTPException(400, f"{label}: latitude and longitude must be numbers")
+        tz = p_tz[i] if i < len(p_tz) and p_tz[i] else "Asia/Colombo"
+        _validate_birth(p_date[i], p_time[i], lat, lon, tz, label)
+        rows.append({"name": name, "date": p_date[i], "time": p_time[i], "lat": round(lat, 4),
+                     "lon": round(lon, 4), "tz": tz, "place": place})
+    return rows
+
+
+def _extra_args(report, birth_date, year, month, role="boy", partners=()):
+    """Checked arguments for the report's extra input (see catalog.REPORTS), plus any files the
+    report needs written into its temporary folder: ([args], {filename: text})."""
     needs = catalog.REPORTS[report][3]
-    args = []
+    args, files = [], {}
+    if needs in ("partner", "partners"):
+        if role not in ("boy", "girl"):
+            raise HTTPException(400, "Say whether the first person is the groom or the bride")
+        args.append(f"--role={role}")
+    if needs == "partner":
+        if len(partners) != 1:
+            raise HTTPException(400, "Enter the partner's birth details")
+        p = partners[0]
+        args += [f"--match-name={p['name']}", f"--match-date={p['date']}", f"--match-time={p['time']}",
+                 f"--match-lat={p['lat']:.4f}", f"--match-lon={p['lon']:.4f}", f"--match-tz={p['tz']}"]
+    if needs == "partners":
+        if not 2 <= len(partners) <= MAX_PROPOSALS:
+            raise HTTPException(400, f"Enter 2–{MAX_PROPOSALS} proposals to compare")
+        files["matches.json"] = json.dumps([{k: p[k] for k in ("name", "date", "time", "lat", "lon", "tz")}
+                                            for p in partners], ensure_ascii=False)
+        args.append("--matches={workdir}/matches.json")
     if needs in ("year", "year_month"):
         birth_year = int(birth_date[:4])
         if year is None or not birth_year <= year <= min(birth_year + 120, 2399):
@@ -247,21 +298,30 @@ def _extra_args(report, birth_date, year, month):
         if month is None or not 1 <= month <= 12:
             raise HTTPException(400, "Month must be 1–12 (counted from the birthday)")
         args.append(f"--month={month}")
-    return args
+    return args, files
 
 
 @app.post("/report")
 async def report(request: Request, name: str = Form(...), birth_date: str = Form(...), birth_time: str = Form(...),
                  place: str = Form(""), lat: float = Form(...), lon: float = Form(...),
                  tz: str = Form("Asia/Colombo"), time_exact: str = Form("yes"), report: str = Form("G"),
-                 year: int | None = Form(None), month: int | None = Form(None)):
+                 year: int | None = Form(None), month: int | None = Form(None), role: str = Form("boy"),
+                 p_name: list[str] = Form([]), p_date: list[str] = Form([]), p_time: list[str] = Form([]),
+                 p_place: list[str] = Form([]), p_lat: list[str] = Form([]), p_lon: list[str] = Form([]),
+                 p_tz: list[str] = Form([])):
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
     place = _clean_text(place, "Place", required=False)
+    partners = ()
+    if catalog.REPORTS[report][3] in ("partner", "partners"):      # ignored for other reports
+        if len(p_date) > MAX_PROPOSALS:
+            raise HTTPException(400, f"At most {MAX_PROPOSALS} proposals")
+        partners = _partners(p_name, p_date, p_time, p_place, p_lat, p_lon, p_tz)
     # --opt=value form: a value starting with "-" can't be taken for another option
     args = [f"--report={report}", f"--name={name}", f"--date={birth_date}", f"--time={birth_time}",
             f"--lat={lat:.4f}", f"--lon={lon:.4f}", f"--tz={tz}", f"--place={place}",
             f"--time-exact={'yes' if time_exact == 'yes' else 'approx'}", "--brand=Jyothisha Insight"]
-    args += _extra_args(report, birth_date, year, month)
+    extra, files = _extra_args(report, birth_date, year, month, role, partners)
+    args += extra
     if BRAND_CONTACT:
         args.append(f"--brand-contact={BRAND_CONTACT}")
     if _slots.locked():
@@ -275,7 +335,7 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
     async with _slots:
         with tempfile.TemporaryDirectory(prefix="jyotisha-") as workdir:
             try:
-                pdf = await asyncio.to_thread(_render, args, workdir)
+                pdf = await asyncio.to_thread(_render, args, workdir, files)
             except subprocess.TimeoutExpired:
                 raise HTTPException(504, "Report took too long")
     stamp = datetime.now(ZoneInfo(tz)).strftime("%Y%m%d")   # the user's date, not the server's (UTC)

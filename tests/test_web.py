@@ -6,6 +6,7 @@ milliseconds; test_real_report_* runs the actual pipeline end to end.
     pytest -q
 """
 import asyncio
+import json
 import re
 
 import pytest
@@ -32,10 +33,15 @@ def fresh_limits(monkeypatch):
 @pytest.fixture
 def calls(monkeypatch):
     """Stub the renderer: record the CLI arguments, return a tiny fake PDF."""
-    seen = []
+    class Calls(list):
+        """The argument lists, plus .files: the extra files each call would write."""
 
-    def fake_render(args, workdir):
+    seen = Calls()
+    seen.files = []
+
+    def fake_render(args, workdir, files=None):
         seen.append(args)
+        seen.files.append(files or {})
         return b"%PDF-1.7 fake"
 
     monkeypatch.setattr(web, "_render", fake_render)
@@ -176,9 +182,10 @@ def test_catalogue_lists_reports_in_groups(client):
     for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N",
                  "C1", "C2", "C6"]:
         assert f'value="{code}"' in page
-    assert page.count("<optgroup") == 4
+    assert page.count("<optgroup") == 5
     needs = {e["code"]: e["needs"] for e in web._catalog() if e["needs"]}
-    assert needs == {"C1": "year", "C2": "year", "C6": "year_month"}
+    assert needs == {"C1": "year", "C2": "year", "C6": "year_month",
+                     "D1": "partner", "D2": "partner", "D3": "partners"}
 
 
 # ---------------------------------------------------------------- phase 2: year / month
@@ -211,6 +218,66 @@ def test_year_and_month_are_checked(client, calls, fields, message):
 def test_year_is_ignored_for_reports_that_dont_need_it(client, calls):
     post(client, report="A1", year="2027", month="5")
     assert not any(a.startswith(("--year", "--month")) for a in calls[0])
+
+
+def partner(n=1, **over):
+    """Form fields for n partners (repeated p_* keys)."""
+    base = dict(p_name="Kamala", p_date="1992-02-12", p_time="12:00", p_place="Kandy",
+                p_lat="7.2906", p_lon="80.6337", p_tz="Asia/Colombo")
+    base.update(over)
+    return {k: [v] * n for k, v in base.items()}
+
+
+# ---------------------------------------------------------------- phase 3: marriage matching
+
+@pytest.mark.parametrize("report", ["D1", "D2"])
+def test_matching_passes_partner_and_role(client, calls, report):
+    assert post(client, report=report, role="girl", **partner()).status_code == 200
+    a = calls[0]
+    assert arg(a, "--role") == "girl"
+    assert (arg(a, "--match-name"), arg(a, "--match-date"), arg(a, "--match-time")) == ("Kamala", "1992-02-12", "12:00")
+    assert (arg(a, "--match-lat"), arg(a, "--match-lon"), arg(a, "--match-tz")) == ("7.2906", "80.6337", "Asia/Colombo")
+
+
+def test_d3_writes_proposals_file(client, calls):
+    r = post(client, report="D3", **partner(3, p_name="Nimal"))
+    assert r.status_code == 200
+    assert arg(calls[0], "--matches") == "{workdir}/matches.json"
+    rows = json.loads(calls.files[0]["matches.json"])
+    assert len(rows) == 3 and rows[0] == {"name": "Nimal", "date": "1992-02-12", "time": "12:00",
+                                          "lat": 7.2906, "lon": 80.6337, "tz": "Asia/Colombo"}
+
+
+@pytest.mark.parametrize("fields, message", [
+    (dict(report="D1"), "Enter the partner's birth details"),
+    (dict(report="D1", **partner(2)), "Enter the partner's birth details"),
+    (dict(report="D3", **partner(1)), "Enter 2–5 proposals"),
+    (dict(report="D3", **partner(6)), "At most 5 proposals"),
+    (dict(report="D1", role="other", **partner()), "groom or the bride"),
+    (dict(report="D1", **partner(p_time="25:00")), "Partner 1: Time must be HH:MM"),
+    (dict(report="D1", **partner(p_date="1700-01-01")), "Partner 1: Date must be between"),
+    (dict(report="D1", **partner(p_lat="95")), "Partner 1: Latitude"),
+    (dict(report="D1", **partner(p_name="<b>x</b>")), "Partner 1 name contains characters"),
+    (dict(report="D1", **partner(p_place="<img>")), "Partner 1 place contains characters"),
+    (dict(report="D1", **partner(p_tz="Mars/Base")), "Partner 1: Unknown time zone"),
+])
+def test_partner_details_are_checked(client, calls, fields, message):
+    r = post(client, **fields)
+    assert r.status_code == 400 and message in r.json()["detail"]
+    assert calls == []
+
+
+def test_partner_fields_are_ignored_for_other_reports(client, calls):
+    assert post(client, report="A1", **partner(p_time="garbage")).status_code == 200
+    assert not any(a.startswith(("--match", "--role", "--matches")) for a in calls[0])
+
+
+@pytest.mark.parametrize("report, proposals", [("D1", 1), ("D3", 3)])
+def test_real_matching_reports_are_pdfs(client, report, proposals):
+    pymupdf = pytest.importorskip("pymupdf")
+    r = post(client, report=report, name="Test", **partner(proposals))
+    assert r.status_code == 200, r.text[:200]
+    assert len(pymupdf.open(stream=r.content, filetype="pdf")) >= 3
 
 
 def test_real_report_c1_is_a_pdf(client):
