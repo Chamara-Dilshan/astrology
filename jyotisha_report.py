@@ -1432,6 +1432,40 @@ def sripati_block(d, P):
                else "<p class='small'>සියලු ග්‍රහයන් රාශි කේන්දරයේ භාවයේම සිටී.</p>"))
 
 
+SHADBALA_PARTS_SI = [("sthana", "ස්ථාන"), ("dig", "දිග්"), ("kala", "කාල"), ("chesta", "චේෂ්ට"),
+                     ("naisargika", "නෛසර්ගික"), ("drik", "දෘක්")]
+
+
+def shadbala_block(d):
+    """Shadbala table (A2/A3): the six strengths in virupas, the total in rupas against the BPHS
+    minimum, and which planets are strongest or below the minimum. Empty without engine data."""
+    sb = d.get("shadbala")
+    if not sb:
+        return ""
+    order = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]
+    part = lambda o, k: sum(o[k].values()) if isinstance(o[k], dict) else o[k]  # noqa: E731
+    top = max(order, key=lambda p: sb[p]["ratio"])
+    rows = "".join(
+        f"<tr{' class=cur' if p == top else ''}><td>{PLANET_SI[p]}</td>"
+        + "".join("<td>—</td>" if k == "chesta" and p in ("Su", "Mo") else f"<td>{part(sb[p], k):.1f}</td>"
+                  for k, _ in SHADBALA_PARTS_SI)
+        + f"<td><b>{sb[p]['rupas']:.2f}</b></td><td>{sb[p]['required']:g}</td><td><b>{sb[p]['ratio']:.2f}</b></td></tr>"
+        for p in order)
+    ranked = sorted(order, key=lambda p: -sb[p]["ratio"])
+    weak = [p for p in order if sb[p]["ratio"] < 1]
+    summary = (f"ශක්තිමත්ම ග්‍රහයන්: {', '.join(f'{PLANET_SI[p]} ({sb[p]['ratio']:.2f})' for p in ranked[:3])}. "
+               + (f"අවම මට්ටමට වඩා අඩු: {', '.join(f'{PLANET_SI[p]} ({sb[p]['ratio']:.2f})' for p in weak)}."
+                  if weak else "සියලු ග්‍රහයන් අවම ශක්ති මට්ටම ඉක්මවයි."))
+    return ("<h3>ෂඩ්බල — ග්‍රහයන්ගේ ශක්තිය</h3>"
+            "<p class='small'>ෂඩ්බලය ග්‍රහයෙකුගේ ශක්තිය මූලාශ්‍ර හයකින් මනී (විරූප වලින්; 60 විරූප = 1 රූප). "
+            "අනුපාතය (එකතුව ÷ අවම) 1 හෝ ඊට වැඩි නම් ග්‍රහයාට තම ඵල දීමට ප්‍රමාණවත් ශක්තියක් ඇත. "
+            "රවි සහ චන්ද්‍රගේ චේෂ්ට බලය කාල බලයේ අයන / පක්ෂ බලයට ඇතුළත් ය. "
+            "ගණනය: බී.වී. රාමන්ගේ ක්‍රමය (බෘහත් පරාශර හෝරා ශාස්ත්‍රය 27).</p>"
+            "<table><tr><th>ග්‍රහයා</th>" + "".join(f"<th>{si}</th>" for _, si in SHADBALA_PARTS_SI)
+            + "<th>එකතුව (රූප)</th><th>අවම</th><th>අනුපාතය</th></tr>" + rows + "</table>"
+            f"<p class='small'>{summary}</p>")
+
+
 def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     """A2 (standard) and A3 (deep, deep=True). Extends the A1 structure."""
     P, ls = d["planets"], d["lagna"]["sign_idx"]
@@ -1572,6 +1606,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
         H.append(f"<p class='small'>ශක්තිමත්ම රාශි: {', '.join(f'{SIGN_SI[i]} ({sav[i]}, {jc.house_from(ls, i)} වැන්න)' for i in best)}. "
                  f"අඩුම: {', '.join(f'{SIGN_SI[i]} ({sav[i]})' for i in worst)}. "
                  "ග්‍රහයෙක් බින්දු වැඩි රාශියක් ගෝචරයෙන් යන විට ප්‍රතිඵල හිතකර වීමේ ප්‍රවණතාවක් ඇත (28 ට වැඩි = හොඳ).</p>")
+    H.append(shadbala_block(d))
 
     # ---- 8 argala / upagrahas (A3)
     if deep:

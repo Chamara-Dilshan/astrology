@@ -22,11 +22,16 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
 
 - **Calculation engine** (`jyotisha_calc.py`): sidereal (Lahiri) planet positions,
   whole-sign houses, divisional charts, Vimshottari / Ashtottari / Yogini /
-  Kalachakra dashas, Ashtakavarga, Tajaka annual charts, transits, and more.
-- **Verified against a textbook:** `--selftest` runs 42 checks against worked
-  examples and tables from a Vedic astrology textbook (all pass in CI).
+  Kalachakra dashas, Ashtakavarga, Shadbala, Sripati bhavas, Tajaka annual
+  charts, transits, and more.
+- **Verified against a textbook:** `--selftest` runs 45 checks against worked
+  examples and tables from a Vedic astrology textbook, and Shadbala against
+  the worked examples in B.V. Raman's and V.P. Jain's Shadbala books (all
+  pass in CI). Planet positions are compared with NASA JPL on the site's
+  /accuracy page.
 - **Report generator** (`jyotisha_report.py`): 25 report types, including a free
-  1-page summary (G), natal reports (A1–A3), annual chart (C1), marriage
+  1-page summary (G, also in English), natal reports (A1–A3, with the Sripati
+  bhava chart and Shadbala from A2), annual chart (C1), marriage
   compatibility (D1) and horary (P1). Astrologers can add their own Sinhala
   notes to each section through a JSON file.
 - **Visual QA** (`--qa`): measures two rendered Sinhala probe strings (one

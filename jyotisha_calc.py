@@ -81,11 +81,13 @@ Usage examples
 Method sources: P.V.R. Narasimha Rao, "Vedic Astrology: An Integrated Approach"
   ch.5 special lagnas, ch.12 Ashtakavarga, ch.15.5 strength rules, ch.17 Ashtottari, ch.18 Narayana dasa,
   ch.20 Sudasa, ch.24 Kalachakra, ch.27-31 Tajaka & Sudarsana, ch.35 Mundane, ch.36 Muhurta.
-Verified (--selftest, 42 checks): Table 40, Example 66, AV examples 40-43, Example 118, Ithasala examples,
+Verified (--selftest, 45 checks): Table 40, Example 66, AV examples 40-43, Example 118, Ithasala examples,
   Kalachakra Examples 95-97 & Exercise 34, Tables 44-47, Ashtottari Example 59, Sree Lagna Example 10 &
   Exercise 10, hora example 1.3.11, Sudasa Example 77, Sudarsana Example 127, compressed dasa 35.4.
-  v3 (--selftest 42 checks): Upagraha Example 6, Drigdasa Examples 80 & 82, Kendradi 19.2 examples, Argala 10.6 example,
+  v3: Upagraha Example 6, Drigdasa Examples 80 & 82, Kendradi 19.2 examples, Argala 10.6 example,
   Vimshottari variants Example 51, Tajaka monthly/sixty-hour 27.3-27.4 times, natural benefics 3.3.
+  Shadbala: B.V. Raman, "Graha and Bhava Balas" and V.P. Jain, "Shadbala and Bhavabala" worked examples
+  (3 checks; details and the books' known misprints in tests/test_shadbala.py).
 Kalachakra note: Table 45 in the textbook prints "Revati" where the 9-fold Parasara pattern (Tables 42/44/46/47)
   requires Uttarabhadrapada; the script follows the pattern (Revati = Savya-1, U.Bhadra = Savya-2).
 
@@ -94,8 +96,9 @@ Requires:  pip install pyswisseph --break-system-packages
 
 import argparse
 import json
+import math
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import os
@@ -3046,6 +3049,214 @@ def print_shatpanchasika(pos, lagna_lon, topic, is_day):
 # --------------------------------------------------------------------------
 # Self test (textbook examples)
 # --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Shadbala: six-fold planetary strength (BPHS ch. 27; B.V. Raman, "Graha and Bhava Balas")
+# --------------------------------------------------------------------------
+# All values in virupas (60 virupas = 1 rupa). The conventions are Raman's, which Jagannatha Hora
+# also follows; tests/test_shadbala.py checks them against the worked examples in Raman's book and
+# in V.P. Jain's "Shadbala and Bhavabala". Choices where texts differ are noted where they are made.
+SB_VARGAS = (1, 2, 3, 7, 9, 12, 30)                   # saptavarga: D1 D2 D3 D7 D9 D12 D30
+SB_RELATION = {2: 22.5, 1: 15.0, 0: 7.5, -1: 3.75, -2: 1.875}   # adhimitra .. adhishatru (Raman)
+SB_NAISARGIKA = {"Su": 60.0, "Mo": 51.43, "Ma": 17.14, "Me": 25.71, "Ju": 34.29, "Ve": 42.86, "Sa": 8.57}
+SB_REQUIRED = {"Su": 6.5, "Mo": 6.0, "Ma": 5.0, "Me": 7.0, "Ju": 6.5, "Ve": 5.5, "Sa": 5.0}   # rupas (BPHS)
+SB_DIG_HOUSE = {"Su": 10, "Ma": 10, "Ju": 1, "Me": 1, "Sa": 7, "Mo": 4, "Ve": 4}   # full directional strength
+SB_DREKKANA = {"Su": 0, "Ma": 0, "Ju": 0, "Me": 1, "Sa": 1, "Mo": 2, "Ve": 2}     # male / neuter / female third
+SB_DISC = {"Ma": 9.4, "Me": 6.6, "Ju": 190.4, "Ve": 16.6, "Sa": 158.0}           # disc diameters (yuddha bala)
+OBLIQUITY_BPHS = 24.0                                       # BPHS declination table uses 24 degrees
+SB_ABDA_FROM = ["Ma", "Me", "Ju", "Ve", "Sa", "Su", "Mo"]   # weekday lords from Tuesday (Raman's Table I)
+SB_EPOCH = date(1951, 7, 10)                                # day 0 of Raman's Table I count
+# Heliocentric mean longitudes, mean equinox of date: J2000 value + rate per Julian century
+# (Meeus, Astronomical Algorithms, table 31.A); the Sun's is the Earth's + 180.
+SB_MEAN = {"Su": (280.466457, 36000.7698278), "Me": (252.250906, 149474.0722491), "Ve": (181.979801, 58519.2130302),
+           "Ma": (355.433000, 19141.6964471), "Ju": (34.351519, 3036.3027748), "Sa": (50.077444, 1223.5110686)}
+
+
+def _arc(a, b):
+    """Shortest angle between two longitudes, 0..180."""
+    return abs((a - b + 180) % 360 - 180)
+
+
+def compound_relation(p, q, pos):
+    """Panchadha maitri of p towards q: natural (+1/0/-1) plus temporary from the rasi chart
+    (+1 if q is in the 2nd, 3rd, 4th, 10th, 11th or 12th from p, else -1). 2 = adhimitra .. -2 = adhishatru."""
+    nat = 1 if q in FRIENDS[p] else (-1 if q in ENEMIES[p] else 0)
+    tmp = 1 if house_from(sign_of(pos[p]["lon"]), sign_of(pos[q]["lon"])) in (2, 3, 4, 10, 11, 12) else -1
+    return nat + tmp
+
+
+def sputa_drishti(d, aspecting):
+    """Aspect value in virupas for an arc d = aspected - aspecting (0..360), BPHS 26 with Raman's
+    additions for the special aspects of Mars (4th, 8th), Jupiter (5th, 9th) and Saturn (3rd, 10th)."""
+    if 30 <= d < 60:
+        v = (d - 30) / 2
+    elif 60 <= d < 90:
+        v = d - 60 + 15 + (45 if aspecting == "Sa" else 0)
+    elif 90 <= d < 120:
+        v = (120 - d) / 2 + 30 + (15 if aspecting == "Ma" else 0)
+    elif 120 <= d < 150:
+        v = 150 - d + (30 if aspecting == "Ju" else 0)
+    elif 150 <= d < 180:
+        v = 2 * (d - 150)
+    elif 180 <= d < 300:
+        v = (300 - d) / 2
+        v += {"Ma": 15 if 210 <= d < 240 else 0, "Ju": 30 if 240 <= d < 270 else 0,
+              "Sa": 45 if 270 <= d < 300 else 0}.get(aspecting, 0)
+    else:
+        v = 0.0
+    return v
+
+
+def shadbala_benefics(pos):
+    """Benefics for paksha and drik bala: Jupiter, Venus, the waxing Moon, and Mercury when alone or
+    with more benefics than malefics among the other six planets in his sign; a tie goes the way of
+    the planet nearest to him (V.P. Jain, "Shadbala and Bhavabala"). The general rule in
+    natural_benefics counts the nodes too and calls a tie benefic."""
+    ben = {"Ju", "Ve"} | ({"Mo"} if norm(pos["Mo"]["lon"] - pos["Su"]["lon"]) < 180 else set())
+    ms = sign_of(pos["Me"]["lon"])
+    company = [p for p in SEVEN if p != "Me" and sign_of(pos[p]["lon"]) == ms]
+    nb = sum(p in ben for p in company)
+    nearest = min(company, key=lambda p: _arc(pos[p]["lon"], pos["Me"]["lon"]), default=None)
+    if not company or nb * 2 > len(company) or (nb * 2 == len(company) and nearest in ben):
+        ben.add("Me")
+    return ben
+
+
+def _sun_events(jd, lat, lon):
+    """(sunset before, sunrise before, sunset after, sunrise after) around jd, as JDs (UT)."""
+    def nxt(t, kind):
+        return swe.rise_trans(t, swe.SUN, kind | RISE_BITS, [lon, lat, 0])[1][0]
+    sr = sunrise_before(jd, lat, lon)
+    if sr is None:
+        raise ValueError("no sunrise found")
+    ss = nxt(sr, swe.CALC_SET)
+    ev = nxt(sr - 1.0, swe.CALC_SET), sr, ss, nxt(ss, swe.CALC_RISE)
+    if not (ev[0] < ev[1] <= jd < ev[3] and ev[1] < ev[2] < ev[3] and ev[3] - ev[1] < 1.5):
+        raise ValueError("no ordinary sunrise and sunset around this time")   # polar day or night
+    return ev
+
+
+def shadbala(jd, lat, lon, tzname, pos, lagna_lon, madhya):
+    """Shadbala of the seven planets. madhya: the 12 Sripati bhava madhyas (sripati_bhavas)."""
+    lagna = sign_of(lagna_lon)
+    ayan = swe.get_ayanamsa_ut(jd)
+    benefic = shadbala_benefics(pos)
+    L = {p: pos[p]["lon"] for p in SEVEN}
+    out = {p: {} for p in SEVEN}
+
+    # ---- sthana bala (position)
+    for p in SEVEN:
+        s = sign_of(L[p])
+        varga = 0.0
+        for div in SB_VARGAS:
+            vs = varga_sign(L[p], div)
+            if div == 1 and vs == MOOLATRIKONA[p]:
+                varga += 45
+            elif vs in OWN[p]:
+                varga += 30
+            else:
+                varga += SB_RELATION[compound_relation(p, SIGN_LORD[vs], pos)]
+        odd_wanted = p not in ("Mo", "Ve")                 # Moon and Venus are strong in even signs
+        h = house_from(lagna, s)
+        out[p]["sthana"] = {
+            "uchcha": _arc(L[p], DEEP_EXALT[p] + 180) / 3,
+            "saptavargaja": varga,
+            "ojayugma": 15 * (is_odd_sign(s) == odd_wanted) + 15 * (is_odd_sign(varga_sign(L[p], 9)) == odd_wanted),
+            "kendradi": 60 if h in KENDRA else (30 if h in PANAPHARA else 15),
+            "drekkana": 15 if int(deg_in_sign(L[p]) // 10) == SB_DREKKANA[p] else 0,
+        }
+
+    # ---- dig bala (direction): 60 at the bhava madhya of full strength, 0 opposite
+    for p in SEVEN:
+        out[p]["dig"] = (180 - _arc(L[p], madhya[SB_DIG_HOUSE[p] - 1])) / 3
+
+    # ---- kala bala (time)
+    ss0, sr, ss, sr2 = _sun_events(jd, lat, lon)
+    is_day = jd < ss
+    if is_day:   # hours from the nearer apparent midnight (midpoint of the night)
+        unnata = min(jd - (ss0 + sr) / 2, (ss + sr2) / 2 - jd) * 24
+    else:
+        unnata = abs(jd - (ss + sr2) / 2) * 24
+    diva = min(unnata, 12) * 5                              # 60 at midday, 0 at midnight
+    elong = _arc(L["Mo"], L["Su"])
+    if is_day:
+        third = ["Me", "Su", "Sa"][min(2, int((jd - sr) / (ss - sr) * 3))]
+    else:
+        third = ["Mo", "Ve", "Ma"][min(2, int((jd - ss) / (sr2 - ss) * 3))]
+    sr_local = jd_to_datetime(sr).astimezone(ZoneInfo(tzname))
+    vara = VARA_LORD[(sr_local.weekday() + 1) % 7]          # weekday from sunrise
+    hora, _ = hora_lord(jd, sr, vara)
+    local_day = jd_to_datetime(jd).astimezone(ZoneInfo(tzname)).date()
+    count = (local_day - SB_EPOCH).days                     # Raman's ahargana, Table I epoch
+    abda = SB_ABDA_FROM[(3 * (count // 360) + 1) % 7]       # lord of the 360-day year
+    masa = SB_ABDA_FROM[(2 * (count // 30) + 1) % 7]        # lord of the 30-day month
+    for p in SEVEN:
+        paksha = elong / 3 if p in benefic else 60 - elong / 3
+        lam = math.radians(norm(L[p] + ayan))               # tropical longitude for declination
+        kranti = math.degrees(math.asin(math.sin(math.radians(OBLIQUITY_BPHS)) * math.sin(lam)))
+        kranti = abs(kranti) if p == "Me" else (-kranti if p in ("Mo", "Sa") else kranti)
+        out[p]["kala"] = {
+            "nathonnata": 60.0 if p == "Me" else (diva if p in ("Su", "Ju", "Ve") else 60 - diva),
+            "paksha": paksha * (2 if p == "Mo" else 1),      # the Moon's is doubled (BPHS)
+            "tribhaga": 60.0 if p in ("Ju", third) else 0.0,
+            "abda": 15.0 if p == abda else 0.0,
+            "masa": 30.0 if p == masa else 0.0,
+            "vara": 45.0 if p == vara else 0.0,
+            "hora": 60.0 if p == hora else 0.0,
+            "ayana": (24 + kranti) * 1.25 * (2 if p == "Su" else 1),   # the Sun's is doubled
+            "yuddha": 0.0,
+        }
+
+    # planetary war: two of Mars..Saturn within 1 degree. The victor is the one further north in
+    # ecliptic latitude (Surya Siddhanta 7); it gains the difference of the two planets' balas so far,
+    # divided by the difference of their disc diameters, and the other loses as much (BPHS).
+    def latitude(p):
+        return swe.calc_ut(jd, dict(PLANETS)[p], swe.FLG_SWIEPH)[0][1]
+
+    def so_far(p):
+        k = out[p]["kala"]
+        return sum(out[p]["sthana"].values()) + out[p]["dig"] + sum(k[x] for x in ("nathonnata", "paksha", "tribhaga",
+                                                                                   "abda", "masa", "vara", "hora"))
+    star = ["Ma", "Me", "Ju", "Ve", "Sa"]
+    for i, a in enumerate(star):
+        for b in star[i + 1:]:
+            if _arc(L[a], L[b]) <= 1.0:
+                win, lose = (a, b) if latitude(a) >= latitude(b) else (b, a)
+                y = abs(so_far(a) - so_far(b)) / abs(SB_DISC[a] - SB_DISC[b])
+                out[win]["kala"]["yuddha"] += y
+                out[lose]["kala"]["yuddha"] -= y
+
+    # ---- chesta bala (motion): Sun and Moon get theirs through the doubled ayana / paksha bala
+    T = (jd - 2451545.0) / 36525
+    mean = {p: norm(a + r * T) for p, (a, r) in SB_MEAN.items()}
+    for p in SEVEN:
+        if p in ("Su", "Mo"):
+            out[p]["chesta"] = 0.0
+            continue
+        true = norm(L[p] + ayan)
+        sighra, madhya_g = (mean[p], mean["Su"]) if p in ("Me", "Ve") else (mean["Su"], mean[p])
+        avg = norm(madhya_g + ((true - madhya_g + 180) % 360 - 180) / 2)   # midpoint of mean and true
+        out[p]["chesta"] = _arc(sighra, avg) / 3                           # chesta kendra / 3
+
+    # ---- naisargika (natural) and drik (aspect) bala
+    for p in SEVEN:
+        out[p]["naisargika"] = SB_NAISARGIKA[p]
+        drik = sum((1 if q in benefic else -1) * sputa_drishti(norm(L[p] - L[q]), q) for q in SEVEN if q != p)
+        out[p]["drik"] = drik / 4
+
+    for p in SEVEN:
+        o = out[p]
+        total = sum(o["sthana"].values()) + o["dig"] + sum(o["kala"].values()) + o["chesta"] + o["naisargika"] + o["drik"]
+        o.update(total=total, rupas=total / 60, required=SB_REQUIRED[p], ratio=total / 60 / SB_REQUIRED[p])
+    return out
+
+
+def round_tree(x, nd=2):
+    """Round every float in nested dicts (for JSON output)."""
+    if isinstance(x, dict):
+        return {k: round_tree(v, nd) for k, v in x.items()}
+    return round(x, nd) if isinstance(x, float) else x
+
+
 def selftest():
     ok = True
     def check(name, cond):
@@ -3202,6 +3413,44 @@ def selftest():
     yd_ = yogini_dasa(41.0, b0)[2][0]
     ok_y = ok_y and [a["yogini"] for a in yd_["antar"]][:3] == ["Siddha", "Sankata", "Mangala"] and abs(sum(a["end"].timestamp() - a["start"].timestamp() for a in yd_["antar"]) - (yd_["end"] - yd_["start"]).total_seconds()) < 1
     check("Yogini star map & antardasa order agree with PyJHora (JHora port)", ok_y)
+
+    # Shadbala: the worked examples of V.P. Jain's "Shadbala and Bhavabala" and B.V. Raman's
+    # "Graha and Bhava Balas" (book values in virupas, Su..Sa)
+    def sb_example(ut, lat_, lon_, ayan_key):
+        saved = (SID_MODE, AYANAMSA_NAME)
+        set_ayanamsa(ayan_key)
+        try:
+            jd_ = swe.julday(*ut)
+            p_ = compute_positions(jd_)[0]
+            res = shadbala(jd_, lat_, lon_, "Asia/Kolkata", p_, compute_lagna(jd_, lat_, lon_),
+                           sripati_bhavas(jd_, lat_, lon_, p_)["madhya"])
+        finally:
+            globals().update(SID_MODE=saved[0], AYANAMSA_NAME=saved[1])
+            swe.set_sid_mode(saved[0])
+        return {k: [f(res[p]) for p in SEVEN] for k, f in {
+            "sthana": lambda o: sum(o["sthana"].values()), "dig": lambda o: o["dig"], "kala": lambda o: sum(o["kala"].values()),
+            "chesta": lambda o: o["chesta"], "drik": lambda o: o["drik"]}.items()}
+
+    def near(ours, book, tol, skip=()):
+        return all(abs(a - b) <= tol for i, (a, b) in enumerate(zip(ours, book)) if i not in skip)
+    jain = sb_example((1981, 9, 12, 20.0), 28 + 39 / 60, 77 + 13 / 60, "lahiri")
+    check("Shadbala, V.P. Jain example (Delhi 1981): sthana, dig, kala (incl. the Mercury-Jupiter war) and drik bala "
+          "within 0.5 virupa of the book",
+          near(jain["sthana"], [172.04, 77.17, 184.94, 238.16, 152.98, 198.08, 206.31], 0.5)
+          and near(jain["dig"], [6.59, 12.22, 20.99, 31.97, 31.99, 53.29, 26.67], 0.5)
+          and near(jain["kala"], [81.80, 205.85, 158.08, 210.68, 144.22, 135.89, 139.56], 0.5)
+          and near(jain["drik"], [11.24, -0.32, -5.10, 4.29, 4.32, -2.86, 5.82], 0.5))
+    raman = sb_example((1918, 10, 16, 14 + 22 / 60 + 16 / 3600 - 5.5), 13.0, 77 + 35 / 60, "raman")
+    check("Shadbala, B.V. Raman example (Bangalore 1918): sthana, kala and drik bala within 0.7 virupa, dig bala within 0.4 "
+          "(the book's Mars, 64.30, exceeds the 60 maximum)",
+          near(raman["sthana"], [198, 126.5, 172.06, 279.5, 157.58, 178.2, 177.3], 0.7)
+          and near(raman["kala"], [102.98, 202.04, 30.06, 192.79, 211.18, 115.53, 116.97], 0.7)
+          and near(raman["drik"], [15.86, -21.73, 0.95, 15.64, -16.04, 18.47, 7.21], 0.7)
+          and near(raman["dig"], [48.10, 31.56, 64.30, 21.09, 11.50, 15.15, 58.02], 0.4, skip=(2,)))
+    check("Shadbala chesta bala of Mars, Jupiter and Saturn within 0.5 virupa in both books "
+          "(Mercury and Venus use modern mean motions, not Raman's tables)",
+          near(jain["chesta"], [0, 0, 20.93, 28.76, 8.43, 28.18, 5.05], 0.5, skip=(3, 5))
+          and near(raman["chesta"], [0, 0, 22.23, 2.3, 35.26, 5.95, 21.14], 0.5, skip=(3, 5)))
     print("\nALL PASS" if ok else "\nSOME TESTS FAILED")
     return ok
 
@@ -3976,6 +4225,12 @@ def main():
             print(f"SVG written: {fn}")
 
     if args.json:
+        bhava = sripati_bhavas(jd, args.lat, args.lon, pos)
+        try:
+            sbala = round_tree(shadbala(jd, args.lat, args.lon, args.tz, pos, lagna, bhava["madhya"]))
+        except ValueError:      # no sunrise/sunset that day (polar latitudes): no kala bala, so none at all
+            sbala = None
+
         def ser(p):
             return {"lord": p["lord"], "start": p["start"].isoformat(), "end": p["end"].isoformat(),
                     "sub": [ser(x) for x in p["sub"]]}
@@ -3995,7 +4250,7 @@ def main():
             "chart_type": args.chart_type,
             "special_lagnas": {k: {"sign": SIGNS[sign_of(spl[k])], "lon": round(spl[k], 4)} for k in ("HL", "GL", "SL") if k in spl},
             "hora": hora_txt, "node": NODE_KIND,
-            "sripati": sripati_bhavas(jd, args.lat, args.lon, pos), **extra_out,
+            "sripati": bhava, "shadbala": sbala, **extra_out,
         }
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1, ensure_ascii=False)

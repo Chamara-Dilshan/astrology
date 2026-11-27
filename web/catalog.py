@@ -24,8 +24,8 @@ GROUPS = {
 REPORTS = {
     "G":  ("natal", "ඔබේ කේන්දරයේ මූලික තොරතුරු", "Free 1-page summary", None),
     "A1": ("natal", "ජන්ම කේන්දර වාර්තාව – කේන්ද්‍ර සාර", "Natal report, 8 pages", None),
-    "A2": ("natal", "සම්පූර්ණ කේන්දර විග්‍රහය", "Full natal report with Sripati bhava chart, 10 pages", None),
-    "A3": ("natal", "ගැඹුරු කේන්දර විග්‍රහය", "Deep natal report with divisional charts and bhava chart, 15 pages", None),
+    "A2": ("natal", "සම්පූර්ණ කේන්දර විග්‍රහය", "Full natal report with Sripati bhava chart and Shadbala, 10 pages", None),
+    "A3": ("natal", "ගැඹුරු කේන්දර විග්‍රහය", "Deep natal report with divisional charts, bhava chart and Shadbala, 15 pages", None),
     "B1": ("life", "විවාහ විග්‍රහය", "Marriage and partner", None),
     "B2": ("life", "වෘත්තීය විග්‍රහය", "Career and business", None),
     "B3": ("life", "අධ්‍යාපන විග්‍රහය", "Education and exams", None),
