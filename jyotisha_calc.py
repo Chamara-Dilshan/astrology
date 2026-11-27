@@ -1127,6 +1127,69 @@ def panchanga(pos, jd, lat, lon, tzname):
 
 
 # --------------------------------------------------------------------------
+# Daily panchanga: Rahu kalaya and the day's tithi, nakshatra, yoga and karana
+# --------------------------------------------------------------------------
+# The day from sunrise to sunset is split into eight equal parts; which part is Rahu kalaya,
+# Yamaganda or Gulika kalaya depends only on the weekday (Sunday first). With a 6:00 sunrise and
+# 18:00 sunset these give the familiar fixed table (Rahu kalaya on Monday 7:30-9:00, ...).
+RAHU_PART = [8, 2, 7, 5, 6, 4, 3]
+YAMAGANDA_PART = [5, 4, 3, 2, 1, 7, 6]
+GULIKA_PART = [7, 6, 5, 4, 3, 2, 1]
+
+
+def _angle_reaches(f, target, jd, rate):
+    """First JD after jd at which the increasing angle f(jd) reaches target (rate: about deg/day)."""
+    t = jd + norm(target - f(jd)) / rate
+    for _ in range(30):
+        err = (target - f(t) + 180) % 360 - 180
+        if abs(err) < 1e-6:
+            break
+        t += err / rate
+    return t
+
+
+def day_panchanga(day, lat, lon, tzname):
+    """Panchanga of a civil day (a datetime.date) at a place: sunrise, sunset, Rahu kalaya, Yamaganda,
+    Gulika kalaya, and the tithi, nakshatra, yoga and karana current at sunrise with the JD (UT)
+    each ends. Sunrise and sunset follow RISE_BITS (default: upper limb with refraction)."""
+    jd0, _ = to_jd_ut(datetime(day.year, day.month, day.day), tzname)
+    geo = [lon, lat, 0]
+    rise = swe.rise_trans(jd0, swe.SUN, swe.CALC_RISE | RISE_BITS, geo)[1][0]
+    sset = swe.rise_trans(rise, swe.SUN, swe.CALC_SET | RISE_BITS, geo)[1][0]
+    if not (jd0 <= rise < jd0 + 1 and rise < sset < rise + 1):
+        raise ValueError("no ordinary sunrise and sunset on this day")      # polar day or night
+    wd = (day.weekday() + 1) % 7                                            # Sunday = 0
+    part = (sset - rise) / 8
+
+    def period(n):
+        return rise + (n - 1) * part, rise + n * part
+
+    swe.set_sid_mode(SID_MODE)
+    sid = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
+
+    def lon_of(body, jd):
+        return swe.calc_ut(jd, body, sid)[0][0]
+
+    elong = lambda jd: norm(lon_of(swe.MOON, jd) - lon_of(swe.SUN, jd))   # noqa: E731
+    moon = lambda jd: norm(lon_of(swe.MOON, jd))                           # noqa: E731
+    yoga_sum = lambda jd: norm(lon_of(swe.MOON, jd) + lon_of(swe.SUN, jd))  # noqa: E731
+    e, m, y = elong(rise), moon(rise), yoga_sum(rise)
+    t, k, n, yi = int(e // 12), int(e // 6), int(m // (360 / 27)), int(y // (360 / 27))
+    pch = panchanga({"Su": {"lon": lon_of(swe.SUN, rise)}, "Mo": {"lon": m}}, rise + 1e-6, lat, lon, tzname)
+    return {
+        "date": day.isoformat(), "weekday": wd, "vara": VARA[wd],
+        "sunrise": rise, "sunset": sset,
+        "rahu": period(RAHU_PART[wd]), "yamaganda": period(YAMAGANDA_PART[wd]), "gulika": period(GULIKA_PART[wd]),
+        "tithi": pch["tithi"], "tithi_index": t, "tithi_end": _angle_reaches(elong, (t + 1) * 12 % 360, rise, 12.19),
+        "nakshatra": NAKSHATRAS[n], "nakshatra_index": n,
+        "nakshatra_end": _angle_reaches(moon, (n + 1) * 360 / 27 % 360, rise, 13.18),
+        "yoga": pch["yoga"], "yoga_end": _angle_reaches(yoga_sum, (yi + 1) * 360 / 27 % 360, rise, 14.17),
+        "karana": pch["karana"], "karana_end": _angle_reaches(elong, (k + 1) * 6 % 360, rise, 12.19),
+        "moon_sign": SIGNS[sign_of(m)],
+    }
+
+
+# --------------------------------------------------------------------------
 # Narayana dasa of divisional charts (textbook 18.5)
 # --------------------------------------------------------------------------
 def varga_positions(pos, div):
@@ -3434,21 +3497,18 @@ def selftest():
     def near(ours, book, tol, skip=()):
         return all(abs(a - b) <= tol for i, (a, b) in enumerate(zip(ours, book)) if i not in skip)
     jain = sb_example((1981, 9, 12, 20.0), 28 + 39 / 60, 77 + 13 / 60, "lahiri")
-    check("Shadbala, V.P. Jain example (Delhi 1981): sthana, dig, kala (incl. the Mercury-Jupiter war) and drik bala "
-          "within 0.5 virupa of the book",
+    check("Shadbala: V.P. Jain example (Delhi 1981), sthana/dig/kala/drik within 0.5 virupa of the book",
           near(jain["sthana"], [172.04, 77.17, 184.94, 238.16, 152.98, 198.08, 206.31], 0.5)
           and near(jain["dig"], [6.59, 12.22, 20.99, 31.97, 31.99, 53.29, 26.67], 0.5)
           and near(jain["kala"], [81.80, 205.85, 158.08, 210.68, 144.22, 135.89, 139.56], 0.5)
           and near(jain["drik"], [11.24, -0.32, -5.10, 4.29, 4.32, -2.86, 5.82], 0.5))
     raman = sb_example((1918, 10, 16, 14 + 22 / 60 + 16 / 3600 - 5.5), 13.0, 77 + 35 / 60, "raman")
-    check("Shadbala, B.V. Raman example (Bangalore 1918): sthana, kala and drik bala within 0.7 virupa, dig bala within 0.4 "
-          "(the book's Mars, 64.30, exceeds the 60 maximum)",
+    check("Shadbala: B.V. Raman example (Bangalore 1918), sthana/kala/drik within 0.7, dig within 0.4 virupa",
           near(raman["sthana"], [198, 126.5, 172.06, 279.5, 157.58, 178.2, 177.3], 0.7)
           and near(raman["kala"], [102.98, 202.04, 30.06, 192.79, 211.18, 115.53, 116.97], 0.7)
           and near(raman["drik"], [15.86, -21.73, 0.95, 15.64, -16.04, 18.47, 7.21], 0.7)
           and near(raman["dig"], [48.10, 31.56, 64.30, 21.09, 11.50, 15.15, 58.02], 0.4, skip=(2,)))
-    check("Shadbala chesta bala of Mars, Jupiter and Saturn within 0.5 virupa in both books "
-          "(Mercury and Venus use modern mean motions, not Raman's tables)",
+    check("Shadbala: chesta bala of Mars, Jupiter, Saturn within 0.5 virupa in both books",
           near(jain["chesta"], [0, 0, 20.93, 28.76, 8.43, 28.18, 5.05], 0.5, skip=(3, 5))
           and near(raman["chesta"], [0, 0, 22.23, 2.3, 35.26, 5.95, 21.14], 0.5, skip=(3, 5)))
     print("\nALL PASS" if ok else "\nSOME TESTS FAILED")

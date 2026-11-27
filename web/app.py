@@ -21,10 +21,10 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 
-import jyotisha_report as jr   # only for its Sinhala labels (topics, houses, muhurta purposes)
+import jyotisha_report as jr   # its Sinhala labels, and (as jr.jc) the engine for the panchanga page
 from web import catalog, placesearch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -186,6 +186,8 @@ def _index_html():
                .replace("{{DEFAULT_PLACE_JSON}}", _script_json(placesearch.DEFAULT)) \
                .replace("{{CATALOG_JSON}}", _script_json(entries)) \
                .replace("{{ORDER_JSON}}", _script_json(order_cfg)) \
+               .replace("{{PANCHANGA_LINK}}", '<a href="/panchanga">අද රාහු කාලය · Today’s Rahu kalaya</a><br>'
+                         if PANCHANGA_PAGE else "") \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
 
 
@@ -232,6 +234,88 @@ def _accuracy_html():
 def accuracy():
     page = _accuracy_html()
     return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
+
+
+# ---- daily panchanga / Rahu kalaya page. Off until its times are checked against a printed litha:
+# set PANCHANGA_PAGE=1 to switch it on (and to link it from the form page).
+PANCHANGA_PAGE = os.environ.get("PANCHANGA_PAGE", "0") == "1"
+PANCHANGA_TEMPLATE = (HERE / "panchanga.html").read_text(encoding="utf-8")
+TOWNS = json.loads((HERE / "places.json").read_text(encoding="utf-8"))["places"]   # [name, lat, lon, Sinhala]
+SL_TZ = "Asia/Colombo"
+WEEKDAY_SI = ["ඉරිදා", "සඳුදා", "අඟහරුවාදා", "බදාදා", "බ්‍රහස්පතින්දා", "සිකුරාදා", "සෙනසුරාදා"]   # Sunday first
+
+
+def _clock(jd, day):
+    """Sri Lankan 12-hour time, e.g. 'පෙ.ව. 10.30'; 'හෙට' (tomorrow) if it falls after `day`."""
+    t = jr.jc.jd_to_datetime(jd + 30 / 86400).astimezone(ZoneInfo(SL_TZ))   # rounded to the minute
+    ampm = "පෙ.ව." if t.hour < 12 else "ප.ව."
+    s = f"{ampm} {(t.hour - 1) % 12 + 1}.{t.minute:02d}"
+    return ("හෙට " + s) if t.date() > day else s
+
+
+def _span(pair, day):
+    """'පෙ.ව. 10.30 – 11.58': the second time drops the පෙ.ව./ප.ව. it shares with the first."""
+    a, b = _clock(pair[0], day), _clock(pair[1], day)
+    if a.split(" ")[0] == b.split(" ")[0] and not b.startswith("හෙට"):
+        b = b.split(" ", 1)[1]
+    return f"{a} – {b}"
+
+
+def _panchanga_html(day, town):
+    name, lat, lon, si = town
+    jc = jr.jc
+    p = jc.day_panchanga(day, lat, lon, SL_TZ)
+    names = jr.pch_si({"vara": p["vara"] + "vara", "tithi": p["tithi"], "yoga": p["yoga"], "karana": p["karana"]})
+    row = lambda k, v: f"<tr><th>{k}</th><td>{v}</td></tr>"  # noqa: E731
+    until = lambda key: f" — {_clock(p[key + '_end'], day)} දක්වා"  # noqa: E731
+    rows = "".join([
+        row("හිරු උදාව · Sunrise", _clock(p["sunrise"], day)),
+        row("හිරු බැසීම · Sunset", _clock(p["sunset"], day)),
+        row("තිථිය · Tithi", html.escape(names["tithi"]) + until("tithi")),
+        row("නැකත · Nakshatra", html.escape(jr.NAK_SI[p["nakshatra_index"]]) + until("nakshatra")),
+        row("යෝගය · Yoga", html.escape(names["yoga"]) + until("yoga")),
+        row("කරණය · Karana", html.escape(names["karana"]) + until("karana")),
+        row("චන්ද්‍ර රාශිය · Moon sign", jr.SIGN_SI[jc.SIGNS.index(p["moon_sign"])]),
+        row("යමගණ්ඩය · Yamaganda", _span(p["yamaganda"], day)),
+        row("ගුලික කාලය · Gulika kalaya", _span(p["gulika"], day)),
+    ])
+    week = []
+    for i in range(7):
+        d = day + timedelta(days=i)
+        w = p if i == 0 else jc.day_panchanga(d, lat, lon, SL_TZ)
+        week.append(f"<tr{' class=today' if i == 0 else ''}><td>{d.day}/{d.month}<br>"
+                    f"<span class=muted>{WEEKDAY_SI[w['weekday']]}</span></td><td>{_span(w['rahu'], d)}</td></tr>")
+    town_opts = "".join(f'<option value="{html.escape(t[0])}"{" selected" if t[0] == name else ""}>'
+                        f"{html.escape(t[3])} · {html.escape(t[0])}</option>" for t in TOWNS)
+    fill = {
+        "{{TITLE_DATE}}": day.isoformat(), "{{DATE_VALUE}}": day.isoformat(), "{{TOWN_OPTIONS}}": town_opts,
+        "{{HEADING_DATE}}": f"{day.isoformat()} · {WEEKDAY_SI[p['weekday']]}",
+        "{{RAHU}}": _span(p["rahu"], day), "{{TOWN}}": f"{html.escape(si)} · {html.escape(name)}",
+        "{{ROWS}}": rows, "{{WEEK_ROWS}}": "".join(week), "{{SOURCE_URL}}": SOURCE_URL,
+    }
+    page = PANCHANGA_TEMPLATE
+    for k, v in fill.items():
+        page = page.replace(k, v)
+    return page
+
+
+@app.get("/panchanga", response_class=HTMLResponse)
+def panchanga_page(date_: str = Query("", alias="date"), town: str = "Colombo"):
+    if not PANCHANGA_PAGE:
+        raise HTTPException(404, "Not Found")
+    place = next((t for t in TOWNS if t[0] == town), None)
+    if place is None:
+        raise HTTPException(400, "Unknown town")
+    if date_:
+        day = _iso_date(date_, "Date")
+        if not 1900 <= day.year <= 2100:
+            raise HTTPException(400, "Date must be between 1900 and 2100")
+    else:
+        day = datetime.now(ZoneInfo(SL_TZ)).date()
+    page = _panchanga_html(day, place)
+    # a dated page never changes; "today" must not outlive midnight in a cache
+    cache = "public, max-age=86400" if date_ else "no-cache"
+    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page), "Cache-Control": cache})
 
 
 @app.post("/places")

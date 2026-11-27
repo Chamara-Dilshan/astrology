@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6b1010">
+<title>රාහු කාලය සහ පංචාංගය · {{TITLE_DATE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6ee; --card: #fffdf8; --ink: #1e1a1a; --muted: #6f6566; --line: #e4dccb;
+    --brand: #6b1010; --brand-ink: #ffffff; --gold: #c9a55a; --focus: #b07a1a; --rahu: #fbeee0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171314; --card: #211c1d; --ink: #f1ebe6; --muted: #b3a8a4; --line: #3a3233;
+            --brand: #c9a55a; --brand-ink: #171314; --gold: #c9a55a; --focus: #e2c27a; --rahu: #2c2320; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.55 "Noto Sans Sinhala", "Noto Sans", system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { text-align: center; margin-bottom: 20px; }
+  .mark { font: 700 15px "Noto Sans", sans-serif; letter-spacing: 2.5px; color: var(--brand); text-transform: uppercase; }
+  .mark a { color: inherit; text-decoration: none; }
+  .rule { width: 120px; height: 2px; background: var(--gold); margin: 10px auto 12px; }
+  h1 { font-size: 24px; margin: 0; color: var(--brand); }
+  .sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+  form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 20px; }
+  label { display: block; font-weight: 700; font-size: 13px; margin: 0 0 6px; }
+  input, select, button { width: 100%; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink);
+                          background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  button { background: var(--brand); color: var(--brand-ink); border: 0; font-weight: 700; padding: 8px 16px; cursor: pointer; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .rahu { background: var(--rahu); border-color: var(--gold); text-align: center; }
+  .rahu .lbl { font-weight: 700; color: var(--brand); }
+  .rahu .time { font-size: 26px; font-weight: 700; margin: 4px 0 0; }
+  .day { font-size: 18px; font-weight: 700; margin: 0 0 2px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 400; width: 38%; }
+  .week th { width: auto; font-weight: 700; color: var(--ink); }
+  .week td { white-space: nowrap; }
+  .week tr.today td { font-weight: 700; }
+  h2 { font-size: 17px; margin: 0 0 8px; color: var(--brand); }
+  footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
+  footer a { color: inherit; display: inline-block; padding: 10px 4px; }
+  .week td { vertical-align: middle; }
+  @media (max-width: 420px) {
+    form { grid-template-columns: 1fr 1fr; } form button { grid-column: 1 / -1; }
+    .card { padding: 14px; } th, td { padding: 8px 4px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark"><a href="/">Jyothisha Insight</a></div>
+    <div class="rule"></div>
+    <h1>රාහු කාලය සහ දින පංචාංගය</h1>
+    <p class="sub">Rahu kalaya and the day's panchanga, from sunrise and sunset at your town</p>
+  </header>
+
+  <form method="get" action="/panchanga">
+    <div>
+      <label for="date">දිනය · Date</label>
+      <input id="date" name="date" type="date" value="{{DATE_VALUE}}" min="1900-01-01" max="2100-12-31" required>
+    </div>
+    <div>
+      <label for="town">නගරය · Town</label>
+      <select id="town" name="town">{{TOWN_OPTIONS}}</select>
+    </div>
+    <button type="submit">පෙන්වන්න · Show</button>
+  </form>
+
+  <div class="card rahu">
+    <p class="day">{{HEADING_DATE}}</p>
+    <div class="lbl">රාහු කාලය · Rahu kalaya</div>
+    <p class="time">{{RAHU}}</p>
+    <p class="muted">{{TOWN}}</p>
+  </div>
+
+  <div class="card">
+    <h2>දින පංචාංගය · Panchanga</h2>
+    <table>{{ROWS}}</table>
+  </div>
+
+  <div class="card">
+    <h2>සතියේ රාහු කාලය · This week</h2>
+    <table class="week">{{WEEK_ROWS}}</table>
+  </div>
+
+  <p class="muted">හිරු උදාවේ සිට හිරු බැසීම දක්වා දවස සමාන කොටස් අටකට බෙදා, සතියේ දිනය අනුව රාහු කාලය, යමගණ්ඩය
+    සහ ගුලික කාලය ගණනය කෙරේ. තිථි, නැකත, යෝග සහ කරණ හිරු උදාවේ පවතින ඒවා වන අතර, ඒවා අවසන් වන වේලාවද දැක්වේ.
+    Times are Sri Lanka time, computed with the Swiss Ephemeris (Lahiri ayanamsa); sunrise and sunset are the
+    upper limb with refraction. A printed litha may differ by a minute or two if it uses another sunrise rule.</p>
+
+  <footer>
+    <a href="/">ජන්ම පත්‍රය සාදන්න · Make your birth chart</a> ·
+    <a href="/accuracy">How accurate is this?</a> ·
+    <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
+  </footer>
+</main>
+</body>
+</html>
