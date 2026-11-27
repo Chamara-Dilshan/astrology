@@ -53,6 +53,16 @@
               border: 2px solid var(--brand); border-radius: 8px; color: var(--brand); font-weight: 700;
               text-decoration: none; }
   .orderbtn:hover, .orderbtn:focus-visible { background: var(--brand); color: var(--brand-ink); }
+  .reportinfo { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+  .reportinfo .tag { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px;
+                     border: 1px solid var(--gold); color: var(--ink); font-weight: 700; font-size: 13px; }
+  .orderbox { margin-top: 16px; padding: 14px; border: 1px dashed var(--gold); border-radius: 10px; }
+  .orderbox p { margin: 0 0 10px; font-size: 15px; }
+  .orderbox textarea { width: 100%; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--ink); background: var(--bg);
+                       border: 1px solid var(--line); border-radius: 8px; padding: 10px; resize: vertical; }
+  .orderbox .row { margin-top: 10px; align-items: stretch; row-gap: 10px; }
+  .orderbox .row button, .orderbox .row .orderbtn { margin-top: 0; min-height: 48px; font-size: 15px; }
+  button.secondary { background: transparent; color: var(--brand); border: 2px solid var(--brand); }
   footer { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
   footer a { color: inherit; display: inline-block; padding: 12px 4px; }
   /* stacked on phones: the labels' own top margin spaces them, so no extra row gap */
@@ -69,6 +79,10 @@
   </header>
 
   <form id="f" method="post" action="/report">
+    <label for="report">වාර්තාව <span class="hint">· Report</span></label>
+    <select id="report" name="report">{{REPORT_OPTIONS}}</select>
+    <p id="reportinfo" class="reportinfo"></p>
+
     <label for="name">නම <span class="hint">· Name</span></label>
     <input id="name" name="name" maxlength="60" required autocomplete="off" autocapitalize="words" enterkeyhint="next">
 
@@ -105,11 +119,18 @@
     <label for="tz">Time zone</label>
     <input id="tz" name="tz" value="Asia/Colombo" required autocapitalize="off" autocorrect="off" spellcheck="false">
 
-    <label for="report">වාර්තාව <span class="hint">· Report</span></label>
-    <select id="report" name="report">{{REPORT_OPTIONS}}</select>
-
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
+
+    <div id="orderbox" class="orderbox" hidden>
+      <p><b>ඇණවුම් විස්තර සූදානම්.</b> පහත පණිවිඩය copy කර අපගේ Facebook පිටුවට message කරන්න.<br>
+        <span class="hint">Your order details are ready: copy this message and send it to our Facebook page.</span></p>
+      <textarea id="ordermsg" rows="9" readonly></textarea>
+      <div class="row">
+        <button type="button" id="copybtn" class="secondary">Copy කරන්න · Copy</button>
+        <a id="orderlink" class="orderbtn" target="_blank" rel="noopener">Facebook විවෘත කරන්න · Open Facebook</a>
+      </div>
+    </div>
   </form>
   {{ORDER_LINK}}
 
@@ -139,10 +160,64 @@ document.getElementById("approx").addEventListener("change", e => {
 });
 
 const form = document.getElementById("f"), go = document.getElementById("go"), status = document.getElementById("status");
+
+// ---- report catalogue: free reports make a PDF here; the others build an order message
+const CATALOG = {{CATALOG_JSON}}, ORDER = {{ORDER_JSON}};
+const reportSel = document.getElementById("report"), info = document.getElementById("reportinfo");
+const orderbox = document.getElementById("orderbox"), ordermsg = document.getElementById("ordermsg");
+const current = () => CATALOG.find(c => c.code === reportSel.value);
+const rs = n => "Rs " + Number(n).toLocaleString("en");
+function showReport() {
+  const c = current();
+  info.replaceChildren();
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = c.free ? "නොමිලේ · Free" : (c.price ? rs(c.price) : "ඇණවුම · Order");
+  info.append(tag, c.en + (c.free ? "" : " · prepared with the astrologer's own notes"));
+  go.textContent = c.free ? "PDF සාදන්න · Make PDF" : "ඇණවුම් කරන්න · Order" + (c.price ? " – " + rs(c.price) : "");
+  orderbox.hidden = true; status.textContent = "";
+}
+reportSel.addEventListener("change", showReport);
+showReport();
+
+function orderMessage(c) {
+  const approx = document.getElementById("time_exact").value === "approx";
+  return [
+    "Jyothisha Insight – ඇණවුම / Order",
+    `වාර්තාව: ${c.code} – ${c.si}` + (c.price ? ` (${rs(c.price)})` : ""),
+    `නම: ${document.getElementById("name").value.trim()}`,   // not form.name: that's the form's own name
+    `උපන් දිනය: ${form.birth_date.value}`,
+    `උපන් වේලාව: ${form.birth_time.value}` + (approx ? " (ආසන්න / approximate)" : ""),
+    `උපන් ස්ථානය: ${place.value || "-"} (${lat.value}, ${lon.value})`,
+    `Time zone: ${form.tz.value}`,
+  ].join("\n");
+}
+async function copyOrder() {
+  try { await navigator.clipboard.writeText(ordermsg.value); return true; }
+  catch (_) { ordermsg.select(); return false; }
+}
+document.getElementById("copybtn").addEventListener("click", async () => {
+  status.className = ""; status.textContent = (await copyOrder()) ? "Copied — paste it in the Facebook message." : "Select the text above and copy it.";
+});
+document.getElementById("orderlink").href = ORDER.url || "#";
+
 form.addEventListener("submit", async e => {
   e.preventDefault();
   place.value = otherbox.hidden ? sel.value : placeother.value.trim();
   if (document.activeElement) document.activeElement.blur();   // close the phone keyboard
+  const c = current();
+  if (!c.free) {                                  // order: nothing is sent to our server
+    const msg = orderMessage(c);
+    if (ORDER.whatsapp) {
+      window.open(`https://wa.me/${ORDER.whatsapp}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+      status.className = ""; status.textContent = "WhatsApp opened with your order details.";
+      return;
+    }
+    ordermsg.value = msg; orderbox.hidden = false;
+    status.className = ""; status.textContent = (await copyOrder()) ? "Order details copied." : "Tap Copy, or select the text and copy it.";
+    orderbox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return;
+  }
   go.disabled = true; status.className = ""; status.textContent = "Calculating the chart and rendering the PDF… (up to a minute)";
   try {
     const r = await fetch("/report", { method: "POST", body: new FormData(form) });

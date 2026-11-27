@@ -1,0 +1,57 @@
+"""The report catalogue shown on the website.
+
+Every report type the generator (jyotisha_report.py) makes, with its Sinhala title (as printed on
+the PDF), a short English line, its group in the menu, and the extra input it needs beyond the
+person's birth details. A report only appears on the site once the form supports its inputs.
+Prices come from prices.json (the same file the price-list PDF uses).
+"""
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+GROUPS = {
+    "natal": "ජන්ම කේන්දර · Birth chart",
+    "life": "ජීවන ක්ෂේත්‍ර · Life areas",
+    "timing": "කාල විග්‍රහ · Timing",
+}
+
+# code: (group, Sinhala title, English line, extra input needed)
+# extra input: None = birth details only. Others are added to the form phase by phase.
+REPORTS = {
+    "G":  ("natal", "ඔබේ කේන්දරයේ මූලික තොරතුරු", "Free 1-page summary", None),
+    "A1": ("natal", "ජන්ම කේන්දර වාර්තාව – කේන්ද්‍ර සාර", "Natal report, 8 pages", None),
+    "A2": ("natal", "සම්පූර්ණ කේන්දර විග්‍රහය", "Full natal report, 9 pages", None),
+    "A3": ("natal", "ගැඹුරු කේන්දර විග්‍රහය", "Deep natal report with divisional charts, 14 pages", None),
+    "B1": ("life", "විවාහ විග්‍රහය", "Marriage and partner", None),
+    "B2": ("life", "වෘත්තීය විග්‍රහය", "Career and business", None),
+    "B3": ("life", "අධ්‍යාපන විග්‍රහය", "Education and exams", None),
+    "B4": ("life", "ධන විග්‍රහය", "Wealth and income", None),
+    "B5": ("life", "සන්තාන විග්‍රහය", "Children", None),
+    "B6": ("life", "විදේශ විග්‍රහය", "Foreign travel and residence", None),
+    "B7": ("life", "දේපල විග්‍රහය", "House, land and vehicles", None),
+    "B8": ("life", "මාතෘ–පිතෘ විග්‍රහය", "Relationship with parents", None),
+    "C3": ("timing", "සඩේ සති වාර්තාව", "Sade Sati: Saturn's 7½-year transit", None),
+    "C4": ("timing", "දශා සන්ධි වාර්තාව", "Change of Maha Dasa", None),
+    "N":  ("timing", "නාම නක්ෂත්‍ර වාර්තාව", "Letters for naming a child", None),
+}
+
+
+def prices():
+    """{code: price in LKR} from prices.json; G is always free."""
+    try:
+        p = json.loads((ROOT / "prices.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        p = {}
+    return {c: v for c, v in p.items() if c in REPORTS and isinstance(v, (int, float))}
+
+
+def entries(free_codes):
+    """Catalogue entries for the page, in menu order, marking which are free to generate."""
+    price = prices()
+    out = []
+    for code, (group, si, en, needs) in REPORTS.items():
+        free = code in free_codes
+        out.append({"code": code, "group": group, "si": si, "en": en, "needs": needs,
+                    "free": free, "price": None if free else price.get(code)})
+    return out

@@ -24,20 +24,24 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
+from web import catalog
+
 ROOT = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
 SOURCE_URL = "https://github.com/Chamara-Dilshan/astrology"
-ALL_REPORTS = {"G": "Free summary (1 page)", "A1": "Natal report (8 pages)",
-               "A2": "Full natal report (9 pages)", "A3": "Deep natal report with divisional charts (14 pages)"}
-# Which reports the public site makes: all four by default (the owner's choice). The paid versions
-# add the astrologer's own notes; set e.g. WEB_REPORTS=G to offer only the free summary.
-REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", ",".join(ALL_REPORTS)).upper()
+ALL_REPORTS = {c: v[2] for c, v in catalog.REPORTS.items()}   # every report the site shows
+# Reports the site makes for free. The owner chose G and A1-A3; N and C3 are added as free samples.
+# Every other catalogue report is shown with its price and an Order button.
+REPORTS = {c: ALL_REPORTS[c] for c in os.environ.get("WEB_REPORTS", "G,A1,A2,A3,N,C3").upper()
            .replace(" ", "").split(",") if c in ALL_REPORTS} or {"G": ALL_REPORTS["G"]}
 # Printed at the bottom of each PDF, and where the "order a personal reading" button links to.
 # Defaults are the Jyothisha Insight Facebook page; set either to "" in the environment to hide it.
 FACEBOOK_PAGE = "https://www.facebook.com/profile.php?id=61594028591573"
 BRAND_CONTACT = os.environ.get("BRAND_CONTACT", "Facebook: Jyothisha Insight · facebook.com/profile.php?id=61594028591573").strip()
 ORDER_URL = os.environ.get("ORDER_URL", FACEBOOK_PAGE).strip()
+# Optional WhatsApp number (international digits, e.g. 9471xxxxxxx) for orders: the order button then
+# opens WhatsApp with the details filled in. Without it, the details are copied for pasting on Facebook.
+ORDER_WHATSAPP = re.sub(r"\D", "", os.environ.get("ORDER_WHATSAPP", ""))
 MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
 TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
@@ -129,17 +133,47 @@ def index():
     return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
 
 
+def _catalog():
+    return catalog.entries(set(REPORTS))
+
+
+def _report_options(entries):
+    """<optgroup>s of the catalogue; each option says free or its price."""
+    out = []
+    for gkey, glabel in catalog.GROUPS.items():
+        items = [e for e in entries if e["group"] == gkey]
+        if not items:
+            continue
+        # price before the title: a closed <select> on a phone cuts off the end of the label
+        opts = "".join(
+            f'<option value="{e["code"]}">{e["code"]} · '
+            f'{"නොමිලේ" if e["free"] else ("Rs " + format(e["price"], ",") if e["price"] else "ඇණවුම")}'
+            f' — {html.escape(e["si"])}</option>'
+            for e in items)
+        out.append(f'<optgroup label="{html.escape(glabel)}">{opts}</optgroup>')
+    return "".join(out)
+
+
+def _script_json(value):
+    """JSON safe to put inside <script>: no '<' can close the tag early."""
+    return json.dumps(value).replace("<", "\\u003c")
+
+
 def _index_html():
-    opts = "".join(f'<option value="{c}">{c} — {label}</option>' for c, label in REPORTS.items())
+    entries = _catalog()
+    order_cfg = {"url": ORDER_URL if ORDER_URL.startswith(("https://", "http://")) else "",
+                 "whatsapp": ORDER_WHATSAPP}
     order = ""
     if ORDER_URL.startswith(("https://", "http://")):
         order = ('<div class="order"><p>ජ්‍යොතිෂවේදියාගේ සටහන් සහිත පුද්ගලික වාර්තාවක් අවශ්‍යද?<br>'
                  '<span class="hint">Want a personal reading with the astrologer\'s own notes?</span></p>'
                  f'<a class="orderbtn" href="{html.escape(ORDER_URL)}" target="_blank" rel="noopener">'
                  'Facebook හරහා ඇණවුම් කරන්න · Order on Facebook</a></div>')
-    return PAGE.replace("{{REPORT_OPTIONS}}", opts) \
+    return PAGE.replace("{{REPORT_OPTIONS}}", _report_options(entries)) \
                .replace("{{ORDER_LINK}}", order) \
-               .replace("{{PLACES_JSON}}", json.dumps(PLACES)) \
+               .replace("{{PLACES_JSON}}", _script_json(PLACES)) \
+               .replace("{{CATALOG_JSON}}", _script_json(entries)) \
+               .replace("{{ORDER_JSON}}", _script_json(order_cfg)) \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
 
 

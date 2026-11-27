@@ -141,7 +141,7 @@ def test_defaults_offer_all_reports_with_facebook_contact(monkeypatch):
     import importlib
     fresh = importlib.reload(web)
     try:
-        assert list(fresh.REPORTS) == ["G", "A1", "A2", "A3"]
+        assert list(fresh.REPORTS) == ["G", "A1", "A2", "A3", "N", "C3"]   # owner's free set + samples
         assert "61594028591573" in fresh.BRAND_CONTACT
         assert fresh.ORDER_URL == fresh.FACEBOOK_PAGE
     finally:
@@ -165,7 +165,49 @@ def test_paid_report_refused_when_not_offered(client, calls, monkeypatch):
     assert r.status_code == 400 and r.json()["detail"] == "This report is available by order only"
     assert calls == []
     page = client.get("/").text
-    assert 'value="G"' in page and 'value="A1"' not in page
+    # order-only reports are still listed, with their price instead of "free"
+    a1 = re.search(r'<option value="A1">[^<]*</option>', page).group(0)
+    assert "Rs 2,500" in a1 and "නොමිලේ" not in a1
+    assert "නොමිලේ" in re.search(r'<option value="G">[^<]*</option>', page).group(0)
+
+
+def test_catalogue_lists_phase_1_reports_in_groups(client):
+    page = client.get("/").text
+    for code in ["G", "A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "C3", "C4", "N"]:
+        assert f'value="{code}"' in page
+    assert page.count("<optgroup") == 3
+    entries = web._catalog()
+    assert [e["code"] for e in entries if e["needs"]] == []          # phase 1: birth details only
+
+
+def test_catalogue_prices_come_from_prices_json(monkeypatch):
+    monkeypatch.setattr(web, "REPORTS", {"G": "x", "N": "x"})
+    by_code = {e["code"]: e for e in web._catalog()}
+    assert by_code["G"]["free"] and by_code["G"]["price"] is None
+    assert by_code["B2"]["price"] == 3000 and not by_code["B2"]["free"]
+    assert by_code["A3"]["price"] == 9500
+
+
+def test_order_settings_reach_the_page(client, monkeypatch):
+    monkeypatch.setattr(web, "ORDER_WHATSAPP", "94711234567")
+    monkeypatch.setattr(web, "ORDER_URL", "https://facebook.com/example")
+    page = client.get("/").text
+    assert '"whatsapp": "94711234567"' in page and '"url": "https://facebook.com/example"' in page
+
+
+def test_whatsapp_setting_keeps_digits_only(monkeypatch):
+    monkeypatch.setenv("ORDER_WHATSAPP", "+94 71-123 4567")
+    import importlib
+    fresh = importlib.reload(web)
+    try:
+        assert fresh.ORDER_WHATSAPP == "94711234567"
+    finally:
+        monkeypatch.delenv("ORDER_WHATSAPP")
+        importlib.reload(web)
+
+
+def test_script_json_cannot_close_the_script_tag():
+    assert "</script>" not in web._script_json({"x": "</script><b>"})
 
 
 def test_contact_line_reaches_the_pdf(client, calls, monkeypatch):
