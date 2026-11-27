@@ -1466,6 +1466,43 @@ def shadbala_block(d):
             f"<p class='small'>{summary}</p>")
 
 
+def kp_block(d):
+    """KP (Krishnamurti Paddhati) section for A3: cusps and planets with their star and sub lords,
+    the significators of each house (strongest first) and the ruling planets of the birth moment."""
+    kp = d.get("kp")
+    if not kp:
+        return ""
+    pos_si = lambda lon: f"{SIGN_SI[int(lon // 30) % 12]} {dms(lon % 30)}"  # noqa: E731
+    cusp_rows = "".join(f"<tr><td>{h}</td><td>{pos_si(c['lon'])}</td><td>{PLANET_SI[c['lords'][0]]}</td>"
+                        f"<td>{PLANET_SI[c['lords'][1]]}</td><td><b>{PLANET_SI[c['lords'][2]]}</b></td></tr>"
+                        for h, c in enumerate(kp["cusps"], 1))
+    planet_rows = "".join(f"<tr><td>{PLANET_SI[p]}</td><td>{pos_si(v['lon'])}</td><td>{v['house']}</td>"
+                          f"<td>{PLANET_SI[v['lords'][1]]}</td><td>{PLANET_SI[v['lords'][2]]}</td></tr>"
+                          for p, v in kp["planets"].items())
+    sig_rows = []
+    for h, s in kp["significators"].items():
+        ranked = list(dict.fromkeys(s["L1"] + s["L2"] + s["L3"] + s["L4"]))
+        sig_rows.append(f"<tr><td>{h}</td><td>{HOUSE_SI[int(h)].split(',')[0]}</td>"
+                        f"<td>{', '.join(PLANET_SI[p] for p in ranked)}</td></tr>")
+    rp = kp["ruling_planets"]
+    ruling = (f"දින අධිපති {PLANET_SI[rp['day_lord']]} · චන්ද්‍ර: රාශි {PLANET_SI[rp['moon_sign_lord']]}, "
+              f"නැකත් {PLANET_SI[rp['moon_star_lord']]}, උප {PLANET_SI[rp['moon_sub_lord']]} · "
+              f"ලග්නය: රාශි {PLANET_SI[rp['lagna_sign_lord']]}, නැකත් {PLANET_SI[rp['lagna_star_lord']]}, "
+              f"උප {PLANET_SI[rp['lagna_sub_lord']]}")
+    return ("<h3>KP — කෘෂ්ණමූර්ති පද්ධතිය</h3>"
+            "<p class='small'>KP ක්‍රමය ප්ලැසිඩස් භාව සන්ධි සහ කෘෂ්ණමූර්ති අයනාංශය "
+            f"({dms(kp['ayanamsa'])}) යොදා ගනී; සෑම සන්ධියක්ම එම භාවයේ ආරම්භයයි. නැකත් විම්ශෝත්තරී "
+            "දශා අනුපාතයට කොටස් නවයකට බෙදූ විට ලැබෙන උප අධිපති, භාවයක ප්‍රතිඵලය තීරණය කිරීමේදී ප්‍රධාන වේ.</p>"
+            "<table><tr><th>භාවය</th><th>සන්ධිය</th><th>රාශි අධිපති</th><th>නැකත් අධිපති</th><th>උප අධිපති</th></tr>"
+            + cusp_rows + "</table>"
+            "<table><tr><th>ග්‍රහයා</th><th>ස්ථානය</th><th>භාවය</th><th>නැකත් අධිපති</th><th>උප අධිපති</th></tr>"
+            + planet_rows + "</table>"
+            "<p class='small'><b>භාව කාරකයන්</b> (ශක්තිමත්ම මුලින්: භාවයේ සිටින ග්‍රහයන්ගේ නැකතේ සිටින ග්‍රහයන්, "
+            "භාවයේ සිටින ග්‍රහයන්, භාවාධිපතිගේ නැකතේ සිටින ග්‍රහයන්, භාවාධිපති)</p>"
+            "<table><tr><th>භාවය</th><th>කාරණය</th><th>කාරක ග්‍රහයන්</th></tr>" + "".join(sig_rows) + "</table>"
+            f"<p class='small'><b>පාලක ග්‍රහයන් (උපත් මොහොතේ):</b> {ruling}</p>")
+
+
 def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     """A2 (standard) and A3 (deep, deep=True). Extends the A1 structure."""
     P, ls = d["planets"], d["lagna"]["sign_idx"]
@@ -1610,7 +1647,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
 
     # ---- 8 argala / upagrahas (A3)
     if deep:
-        H.append('<h2>8. අර්ගල සහ උපග්‍රහ</h2>')
+        H.append('<h2>8. අර්ගල, උපග්‍රහ සහ KP පද්ධතිය</h2>')
         arg = d.get("argala", {})
         rows = []
         for h in range(1, 13):
@@ -1629,6 +1666,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                      + "".join(f"<tr><td>{UPAGRAHA_SI.get(k, k)}</td><td>{SIGN_SI[jc.sign_of(v)]}</td><td>{dms(v % 30)}</td>"
                                f"<td>{jc.house_from(ls, jc.sign_of(v))}</td></tr>" for k, v in up.items()) + "</table>")
             H.append('<p class="small muted">උපග්‍රහ පාප ලක්ෂ්‍ය ලෙස සැලකේ; ගුලික/මාන්දි ශනි හා සමාන ස්වභාවයක් දරයි.</p>')
+        H.append(kp_block(d))
 
     # ---- 9 life areas
     H.append('<h2 style="page-break-before:auto">' + ("9" if deep else "8") + '. ජීවන ක්ෂේත්‍ර</h2>')

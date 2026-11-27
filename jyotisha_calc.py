@@ -3201,6 +3201,7 @@ def _sun_events(jd, lat, lon):
 def shadbala(jd, lat, lon, tzname, pos, lagna_lon, madhya):
     """Shadbala of the seven planets. madhya: the 12 Sripati bhava madhyas (sripati_bhavas)."""
     lagna = sign_of(lagna_lon)
+    swe.set_sid_mode(SID_MODE)
     ayan = swe.get_ayanamsa_ut(jd)
     benefic = shadbala_benefics(pos)
     L = {p: pos[p]["lon"] for p in SEVEN}
@@ -3311,6 +3312,113 @@ def shadbala(jd, lat, lon, tzname, pos, lagna_lon, madhya):
         total = sum(o["sthana"].values()) + o["dig"] + sum(o["kala"].values()) + o["chesta"] + o["naisargika"] + o["drik"]
         o.update(total=total, rupas=total / 60, required=SB_REQUIRED[p], ratio=total / 60 / SB_REQUIRED[p])
     return out
+
+
+# --------------------------------------------------------------------------
+# KP (Krishnamurti Paddhati): Placidus cusps, star / sub / sub-sub lords, significators
+# --------------------------------------------------------------------------
+NAK_SPAN = 360 / 27
+
+
+def kp_lords(lon, depth=4):
+    """[sign lord, star lord, sub lord, sub-sub lord] of a sidereal longitude. Each nakshatra is split
+    into nine parts in proportion to the Vimshottari years, starting from its own lord; each sub again."""
+    lon = norm(lon)
+    nak = min(26, int(lon // NAK_SPAN))
+    lords = [SIGN_LORD[sign_of(lon)], NAK_LORDS[nak % 9]]
+    start, span, off = lords[1], NAK_SPAN, lon - nak * NAK_SPAN
+    for _ in range(depth - 2):
+        i0 = NAK_LORDS.index(start)
+        for k in range(9):
+            lord = NAK_LORDS[(i0 + k) % 9]
+            part = span * DASHA_YEARS[lord] / 120
+            if off < part or k == 8:
+                break
+            off -= part
+        lords.append(lord)
+        start, span = lord, part
+    return lords
+
+
+def kp_sub_table():
+    """The KP table of 249 divisions: the 243 subs, six of which a sign boundary splits in two.
+    [(start, end, sign lord, star lord, sub lord)], in order from 0 Aries."""
+    cuts = {0.0}
+    for nak in range(27):
+        x, i0 = nak * NAK_SPAN, NAK_LORDS.index(NAK_LORDS[nak % 9])
+        for k in range(9):
+            x += NAK_SPAN * DASHA_YEARS[NAK_LORDS[(i0 + k) % 9]] / 120
+            cuts.add(round(x, 9) % 360)
+    cuts |= {30.0 * s for s in range(12)}
+    edges = sorted(cuts) + [360.0]
+    return [(a, b, *kp_lords((a + b) / 2, 3)) for a, b in zip(edges, edges[1:])]
+
+
+KP_TABLE = None
+
+
+def kp_number(lon):
+    """KP number 1..249 of a longitude (the horary numbers)."""
+    global KP_TABLE
+    if KP_TABLE is None:
+        KP_TABLE = kp_sub_table()
+    lon = norm(lon)
+    return next(i for i, row in enumerate(KP_TABLE, 1) if row[0] <= lon < row[1])
+
+
+def kp_chart(jd, lat, lon, tzname):
+    """KP chart: positions with the Krishnamurti ayanamsa, Placidus cusps (each cusp starts its house),
+    the lords of every cusp and planet, house occupation, the four-level significators of each house,
+    and the ruling planets of the moment. The nodes follow the engine's node setting (NODE_KIND)."""
+    saved = SID_MODE
+    swe.set_sid_mode(swe.SIDM_KRISHNAMURTI)
+    try:
+        flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
+        lons = {code: norm(swe.calc_ut(jd, pid, flags)[0][0]) for code, pid in PLANETS}
+        lons["Ke"] = norm(lons["Ra"] + 180)
+        cusps = [norm(c) for c in swe.houses_ex(jd, lat, lon, b"P", flags)[0][:12]]
+        ayan = swe.get_ayanamsa_ut(jd)
+    finally:
+        swe.set_sid_mode(saved)
+
+    def house_of(x):
+        for h in range(12):
+            if norm(x - cusps[h]) < norm(cusps[(h + 1) % 12] - cusps[h]):
+                return h + 1
+        return 12
+
+    order = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]
+    planets = {p: {"lon": round(lons[p], 4), "house": house_of(lons[p]), "lords": kp_lords(lons[p]),
+                   "kp_number": kp_number(lons[p])} for p in order}
+    star = {p: planets[p]["lords"][1] for p in order}
+    signif = {}
+    for h in range(1, 13):
+        occupants = [p for p in order if planets[p]["house"] == h]
+        owner = SIGN_LORD[sign_of(cusps[h - 1])]
+        signif[h] = {"L1": [p for p in order if star[p] in occupants], "L2": occupants,
+                     "L3": [p for p in order if star[p] == owner], "L4": [owner]}
+    planet_houses = {p: sorted({h for h, s in signif.items() if any(p in s[k] for k in s)}) for p in order}
+    sr = sunrise_before(jd, lat, lon)
+    day_lord = VARA_LORD[(jd_to_datetime(sr if sr else jd).astimezone(ZoneInfo(tzname)).weekday() + 1) % 7]
+    moon, lagna = kp_lords(lons["Mo"]), kp_lords(cusps[0])
+    ruling = {"day_lord": day_lord, "moon_sign_lord": moon[0], "moon_star_lord": moon[1], "moon_sub_lord": moon[2],
+              "lagna_sign_lord": lagna[0], "lagna_star_lord": lagna[1], "lagna_sub_lord": lagna[2]}
+    return {"ayanamsa": round(ayan, 6),
+            "cusps": [{"lon": round(c, 4), "lords": kp_lords(c), "kp_number": kp_number(c)} for c in cusps],
+            "planets": planets, "significators": signif, "planet_houses": planet_houses, "ruling_planets": ruling}
+
+
+def print_kp(kp):
+    lord = lambda ls: "/".join(PLANET_NAME[x][:3] for x in ls)  # noqa: E731
+    print(f"\nKP CHART (Krishnamurti ayanamsa {dms(kp['ayanamsa'])}, Placidus cusps; lords = sign/star/sub/sub-sub)")
+    for h, c in enumerate(kp["cusps"], 1):
+        print(f"  cusp {h:2}: {SIGNS[sign_of(c['lon'])]:10} {dms(c['lon'] % 30)}  {lord(c['lords'])}  #{c['kp_number']}")
+    for p, v in kp["planets"].items():
+        print(f"  {PLANET_NAME[p]:8} {SIGNS[sign_of(v['lon'])]:10} {dms(v['lon'] % 30)}  house {v['house']:2}  {lord(v['lords'])}")
+    print("  SIGNIFICATORS (L1 in star of occupants, L2 occupants, L3 in star of owner, L4 owner)")
+    for h, s in kp["significators"].items():
+        print(f"    {h:2}: " + " | ".join(",".join(PLANET_NAME[x][:3] for x in s[k]) or "-" for k in ("L1", "L2", "L3", "L4")))
+    print("  RULING PLANETS: " + ", ".join(f"{k.replace('_', ' ')} {PLANET_NAME[v]}" for k, v in kp["ruling_planets"].items()))
 
 
 def round_tree(x, nd=2):
@@ -3581,6 +3689,7 @@ def main():
     ap.add_argument("--ashtakavarga-varga", default="", help="comma list e.g. D9,D10,D24: BAV/SAV of divisional charts")
     ap.add_argument("--ayanamsa", choices=sorted(AYANAMSAS), default="lahiri", help="ayanamsa (default Lahiri — the project standard; others only for comparing with another astrologer's chart)")
     ap.add_argument("--node", choices=["mean", "true"], default="mean", help="Rahu/Ketu: mean node (default, as in the textbook) or true node")
+    ap.add_argument("--kp", action="store_true", help="print the KP chart: Placidus cusps, star/sub lords, significators, ruling planets")
     ap.add_argument("--sunrise", choices=["limb", "centre"], default="limb", help="sunrise definition: upper limb+refraction (default) or disc centre without refraction (traditional litha)")
     ap.add_argument("--ephe", help="directory with Swiss Ephemeris .se1 files (default: ./ephe next to the script)")
     ap.add_argument("--svg-vargas", default="", help="comma list e.g. D9,D10: write South Indian SVG for those vargas (files <svg-stem>_D9.svg)")
@@ -3714,6 +3823,9 @@ def main():
                                 "nakshatra": NAKSHATRAS[nk], "pada": pd,
                                 "retro": bool(p["retro"]), "combust": bool(cb),
                                 "dignity": dig, "boundary_flag": bool(flag)}
+
+    if args.kp:
+        print_kp(kp_chart(jd, args.lat, args.lon, args.tz))
 
     # --- Vargottama ---
     vt = [PLANET_NAME[c] for c in result_planets if varga_sign(pos[c]["lon"], 9) == sign_of(pos[c]["lon"])]
@@ -4290,6 +4402,7 @@ def main():
             sbala = round_tree(shadbala(jd, args.lat, args.lon, args.tz, pos, lagna, bhava["madhya"]))
         except ValueError:      # no sunrise/sunset that day (polar latitudes): no kala bala, so none at all
             sbala = None
+        kp_out = kp_chart(jd, args.lat, args.lon, args.tz)
 
         def ser(p):
             return {"lord": p["lord"], "start": p["start"].isoformat(), "end": p["end"].isoformat(),
@@ -4310,7 +4423,7 @@ def main():
             "chart_type": args.chart_type,
             "special_lagnas": {k: {"sign": SIGNS[sign_of(spl[k])], "lon": round(spl[k], 4)} for k in ("HL", "GL", "SL") if k in spl},
             "hora": hora_txt, "node": NODE_KIND,
-            "sripati": bhava, "shadbala": sbala, **extra_out,
+            "sripati": bhava, "shadbala": sbala, "kp": kp_out, **extra_out,
         }
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1, ensure_ascii=False)
