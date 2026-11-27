@@ -10,16 +10,22 @@ import base64
 import collections
 import hashlib
 import html
+import ipaddress
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
+import zoneinfo
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
@@ -44,7 +50,8 @@ ORDER_URL = os.environ.get("ORDER_URL", FACEBOOK_PAGE).strip()
 # opens WhatsApp with the details filled in. Without it, the details are copied for pasting on Facebook.
 ORDER_WHATSAPP = re.sub(r"\D", "", os.environ.get("ORDER_WHATSAPP", ""))
 MAX_PARALLEL = int(os.environ.get("MAX_PARALLEL", "2"))
-TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "180"))
+# Cloudflare gives up on a response after 100 s (error 524), so a longer render only holds the slot.
+TIMEOUT_S = int(os.environ.get("REPORT_TIMEOUT", "90"))
 RATE_PER_IP = int(os.environ.get("REPORTS_PER_HOUR_PER_IP", "10"))
 RATE_TOTAL = int(os.environ.get("REPORTS_PER_HOUR", "120"))
 # Town search (the place box asks as you type): generous, but bounded.
@@ -98,17 +105,45 @@ _search_limiter = _HourlyLimiter()
 
 
 def _client_ip(request):
-    ip = request.headers.get(CLIENT_IP_HEADER)
-    return ip.strip() if ip else (request.client.host if request.client else "unknown")
+    """Rate-limit key for a visitor: the proxy's client-IP header when it holds a real address (else
+    the peer's), IPv6 grouped by /64. An ISP gives each customer a whole /64, so counting single IPv6
+    addresses would hand one person billions of separate allowances; and a header that isn't an
+    address (forged, if the app is ever reached without the proxy) can't become an unbounded key."""
+    for raw in ((request.headers.get(CLIENT_IP_HEADER) or "").strip() if CLIENT_IP_HEADER else "",
+                request.client.host if request.client else ""):
+        try:
+            ip = ipaddress.ip_address(raw)
+        except ValueError:
+            continue
+        if ip.version == 6:
+            if ip.ipv4_mapped:                       # ::ffff:a.b.c.d is an IPv4 visitor
+                return str(ip.ipv4_mapped)
+            return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+        return str(ip)
+    return "unknown"
+
+
+def _same_site_only(request):
+    """Refuse POSTs sent by other websites' pages: a page anywhere could otherwise make its visitors'
+    browsers request reports here, spending their allowance and the site-wide one. Browsers label
+    every request (Sec-Fetch-Site, Origin); the form's own fetch() is same-origin. Tools that send
+    neither header are unaffected."""
+    site = request.headers.get("sec-fetch-site")
+    origin = request.headers.get("origin")
+    if (site is not None and site not in ("same-origin", "none")) or \
+            (origin is not None and (origin == "null" or urlsplit(origin).netloc != request.headers.get("host"))):
+        raise HTTPException(403, "Requests from other websites are not accepted")
 
 app = FastAPI(title="Jyothisha Insight", docs_url=None, redoc_url=None, openapi_url=None)
 
 
-def _csp(page_html):
-    """Content-Security-Policy for the form page: nothing loads or runs except our own inline
-    script (allowed by hash, so an injected script would not run), Google Fonts, and fetch() to
-    this site. The page also can't be framed (clickjacking)."""
-    scripts = re.findall(r"<script>(.*?)</script>", page_html, re.S)
+def _csp(template):
+    """Content-Security-Policy: nothing loads or runs except the page's own script, allowed by the
+    hash of the script in the page's TEMPLATE (so nothing put into the page later can run, even
+    inside a <script>), Google Fonts, and fetch() to this site. No framing (clickjacking).
+    The template's script must be fixed text; data goes in a type="application/json" block."""
+    scripts = re.findall(r"<script>(.*?)</script>", template, re.S)
+    assert not any("{{" in s for s in scripts), "a template script must not contain placeholders"
     hashes = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode()).digest()).decode() for s in scripts)
     script_src = hashes or "'none'"          # a page without scripts may run none
     return ("default-src 'none'; "
@@ -117,6 +152,9 @@ def _csp(page_html):
             "font-src https://fonts.gstatic.com; "
             "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
             "base-uri 'none'; frame-ancestors 'none'")
+
+
+INDEX_CSP = _csp(PAGE)
 
 
 @app.middleware("http")
@@ -132,10 +170,55 @@ async def security_headers(request: Request, call_next):
     return response
 
 
+MAX_BODY = 64 * 1024     # the largest real form (E1 with 12 events, D3 with 5 proposals) is under 10 KB
+
+
+class BodyLimit:
+    """Refuse request bodies over MAX_BODY (413) before anything parses them. Starlette caps each
+    form field at 1 MB, but would still read a body of any size, or spool a file part to disk."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        length = dict(scope["headers"]).get(b"content-length")
+        if length is not None and (not length.isdigit() or int(length) > MAX_BODY):
+            return await self._refuse(send)
+        body, more = b"", True
+        while more:                        # chunked bodies have no length: read up to the cap first
+            msg = await receive()
+            if msg["type"] != "http.request":
+                return                     # client went away
+            body += msg.get("body", b"")
+            more = msg.get("more_body", False)
+            if len(body) > MAX_BODY:
+                return await self._refuse(send)
+        replayed = False
+
+        async def replay():
+            nonlocal replayed
+            if replayed:
+                return await receive()
+            replayed = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay, send)
+
+    @staticmethod
+    async def _refuse(send):
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"), (b"x-content-type-options", b"nosniff")]})
+        await send({"type": "http.response.body", "body": b'{"detail":"Request too large"}'})
+
+
+app.add_middleware(BodyLimit)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
-    page = _index_html()
-    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
+    return HTMLResponse(_index_html(), headers={"Content-Security-Policy": INDEX_CSP})
 
 
 def _catalog():
@@ -183,9 +266,8 @@ def _index_html():
                .replace("{{LANG_OPTIONS}}", opt(catalog.LANG_NAMES.items())) \
                .replace("{{EVENT_OPTIONS}}", opt((k, v[0]) for k, v in jr.EVENT_TYPES.items())) \
                .replace("{{ORDER_LINK}}", order) \
-               .replace("{{DEFAULT_PLACE_JSON}}", _script_json(placesearch.DEFAULT)) \
-               .replace("{{CATALOG_JSON}}", _script_json(entries)) \
-               .replace("{{ORDER_JSON}}", _script_json(order_cfg)) \
+               .replace("{{PAGE_DATA_JSON}}", _script_json({"place": placesearch.DEFAULT, "catalog": entries,
+                                                            "order": order_cfg})) \
                .replace("{{PANCHANGA_LINK}}", '<a href="/panchanga">අද රාහු කාලය · Today’s Rahu kalaya</a><br>'
                          if PANCHANGA_PAGE else "") \
                .replace("{{SOURCE_URL}}", SOURCE_URL)
@@ -195,8 +277,10 @@ ACCURACY_PAGE = (HERE / "accuracy.html").read_text(encoding="utf-8")
 CI_URL = SOURCE_URL + "/actions/workflows/ci.yml"
 
 
+@lru_cache(maxsize=1)
 def _accuracy_html():
-    """The accuracy page, from the saved NASA comparison and the engine's own selftest names."""
+    """The accuracy page, from the saved NASA comparison and the engine's own selftest names
+    (built once: neither changes while the app runs)."""
     data = json.loads((ROOT / "docs" / "accuracy_jpl.json").read_text(encoding="utf-8"))
     checks = re.findall(r'^\s+check\(\s*"([^"]+)"', (ROOT / "jyotisha_calc.py").read_text(encoding="utf-8"), re.M)
     bodies = list(dict.fromkeys(r["body"] for r in data["rows"]))
@@ -233,13 +317,17 @@ def _accuracy_html():
 @app.get("/accuracy", response_class=HTMLResponse)
 def accuracy():
     page = _accuracy_html()
-    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
+    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(ACCURACY_PAGE)})
 
 
 # ---- daily panchanga / Rahu kalaya page. Its Rahu kalaya agrees within 2 minutes with the Sri Lankan
 # almanac sites litha.lk, porondam.lk and suhadaastrology.lk (checked 2026-11-27, tests/test_panchanga.py).
 # PANCHANGA_PAGE=0 switches it (and its link on the form page) off.
 PANCHANGA_PAGE = os.environ.get("PANCHANGA_PAGE", "1") == "1"
+# Each new date/town costs CPU, and Render's free instance has a fraction of one core: cap it like the search.
+PANCHANGA_PER_IP = int(os.environ.get("PANCHANGA_PER_HOUR_PER_IP", "120"))
+PANCHANGA_TOTAL = int(os.environ.get("PANCHANGA_PER_HOUR", "3000"))
+_panchanga_limiter = _HourlyLimiter()
 PANCHANGA_TEMPLATE = (HERE / "panchanga.html").read_text(encoding="utf-8")
 TOWNS = json.loads((HERE / "places.json").read_text(encoding="utf-8"))["places"]   # [name, lat, lon, Sinhala]
 SL_TZ = "Asia/Colombo"
@@ -300,8 +388,14 @@ def _panchanga_html(day, town):
     return page
 
 
+# Pages already made, (date, town) -> HTML, most recently used last. A page costs about 35 ms of CPU
+# (eight days of sunrise and Moon positions); from here it costs nothing and isn't rate-limited.
+_PANCHANGA_PAGES = collections.OrderedDict()
+PANCHANGA_CACHE = 512                      # ~12 KB each
+
+
 @app.get("/panchanga", response_class=HTMLResponse)
-def panchanga_page(date_: str = Query("", alias="date"), town: str = "Colombo"):
+async def panchanga_page(request: Request, date_: str = Query("", alias="date"), town: str = "Colombo"):
     if not PANCHANGA_PAGE:
         raise HTTPException(404, "Not Found")
     place = next((t for t in TOWNS if t[0] == town), None)
@@ -313,15 +407,26 @@ def panchanga_page(date_: str = Query("", alias="date"), town: str = "Colombo"):
             raise HTTPException(400, "Date must be between 1900 and 2100")
     else:
         day = datetime.now(ZoneInfo(SL_TZ)).date()
-    page = _panchanga_html(day, place)
+    key = (day, place[0])
+    page = _PANCHANGA_PAGES.get(key)
+    if page is None:                       # only pages that must be computed count against the limits
+        wait = _panchanga_limiter.check(_client_ip(request), PANCHANGA_PER_IP, PANCHANGA_TOTAL)
+        if wait:
+            raise HTTPException(429, "Too many requests, please try again later", headers={"Retry-After": str(wait)})
+        page = await asyncio.to_thread(_panchanga_html, day, place)
+        _PANCHANGA_PAGES[key] = page
+        if len(_PANCHANGA_PAGES) > PANCHANGA_CACHE:
+            _PANCHANGA_PAGES.popitem(last=False)
+    _PANCHANGA_PAGES.move_to_end(key)
     # a dated page never changes; "today" must not outlive midnight in a cache
     cache = "public, max-age=86400" if date_ else "no-cache"
-    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page), "Cache-Control": cache})
+    return HTMLResponse(page, headers={"Content-Security-Policy": _csp(PANCHANGA_TEMPLATE), "Cache-Control": cache})
 
 
 @app.post("/places")
 async def places(request: Request, q: str = Form("")):
     """Town suggestions for the place box. POST, so what visitors type stays out of access logs."""
+    _same_site_only(request)
     if len(placesearch.norm(q[:200])) < placesearch.MIN_QUERY:
         return {"places": []}
     if _search_limiter.check(_client_ip(request), SEARCH_PER_IP, SEARCH_TOTAL):
@@ -335,6 +440,12 @@ def healthz():
     return {"ok": True, "version": os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]}
 
 
+# Control, format and unassigned characters are refused in text fields (they include the bidi
+# overrides that would let a name display reversed); Sinhala needs the two joiners, so they stay.
+SINHALA_JOINERS = {"‌", "‍"}
+TIME_ZONES = frozenset(zoneinfo.available_timezones())
+
+
 def _clean_text(value, field, required, max_len=60):
     """Collapse whitespace; 1-max_len chars (0 allowed if optional); no control chars and no < >.
     Names and places never need markup characters, and refusing them keeps HTML out of the
@@ -343,7 +454,7 @@ def _clean_text(value, field, required, max_len=60):
     value = " ".join(value.split())
     if not (1 if required else 0) <= len(value) <= max_len:
         raise HTTPException(400, f"{field} must be {'1' if required else '0'}–{max_len} characters")
-    if any(ord(c) < 32 or c in "<>" for c in value):
+    if any(c in "<>" or (unicodedata.category(c)[0] == "C" and c not in SINHALA_JOINERS) for c in value):
         raise HTTPException(400, f"{field} contains characters that aren't allowed")
     return value
 
@@ -373,9 +484,7 @@ def _validate_birth(birth_date, birth_time, lat, lon, tz, who=""):
         raise HTTPException(400, f"{p}Time must be HH:MM (24-hour)")
     if not (-66 <= lat <= 66 and -180 <= lon <= 180):
         raise HTTPException(400, f"{p}Latitude must be within ±66°, longitude within ±180°")
-    try:
-        ZoneInfo(tz)
-    except (ZoneInfoNotFoundError, ValueError):
+    if tz not in TIME_ZONES:            # an allowlist: ZoneInfo() itself opens files named by the key
         raise HTTPException(400, f"{p}Unknown time zone")
 
 
@@ -385,13 +494,24 @@ def _render(args, workdir, files=None):
         (Path(workdir) / fname).write_text(text, encoding="utf-8")
     # point file arguments at this request's own temporary folder
     args = [a.replace("{workdir}", workdir) if a.startswith(("--matches=", "--events=")) else a for a in args]
-    r = subprocess.run([sys.executable, str(ROOT / "jyotisha_report.py"), *args, "--out", str(out)],
-                       cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                       env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=TIMEOUT_S)
-    if r.returncode != 0 or not out.exists():
+    # Its own process group, so a timeout also stops the calculation processes it starts
+    posix = os.name == "posix"
+    proc = subprocess.Popen([sys.executable, str(ROOT / "jyotisha_report.py"), *args, "--out", str(out)],
+                            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                            env={**os.environ, "PYTHONIOENCODING": "utf-8"}, start_new_session=posix)
+    try:
+        _, err = proc.communicate(timeout=TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        if posix:
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            proc.kill()
+        proc.communicate()
+        raise
+    if proc.returncode != 0 or not out.exists():
         # Log only the error type, never the output: it can contain the client's name and birth data
-        last = (r.stderr.strip().splitlines() or ["?"])[-1]
-        print(f"report failed: exit {r.returncode}: {last.split(':')[0][:80]}", file=sys.stderr)
+        last = (err.strip().splitlines() or ["?"])[-1]
+        print(f"report failed: exit {proc.returncode}: {last.split(':')[0][:80]}", file=sys.stderr)
         raise HTTPException(500, "Report generation failed")
     return out.read_bytes()
 
@@ -518,6 +638,7 @@ async def report(request: Request, name: str = Form(...), birth_date: str = Form
                  m_to: str = Form(""), m_hours: str = Form("6-21"),
                  e_type: list[str] = Form([]), e_date: list[str] = Form([]), e_note: list[str] = Form([]),
                  lang: str = Form("si")):
+    _same_site_only(request)
     name = _validate(name, birth_date, birth_time, lat, lon, tz, report)
     if lang not in catalog.LANGS.get(report, ("si",)):
         raise HTTPException(400, f"Report {report} is only available in Sinhala")

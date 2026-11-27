@@ -295,10 +295,14 @@
     <a href="{{SOURCE_URL}}">Source code</a> (AGPL-3.0)
   </footer>
 </main>
+<script type="application/json" id="page-data">{{PAGE_DATA_JSON}}</script>
 <script>
 // ---- place search: every Sri Lankan town and village (GeoNames), suggested by the server as you type.
 // Picking one fills in its coordinates; a place not in the list (abroad) needs them typed by hand.
-const DEFAULT_PLACE = {{DEFAULT_PLACE_JSON}};
+// data from the server, in the JSON block above: the script itself never changes, so the page's
+// Content-Security-Policy can allow exactly this script by its hash
+const PAGE_DATA = JSON.parse(document.getElementById("page-data").textContent);
+const DEFAULT_PLACE = PAGE_DATA.place;
 const PICK_HINT = "ලැයිස්තුවෙන් තෝරන්න, නැතහොත් latitude / longitude ලියන්න · Pick from the list, or enter the coordinates";
 function placePicker(box) {
   const input = box.querySelector(".pq"), list = box.querySelector(".suggest"), help = box.querySelector(".phelp"),
@@ -383,7 +387,7 @@ document.getElementById("approx").addEventListener("change", e => {
 const form = document.getElementById("f"), go = document.getElementById("go"), status = document.getElementById("status");
 
 // ---- report catalogue: free reports make a PDF here; the others build an order message
-const CATALOG = {{CATALOG_JSON}}, ORDER = {{ORDER_JSON}};
+const CATALOG = PAGE_DATA.catalog, ORDER = PAGE_DATA.order;
 const reportSel = document.getElementById("report"), info = document.getElementById("reportinfo");
 const orderbox = document.getElementById("orderbox"), ordermsg = document.getElementById("ordermsg");
 const current = () => CATALOG.find(c => c.code === reportSel.value);

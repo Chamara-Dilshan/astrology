@@ -18,8 +18,9 @@ RUN python /tmp/fetch_ephe.py /ephe
 # ---- runtime stage ----
 FROM python:3.13-slim-trixie
 # Debian trixie: Pango 1.56 / HarfBuzz 10, new enough for Noto Sans Sinhala v3
+# tini runs as PID 1: it reaps processes whose parent has gone (a report stopped at its time limit)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
+        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b tini \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
@@ -36,5 +37,5 @@ RUN useradd --create-home --uid 1000 jyotisha && mkdir /out && chown jyotisha /o
 USER jyotisha
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "./docker-entrypoint.sh"]
 CMD ["web"]

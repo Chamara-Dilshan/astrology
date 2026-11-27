@@ -24,6 +24,7 @@ def fresh_limits(monkeypatch):
     and no contact line or order link."""
     web._limiter.reset()
     web._search_limiter.reset()
+    web._panchanga_limiter.reset()
     monkeypatch.setattr(web, "RATE_PER_IP", 1000)
     monkeypatch.setattr(web, "RATE_TOTAL", 1000)
     monkeypatch.setattr(web, "REPORTS", dict(web.ALL_REPORTS))
@@ -492,9 +493,15 @@ def test_security_headers_and_csp(client):
 
 
 def test_failed_report_does_not_log_birth_data(client, monkeypatch, capsys):
-    class R:
-        returncode, stderr = 1, "Traceback ...\nValueError: bad date for Nimali Senanayake 1985-03-21\n"
-    monkeypatch.setattr(web.subprocess, "run", lambda *a, **k: R())
+    class P:                                   # a report process that fails with the client's data in stderr
+        pid, returncode = 0, 1
+
+        def __init__(self, *a, **k):
+            pass
+
+        def communicate(self, timeout=None):
+            return "", "Traceback ...\nValueError: bad date for Nimali Senanayake 1985-03-21\n"
+    monkeypatch.setattr(web.subprocess, "Popen", P)
     assert post(client, name="Nimali Senanayake").status_code == 500
     logged = capsys.readouterr().err
     assert "ValueError" in logged and "Nimali" not in logged and "1985" not in logged

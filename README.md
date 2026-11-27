@@ -97,12 +97,15 @@ Settings, all environment variables:
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
 | `SEARCHES_PER_HOUR_PER_IP` | 600 | town searches per visitor (the place box asks as you type) |
 | `SEARCHES_PER_HOUR` | 20000 | town searches for the whole site |
+| `PANCHANGA_PER_HOUR_PER_IP` / `PANCHANGA_PER_HOUR` | 120 / 3000 | panchanga pages that have to be computed (repeats come from a cache and are free) |
 | `PANCHANGA_PAGE` | `1` | `/panchanga`: today's Rahu kalaya, Yamaganda, Gulika kalaya and the tithi, nakshatra, yoga and karana (with end times) for a chosen town, plus the week's Rahu kalaya (`0` hides it). Rahu kalaya agrees within 2 minutes with the Sri Lankan almanac sites litha.lk, porondam.lk and suhadaastrology.lk; sunrise/sunset with timeanddate.com to the minute |
 | `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |
-| `REPORT_TIMEOUT` | 180 | seconds per report |
-| `CLIENT_IP_HEADER` | `cf-connecting-ip` | header the proxy sets with the visitor's IP; `X-Forwarded-For` is ignored because clients can forge it |
+| `REPORT_TIMEOUT` | 90 | seconds per report; Cloudflare gives up after 100 s anyway. The report's whole process group is stopped |
+| `CLIENT_IP_HEADER` | `cf-connecting-ip` | header the proxy sets with the visitor's IP (used only if it holds a valid address; IPv6 is counted per /64); `X-Forwarded-For` is ignored because clients can forge it. **Set it to `""` when the app is not behind Cloudflare**, or visitors could choose their own IP |
 
-Only valid requests count towards the limits. They cap CPU use per visitor; they
+Requests over 64 KB are refused unread (413), and POSTs sent by other websites' pages (by their
+`Sec-Fetch-Site` / `Origin`) are refused (403), so another site can't make its visitors spend the
+limits. Only valid requests count towards the limits. They cap CPU use per visitor; they
 can't stop traffic from waking a free-tier instance, which is the host's job.
 
 Tests: `pip install -r requirements-dev.txt` then `pytest` (input validation,

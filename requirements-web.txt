@@ -1,5 +1,6 @@
 fastapi>=0.115
 uvicorn>=0.30
-python-multipart>=0.0.9
+python-multipart>=0.0.20   # CVE-2024-53981 (form-parsing DoS) fixed in 0.0.18
+starlette>=0.47.2          # CVE-2024-47874, CVE-2025-54121 (multipart DoS) fixed; via fastapi
 # security floor for a transitive dependency (pip-audit, 2026-11-27)
 opentelemetry-api>=1.45.2   # CVE-2026-126360; required by fastapi

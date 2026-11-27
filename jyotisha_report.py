@@ -185,8 +185,9 @@ def south_indian_html_si(sign_labels, title, size_mm=120, lang="si"):
 # ---------------------------------------------------------------- compute
 def run_calc(a, dasha_from, dasha_to, workdir, extra=()):
     jpath = os.path.join(workdir, "calc.json")
-    cmd = [sys.executable, os.path.join(HERE, "jyotisha_calc.py"), "--name", a.name, "--date", a.date, "--time", a.time,
-           "--lat", str(a.lat), "--lon", str(a.lon), "--tz", a.tz, "--place", a.place or "", "--vargas", "D9,D10",
+    # --opt=value for text: a name like "-Nimal" would otherwise be read as an option
+    cmd = [sys.executable, os.path.join(HERE, "jyotisha_calc.py"), f"--name={a.name}", "--date", a.date, "--time", a.time,
+           "--lat", str(a.lat), "--lon", str(a.lon), "--tz", a.tz, f"--place={a.place or ''}", "--vargas", "D9,D10",
            "--dasha-depth", "3", "--dasha-from", str(dasha_from), "--dasha-to", str(dasha_to), "--json", jpath,
            "--node", getattr(a, "node", "mean")] + list(extra)
     if getattr(a, "report", "") == "A3":
@@ -3285,7 +3286,7 @@ def main():
     if a.report in ("D1", "D2"):
         if not (a.match_date and a.match_time and a.match_lat is not None and a.match_lon is not None):
             sys.exit("D1 needs --match-date --match-time --match-lat --match-lon")
-        extra += ["--match-name", a.match_name or "", "--match-date", a.match_date, "--match-time", a.match_time,
+        extra += [f"--match-name={a.match_name or ''}", "--match-date", a.match_date, "--match-time", a.match_time,
                   "--match-lat", str(a.match_lat), "--match-lon", str(a.match_lon), "--match-tz", a.match_tz,
                   "--role", a.role]
     if a.report in ("P1", "P2"):
@@ -3363,7 +3364,7 @@ def main():
             pa.match_date, pa.match_time = p["date"], p["time"]
             pa.match_lat, pa.match_lon, pa.match_tz = p["lat"], p["lon"], p.get("tz", a.tz)
             dj = run_calc(pa, now_local.year, now_local.year + 1, workdir,
-                          ["--match-name", pa.match_name, "--match-date", pa.match_date, "--match-time", pa.match_time,
+                          [f"--match-name={pa.match_name}", "--match-date", pa.match_date, "--match-time", pa.match_time,
                            "--match-lat", str(pa.match_lat), "--match-lon", str(pa.match_lon), "--match-tz", pa.match_tz,
                            "--role", a.role])
             pb = _copy.copy(a)
