@@ -269,7 +269,8 @@ def _index_html():
                .replace("{{PAGE_DATA_JSON}}", _script_json({"place": placesearch.DEFAULT, "catalog": entries,
                                                             "order": order_cfg})) \
                .replace("{{PANCHANGA_LINK}}", '<a href="/panchanga">අද රාහු කාලය · Today’s Rahu kalaya</a><br>'
-                         if PANCHANGA_PAGE else "")
+                         if PANCHANGA_PAGE else "") \
+               .replace("{{SITE_URL}}", html.escape(SITE_URL))
 
 
 ACCURACY_PAGE = (HERE / "accuracy.html").read_text(encoding="utf-8")
@@ -435,6 +436,28 @@ async def places(request: Request, q: str = Form("")):
     if _search_limiter.check(_client_ip(request), SEARCH_PER_IP, SEARCH_TOTAL):
         raise HTTPException(429, "Too many searches. Enter the latitude and longitude instead, or try later.")
     return {"places": placesearch.search(q[:200])}
+
+
+# The logo files made by tools/brand_assets.py: browser-tab icons, the iPhone home-screen icon, and the
+# picture Facebook and WhatsApp show when the site's link is shared (needs an absolute URL: SITE_URL).
+SITE_URL = os.environ.get("SITE_URL", "https://jyotisha-insight.onrender.com").rstrip("/")
+STATIC_FILES = {"/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
+                "/apple-touch-icon.png": "image/png", "/og-image.png": "image/png"}
+
+
+def _static_route(path, media_type):
+    body = (HERE / "static" / path.lstrip("/")).read_bytes()
+    headers = {"Cache-Control": "public, max-age=604800"}
+    if media_type == "image/svg+xml":       # an SVG opened on its own is a document: let it run nothing
+        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+
+    def serve():
+        return Response(body, media_type=media_type, headers=headers)
+    return serve
+
+
+for _path, _media in STATIC_FILES.items():
+    app.add_api_route(_path, _static_route(_path, _media), methods=["GET"], include_in_schema=False)
 
 
 @app.get("/healthz")

@@ -84,6 +84,24 @@ def test_no_page_links_to_the_source_code(client):
         assert "github.com" not in page and "Source code" not in page and "{{" not in page, path
 
 
+@pytest.mark.parametrize("path,media", list(web.STATIC_FILES.items()))
+def test_logo_files_are_served(client, path, media):
+    r = client.get(path)
+    assert r.status_code == 200 and r.headers["content-type"].startswith(media) and len(r.content) > 100
+    assert "max-age" in r.headers["cache-control"] and r.headers["x-content-type-options"] == "nosniff"
+    if path.endswith(".svg"):
+        assert "default-src 'none'" in r.headers["content-security-policy"] and b"<script" not in r.content
+
+
+def test_every_page_has_the_logo_and_the_home_page_a_share_preview(client):
+    for path in ("/", "/accuracy", "/panchanga"):
+        page = client.get(path).text
+        assert 'rel="icon" href="/favicon.svg"' in page and 'rel="apple-touch-icon"' in page, path
+    home = client.get("/").text
+    assert f'property="og:image" content="{web.SITE_URL}/og-image.png"' in home   # absolute, as Facebook needs
+    assert web.SITE_URL.startswith("https://")
+
+
 def test_accuracy_page(client):
     r = client.get("/accuracy")
     assert r.status_code == 200

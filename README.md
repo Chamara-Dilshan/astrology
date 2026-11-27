@@ -181,6 +181,13 @@ Problems solved while getting Sinhala rendering right:
 - **Toolchain gaps.** pyswisseph has no Windows wheels for Python 3.12+, so it is
   built from source with MSVC.
 
+## Logo
+
+The mark is the South Indian chart frame (12 houses around an empty centre, as on every report)
+with the Sun in the middle, in the reports' maroon and gold. `python tools/brand_assets.py`
+draws it and writes the site's icons and link-preview image to `web/static/`, and the Facebook
+profile picture (1080×1080) and Page cover (1640×624) to `brand/`.
+
 ## Stack
 
 Python 3.12+ · FastAPI · Docker · [pyswisseph](https://github.com/astrorigin/pyswisseph) ·
