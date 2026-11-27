@@ -1,5 +1,6 @@
 """Daily panchanga and Rahu kalaya (jyotisha_calc.day_panchanga, GET /panchanga)."""
 import datetime as dt
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,6 +45,25 @@ def test_rahu_kalaya_is_the_weekdays_eighth_of_the_day():
         assert abs(local_minutes(p["rahu"][0]) - fixed[p["weekday"]] * 60) < 25
 
 
+# Day Rahu kalaya for Colombo as published by Sri Lankan almanac sites (fetched 2026-11-27):
+# litha.lk and porondam.lk (27 Nov), suhadaastrology.lk (27 Nov - 3 Dec, "eight equal periods from sunrise
+# to sunset"). They differ among themselves by up to 2 minutes; ours must be within 2 of each.
+PUBLISHED = {
+    (11, 27): [("10:29", "11:58"), ("10:29", "11:57"), ("10:31", "11:59")],
+    (11, 28): [("09:01", "10:29"), ("09:03", "10:31")],
+    (11, 29): [("16:24", "17:52")], (11, 30): [("07:36", "09:04")], (12, 1): [("14:57", "16:25")],
+    (12, 2): [("12:01", "13:29")], (12, 3): [("13:29", "14:57")],
+}
+
+
+@pytest.mark.parametrize("md", PUBLISHED)
+def test_rahu_kalaya_agrees_with_sri_lankan_almanacs(md):
+    p = jc.day_panchanga(dt.date(2026, *md), *COLOMBO)
+    for start, end in PUBLISHED[md]:
+        for jd, ref in zip(p["rahu"], (start, end)):
+            assert abs(local_minutes(jd) - (int(ref[:2]) * 60 + int(ref[3:]))) <= 2, (md, ref)
+
+
 def test_end_times_are_when_the_element_changes():
     p = jc.day_panchanga(dt.date(2026, 11, 27), *COLOMBO)
     minute = 1 / 1440
@@ -64,7 +84,8 @@ def client(monkeypatch):
     return TestClient(web.app)
 
 
-def test_page_is_off_until_switched_on(monkeypatch):
+def test_page_is_on_by_default_and_can_be_switched_off(monkeypatch):
+    assert web.PANCHANGA_PAGE == (os.environ.get("PANCHANGA_PAGE", "1") == "1")
     monkeypatch.setattr(web, "PANCHANGA_PAGE", False)
     c = TestClient(web.app)
     assert c.get("/panchanga").status_code == 404

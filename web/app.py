@@ -236,9 +236,10 @@ def accuracy():
     return HTMLResponse(page, headers={"Content-Security-Policy": _csp(page)})
 
 
-# ---- daily panchanga / Rahu kalaya page. Off until its times are checked against a printed litha:
-# set PANCHANGA_PAGE=1 to switch it on (and to link it from the form page).
-PANCHANGA_PAGE = os.environ.get("PANCHANGA_PAGE", "0") == "1"
+# ---- daily panchanga / Rahu kalaya page. Its Rahu kalaya agrees within 2 minutes with the Sri Lankan
+# almanac sites litha.lk, porondam.lk and suhadaastrology.lk (checked 2026-11-27, tests/test_panchanga.py).
+# PANCHANGA_PAGE=0 switches it (and its link on the form page) off.
+PANCHANGA_PAGE = os.environ.get("PANCHANGA_PAGE", "1") == "1"
 PANCHANGA_TEMPLATE = (HERE / "panchanga.html").read_text(encoding="utf-8")
 TOWNS = json.loads((HERE / "places.json").read_text(encoding="utf-8"))["places"]   # [name, lat, lon, Sinhala]
 SL_TZ = "Asia/Colombo"

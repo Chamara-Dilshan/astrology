@@ -96,7 +96,7 @@ Settings, all environment variables:
 | `REPORTS_PER_HOUR` | 120 | for the whole site |
 | `SEARCHES_PER_HOUR_PER_IP` | 600 | town searches per visitor (the place box asks as you type) |
 | `SEARCHES_PER_HOUR` | 20000 | town searches for the whole site |
-| `PANCHANGA_PAGE` | `0` | `1` turns on `/panchanga`: today's Rahu kalaya, Yamaganda, Gulika kalaya and the tithi, nakshatra, yoga and karana (with end times) for a chosen town, plus the week's Rahu kalaya. Off until checked against a printed litha; sunrise/sunset already agree with timeanddate.com to the minute |
+| `PANCHANGA_PAGE` | `1` | `/panchanga`: today's Rahu kalaya, Yamaganda, Gulika kalaya and the tithi, nakshatra, yoga and karana (with end times) for a chosen town, plus the week's Rahu kalaya (`0` hides it). Rahu kalaya agrees within 2 minutes with the Sri Lankan almanac sites litha.lk, porondam.lk and suhadaastrology.lk; sunrise/sunset with timeanddate.com to the minute |
 | `MAX_PARALLEL` | 2 | reports rendering at once (HTTP 503 when full) |
 | `REPORT_TIMEOUT` | 180 | seconds per report |
 | `CLIENT_IP_HEADER` | `cf-connecting-ip` | header the proxy sets with the visitor's IP; `X-Forwarded-For` is ignored because clients can forge it |

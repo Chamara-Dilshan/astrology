@@ -82,6 +82,7 @@ jobs:
           curl -fs localhost:8000/ | grep -q "Jyothisha Insight"
           curl -fs localhost:8000/accuracy | grep -q "DE441"
           curl -fs --data-urlencode q=hingurakgoda localhost:8000/places | grep -q '"name":"Hingurakgoda"'
+          curl -fs "localhost:8000/panchanga?date=2026-11-27&town=Colombo" | grep -q "Rahu kalaya"
           curl -fs -o g.pdf -F name=Test -F birth_date=1990-05-15 -F birth_time=10:30 \
             -F lat=6.93 -F lon=79.85 -F report=G localhost:8000/report
           head -c 5 g.pdf | grep -q "%PDF-"
