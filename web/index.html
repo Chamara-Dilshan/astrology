@@ -28,11 +28,11 @@
   :root {
     color-scheme: light dark;   /* the browser's own controls (date and time pickers, dropdown lists, scrollbars) follow the theme */
     --bg: #faf6ee; --card: #fffdf8; --ink: #1e1a1a; --muted: #6f6566; --line: #e4dccb;
-    --brand: #6b1010; --brand-ink: #ffffff; --gold: #c9a55a; --focus: #b07a1a; --err: #a12020;
+    --brand: #6b1010; --brand-ink: #ffffff; --gold: #c9a55a; --focus: #b07a1a; --err: #a12020; --ok: #1f7a3a;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #171314; --card: #211c1d; --ink: #f1ebe6; --muted: #b3a8a4; --line: #3a3233;
-            --brand: #c9a55a; --brand-ink: #171314; --gold: #c9a55a; --focus: #e2c27a; --err: #ff8a80; }
+            --brand: #c9a55a; --brand-ink: #171314; --gold: #c9a55a; --focus: #e2c27a; --err: #ff8a80; --ok: #7fd19b; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
@@ -65,7 +65,44 @@
            color: var(--brand-ink); cursor: pointer; touch-action: manipulation; }
   button[disabled] { opacity: .6; cursor: progress; }
   #status { min-height: 1.5em; margin: 12px 0 0; font-size: 15px; color: var(--muted); }
+  #status:empty { min-height: 0; }
   #status.err { color: var(--err); }
+  /* making the PDF: spinner in the button, a bar and three steps below */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; width: 18px; height: 18px; margin-right: 10px; vertical-align: -3px;
+          border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  .working { margin-top: 16px; }
+  .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--gold); border-radius: inherit; transition: width .5s ease; }
+  .steps { list-style: none; margin: 14px 0 0; padding: 0; font-size: 15px; }
+  .steps li { display: flex; align-items: center; gap: 12px; padding: 5px 0; color: var(--muted); }
+  .steps li::before { content: ""; flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); }
+  .steps li.now { color: var(--ink); font-weight: 700; }
+  .steps li.now::before { border-color: var(--gold); border-right-color: transparent; animation: spin .8s linear infinite; }
+  .steps li.did { color: var(--ink); }
+  .steps li.did::before { border-color: var(--gold); background: var(--gold) center / 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.3l2.6 2.6L10 3.5' fill='none' stroke='%23231a10' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  .elapsed { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+  /* the result: ready (with open / download again / another) or what went wrong */
+  .result { margin-top: 16px; padding: 20px 16px; border-radius: 12px; text-align: center; background: var(--bg);
+            border: 1px solid var(--line); }
+  .result.ok { border-color: var(--ok); }
+  .result.bad { border-color: var(--err); }
+  .result .icon { width: 48px; height: 48px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .result.ok .icon { stroke: var(--ok); }
+  .result.bad .icon { stroke: var(--err); }
+  .result h2 { font-size: 19px; margin: 8px 0 4px; color: var(--ink); }
+  .result h2:focus { outline: none; }
+  .result h2 .en { display: block; font-size: 15px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+  .result p { margin: 4px 0 0; }
+  .fname { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+  .result .row { margin-top: 16px; row-gap: 10px; }
+  .result .row .orderbtn { font-size: 15px; }
+  .orderbtn.fill { background: var(--brand); color: var(--brand-ink); }
+  .result button { margin-top: 10px; min-height: 48px; font-size: 15px; }
+  .share { margin-top: 14px !important; font-size: 14px; color: var(--muted); }
+  .share a { color: var(--brand); font-weight: 700; display: inline-block; padding: 8px 6px; }
+  @media (prefers-reduced-motion: reduce) { .spin, .steps li.now::before { animation: none; } .bar span { transition: none; } }
   .order { margin: 16px 0 0; padding: 16px 20px; border: 1px solid var(--gold); border-radius: 12px;
            background: var(--card); text-align: center; font-size: 15px; }
   .order p { margin: 0 0 12px; }
@@ -294,6 +331,40 @@
     <button id="go" type="submit">PDF සාදන්න · Make PDF</button>
     <p id="status" role="status" aria-live="polite"></p>
 
+    <div id="working" class="working" hidden>
+      <div class="bar" aria-hidden="true"><span id="barfill"></span></div>
+      <ol class="steps">
+        <li>ග්‍රහ පිහිටීම් ගණනය කරමින් · Calculating the planets</li>
+        <li>කේන්දරය සකසමින් · Drawing your chart</li>
+        <li>PDF එක සාදමින් · Writing the PDF</li>
+      </ol>
+      <p class="elapsed"><span id="secs">0</span> s</p>
+      <p id="wakeup" class="hint small" hidden>සේවාදායකය අවදි වෙමින් පවතී — පළමු වාර්තාවට මිනිත්තුවක් පමණ ගත විය හැක.<br>
+        The server was asleep and is waking up: the first report can take about a minute.</p>
+    </div>
+
+    <div id="done" class="result ok" hidden>
+      <svg class="icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 13-15"/></svg>
+      <h2 id="donetitle" tabindex="-1">ඔබේ PDF එක සූදානම්<span class="en">Your PDF is ready</span></h2>
+      <p id="fname" class="fname"></p>
+      <p class="hint small">ඔබේ Downloads ෆෝල්ඩරයට බාගත විය · Saved to your Downloads</p>
+      <div class="row">
+        <a id="openpdf" class="orderbtn fill" target="_blank" rel="noopener">PDF විවෘත කරන්න · Open</a>
+        <a id="savepdf" class="orderbtn">නැවත බාගන්න · Download again</a>
+      </div>
+      <button type="button" id="again" class="secondary">තවත් වාර්තාවක් සාදන්න · Make another</button>
+      <p class="share">යාළුවන්ටත් කියන්න · Tell a friend:
+        <a id="sharewa" target="_blank" rel="noopener">WhatsApp</a> ·
+        <a id="sharefb" target="_blank" rel="noopener">Facebook</a></p>
+    </div>
+
+    <div id="failed" class="result bad" hidden>
+      <svg class="icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M24 14v13M24 33v1"/></svg>
+      <h2 id="failtitle" tabindex="-1">සමාවන්න, PDF එක සෑදීමට නොහැකි විය<span class="en">Sorry, the PDF wasn't made</span></h2>
+      <p id="failmsg"></p>
+      <button type="submit" class="secondary">නැවත උත්සාහ කරන්න · Try again</button>
+    </div>
+
     <div id="orderbox" class="orderbox" hidden>
       <p><b>ඇණවුම් විස්තර සූදානම්.</b> පහත පණිවිඩය copy කර අපගේ Facebook පිටුවට message කරන්න.<br>
         <span class="hint">Your order details are ready: copy this message and send it to our Facebook page.</span></p>
@@ -420,7 +491,7 @@ function showReport() {
   tag.textContent = c.free ? "නොමිලේ · Free" : (c.price ? rs(c.price) : "ඇණවුම · Order");
   info.append(tag, c.en + (c.free ? "" : " · prepared with the astrologer's own notes"));
   go.textContent = c.free ? "PDF සාදන්න · Make PDF" : "ඇණවුම් කරන්න · Order" + (c.price ? " – " + rs(c.price) : "");
-  orderbox.hidden = true; status.textContent = "";
+  orderbox.hidden = true; status.textContent = ""; clearResult();
   const langs = c.langs || ["si"];                 // a language choice only where there is one (G)
   langbox.hidden = langSel.disabled = langs.length < 2;
   if (!langs.includes(langSel.value)) langSel.value = langs[0];
@@ -597,11 +668,21 @@ form.addEventListener("submit", async e => {
     orderbox.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return;
   }
-  go.disabled = true; status.className = ""; status.textContent = "Calculating the chart and rendering the PDF… (up to a minute)";
+  if (go.disabled) return;                        // already making one
+  clearResult(); status.className = ""; status.textContent = "";
+  const label = go.textContent;
+  go.disabled = true;
+  go.replaceChildren(Object.assign(document.createElement("span"), { className: "spin" }), "සාදමින්… · Making your PDF…");
+  working.hidden = false;
+  const expect = EXPECT[c.code] || 12, t0 = performance.now();
+  const tick = () => progress((performance.now() - t0) / 1000, expect);
+  tick();
+  const timer = setInterval(tick, 250);
+  working.scrollIntoView({ block: "nearest", behavior: "smooth" });
   try {
     const r = await fetch("/report", { method: "POST", body: new FormData(form) });
     if (!r.ok) {
-      let msg = r.statusText;
+      let msg = r.statusText || `HTTP ${r.status}`;
       try {
         const d = (await r.json()).detail;
         msg = Array.isArray(d) ? d.map(x => `${x.loc.at(-1)}: ${x.msg}`).join("; ") : (d || msg);
@@ -610,16 +691,55 @@ form.addEventListener("submit", async e => {
     }
     const blob = await r.blob();
     const name = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
-    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name ? name[1] : "report.pdf" });
-    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    status.textContent = "Done — your PDF has downloaded.";
+    const fname = name ? name[1] : "report.pdf";
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    pdfUrl = URL.createObjectURL(blob);               // kept for "Open" and "Download again"
+    const a = Object.assign(document.createElement("a"), { href: pdfUrl, download: fname });
+    document.body.append(a); a.click(); a.remove();
+    document.getElementById("fname").textContent = `${fname} · ${Math.max(1, Math.round(blob.size / 1024))} KB`;
+    openpdf.href = savepdf.href = pdfUrl; savepdf.download = fname;
+    working.hidden = true; done.hidden = false;
+    document.getElementById("donetitle").focus({ preventScroll: true });
+    done.scrollIntoView({ block: "nearest", behavior: "smooth" });
   } catch (err) {
-    status.className = "err"; status.textContent = "Error: " + err.message;
+    working.hidden = true;
+    document.getElementById("failmsg").textContent = err instanceof TypeError
+      ? "අන්තර්ජාල සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න. · Check your internet connection and try again."
+      : err.message;
+    failed.hidden = false;
+    document.getElementById("failtitle").focus({ preventScroll: true });
+    failed.scrollIntoView({ block: "nearest", behavior: "smooth" });
   } finally {
-    go.disabled = false;
-    status.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    clearInterval(timer);
+    go.disabled = false; go.textContent = label;
   }
 });
+// making the PDF: the server sends nothing until the PDF is ready, so the steps follow the usual time
+// for each report (seconds on the live server); the bar slows as it nears the end and never fills early
+const working = document.getElementById("working"), done = document.getElementById("done"), failed = document.getElementById("failed");
+const steps = [...working.querySelectorAll(".steps li")];
+const openpdf = document.getElementById("openpdf"), savepdf = document.getElementById("savepdf");
+const EXPECT = { G: 6, A1: 10, A2: 14, A3: 20, N: 8, C3: 10 };
+let pdfUrl = null;
+function progress(t, expect) {
+  document.getElementById("barfill").style.width = (6 + 88 * (1 - Math.exp(-t / expect))).toFixed(1) + "%";
+  const k = t < expect * 0.25 ? 0 : t < expect * 0.6 ? 1 : 2;
+  steps.forEach((li, i) => { li.className = i < k ? "did" : i === k ? "now" : ""; });
+  document.getElementById("secs").textContent = Math.floor(t);
+  document.getElementById("wakeup").hidden = t < 15;     // a free server asleep takes ~30-60 s to wake
+}
+function clearResult() { working.hidden = done.hidden = failed.hidden = true; }
+document.getElementById("again").addEventListener("click", () => {
+  clearResult();
+  form.scrollIntoView({ block: "start", behavior: "smooth" });
+  reportSel.focus({ preventScroll: true });
+});
+{ // "tell a friend": the site only, nothing about the report or the person
+  const site = location.origin + "/";
+  document.getElementById("sharewa").href = "https://wa.me/?text=" +
+    encodeURIComponent("නොමිලේ ජන්ම පත්‍ර සාරාංශය · Free Sinhala birth chart summary: " + site);
+  document.getElementById("sharefb").href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(site);
+}
 { // muhurta range defaults: the next 30 days
   const a = nowIn(form.tz.value), b = nowIn(form.tz.value, 30);
   document.getElementById("m_from").value = a.date; document.getElementById("m_to").value = b.date;
