@@ -173,6 +173,15 @@ YEAR_DAYS = 365.25
 PLANETS = [("Su", swe.SUN), ("Mo", swe.MOON), ("Ma", swe.MARS), ("Me", swe.MERCURY),
            ("Ju", swe.JUPITER), ("Ve", swe.VENUS), ("Sa", swe.SATURN),
            ("Ra", swe.MEAN_NODE)]
+NODE_KIND = "mean"   # project standard; --node true uses the true (osculating) node instead
+
+
+def set_node(kind):
+    """Mean (default, as in the textbook) or true Rahu/Ketu."""
+    global PLANETS, NODE_KIND
+    NODE_KIND = kind
+    node = swe.TRUE_NODE if kind == "true" else swe.MEAN_NODE
+    PLANETS = [(c, node if c == "Ra" else p) for c, p in PLANETS]
 PLANET_NAME = {"Su": "Surya", "Mo": "Chandra", "Ma": "Kuja", "Me": "Budha", "Ju": "Guru",
                "Ve": "Shukra", "Sa": "Shani", "Ra": "Rahu", "Ke": "Ketu", "La": "Lagna"}
 
@@ -342,6 +351,28 @@ def compute_lagna(jd, lat, lon):
     swe.set_sid_mode(SID_MODE)
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b"W", swe.FLG_SIDEREAL)
     return norm(ascmc[0])
+
+
+def sripati_bhavas(jd, lat, lon, pos):
+    """Sripati bhava chart (sidereal). Bhava madhyas are the Porphyry cusps: the Lagna, the MC and
+    the trisections of each quadrant; each bhava runs from the sandhi midway to the previous madhya
+    to the sandhi midway to the next. Swiss Ephemeris house system 'S' returns exactly these
+    sandhis (checked against the Porphyry midpoints in tests/test_bhava.py).
+    Returns {"madhya": [12], "sandhi": [12 = start of bhava n], "planet_bhava": {code: 1..12}}."""
+    swe.set_sid_mode(SID_MODE)
+    madhya, _ = swe.houses_ex(jd, lat, lon, b"O", swe.FLG_SIDEREAL)
+    sandhi, _ = swe.houses_ex(jd, lat, lon, b"S", swe.FLG_SIDEREAL)
+    sandhi = [norm(x) for x in sandhi]
+
+    def bhava_of(x):
+        for i in range(12):
+            start, end = sandhi[i], sandhi[(i + 1) % 12]
+            if norm(x - start) < norm(end - start):
+                return i + 1
+        return 12
+
+    return {"madhya": [round(norm(x), 4) for x in madhya], "sandhi": [round(x, 4) for x in sandhi],
+            "planet_bhava": {c: bhava_of(p["lon"]) for c, p in pos.items()}}
 
 
 def dignity(code, sign):
@@ -3240,6 +3271,7 @@ def main():
     ap.add_argument("--shashti", help="YYYY-MM-DD: Tajaka sixty-hour chart containing that date (27.4)")
     ap.add_argument("--ashtakavarga-varga", default="", help="comma list e.g. D9,D10,D24: BAV/SAV of divisional charts")
     ap.add_argument("--ayanamsa", choices=sorted(AYANAMSAS), default="lahiri", help="ayanamsa (default Lahiri — the project standard; others only for comparing with another astrologer's chart)")
+    ap.add_argument("--node", choices=["mean", "true"], default="mean", help="Rahu/Ketu: mean node (default, as in the textbook) or true node")
     ap.add_argument("--sunrise", choices=["limb", "centre"], default="limb", help="sunrise definition: upper limb+refraction (default) or disc centre without refraction (traditional litha)")
     ap.add_argument("--ephe", help="directory with Swiss Ephemeris .se1 files (default: ./ephe next to the script)")
     ap.add_argument("--svg-vargas", default="", help="comma list e.g. D9,D10: write South Indian SVG for those vargas (files <svg-stem>_D9.svg)")
@@ -3250,6 +3282,7 @@ def main():
     if args.ephe:
         setup_ephemeris(args.ephe)
     set_ayanamsa(args.ayanamsa)
+    set_node(args.node)
     set_sunrise_mode(args.sunrise)
     if args.ayanamsa != "lahiri":
         print(f"NOTE: ayanamsa {AYANAMSA_NAME} selected for comparison only — the project standard and all textbook verification use Lahiri.")
@@ -3961,7 +3994,8 @@ def main():
             "varsha_kundali": vk_out, "panchanga": pch, "compatibility": match_out,
             "chart_type": args.chart_type,
             "special_lagnas": {k: {"sign": SIGNS[sign_of(spl[k])], "lon": round(spl[k], 4)} for k in ("HL", "GL", "SL") if k in spl},
-            "hora": hora_txt, **extra_out,
+            "hora": hora_txt, "node": NODE_KIND,
+            "sripati": sripati_bhavas(jd, args.lat, args.lon, pos), **extra_out,
         }
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1, ensure_ascii=False)

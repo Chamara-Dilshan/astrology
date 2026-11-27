@@ -142,7 +142,8 @@ def run_calc(a, dasha_from, dasha_to, workdir, extra=()):
     jpath = os.path.join(workdir, "calc.json")
     cmd = [sys.executable, os.path.join(HERE, "jyotisha_calc.py"), "--name", a.name, "--date", a.date, "--time", a.time,
            "--lat", str(a.lat), "--lon", str(a.lon), "--tz", a.tz, "--place", a.place or "", "--vargas", "D9,D10",
-           "--dasha-depth", "3", "--dasha-from", str(dasha_from), "--dasha-to", str(dasha_to), "--json", jpath] + list(extra)
+           "--dasha-depth", "3", "--dasha-from", str(dasha_from), "--dasha-to", str(dasha_to), "--json", jpath,
+           "--node", getattr(a, "node", "mean")] + list(extra)
     if getattr(a, "report", "") == "A3":
         cmd[cmd.index("--vargas") + 1] = "D2,D4,D7,D9,D10,D12,D24,D60"
     elif getattr(a, "report", "").startswith("B"):
@@ -1291,6 +1292,31 @@ def mangal_dosha_html(d):
             f'<p class="small">{esc(verdict)}</p>')
 
 
+def sripati_block(d, P):
+    """Sripati bhava chart (A2/A3): the 12 bhavas with madhya, span and planets, and the planets whose
+    bhava differs from their rashi (whole-sign) house. Empty if the engine gave no Sripati data."""
+    s = d.get("sripati")
+    if not s:
+        return ""
+    pos_si = lambda lon: f"{SIGN_SI[int(lon // 30) % 12]} {dms(lon % 30)}"
+    order = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]
+    rows = []
+    for n in range(1, 13):
+        inside = [PLANET_SI[c] for c in order if s["planet_bhava"].get(c) == n]
+        rows.append(f"<tr><td>{n}</td><td>{pos_si(s['madhya'][n - 1])}</td>"
+                    f"<td>{pos_si(s['sandhi'][n - 1])} – {pos_si(s['sandhi'][n % 12])}</td>"
+                    f"<td>{', '.join(inside) or '—'}</td></tr>")
+    moved = [f"{PLANET_SI[c]} ({P[c]['house']} → {s['planet_bhava'][c]})"
+             for c in order if c in P and s["planet_bhava"].get(c) not in (None, P[c]["house"])]
+    return ("<h3>ශ්‍රීපති භාව කේන්දරය</h3>"
+            "<p class='small'>භාව මධ්‍ය ලග්නයෙන් සහ දශම භාවයෙන් (MC) ගණනය කෙරේ; භාව සන්ධි ඒවා අතර මැදයි. "
+            "රාශි කේන්දරයේ භාවයට වඩා වෙනස් භාවයක සිටින ග්‍රහයන් පහත දැක්වේ.</p>"
+            "<table><tr><th>භාවය</th><th>භාව මධ්‍යය</th><th>පරාසය (සන්ධියේ සිට සන්ධියට)</th><th>ග්‍රහයන්</th></tr>"
+            + "".join(rows) + "</table>"
+            + (f"<p class='small'><b>භාව චලනය (රාශි භාවය → ශ්‍රීපති භාවය):</b> {', '.join(moved)}</p>" if moved
+               else "<p class='small'>සියලු ග්‍රහයන් රාශි කේන්දරයේ භාවයේම සිටී.</p>"))
+
+
 def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     """A2 (standard) and A3 (deep, deep=True). Extends the A1 structure."""
     P, ls = d["planets"], d["lagna"]["sign_idx"]
@@ -1354,6 +1380,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     if sl:
         H.append("<p class='small'><b>විශේෂ ලග්න:</b> " + " · ".join(
             f"{k} {SIGN_SI[inv[v['sign']]]}" for k, v in sl.items() if isinstance(v, dict)) + "</p>")
+    H.append(sripati_block(d, P))
     H.append(note_block(notes, "lagna"))
 
     # ---- 4 Jaimini
@@ -2893,6 +2920,8 @@ def main():
     ap.add_argument("--match-lat", type=float)
     ap.add_argument("--match-lon", type=float)
     ap.add_argument("--match-tz", default="Asia/Colombo")
+    ap.add_argument("--node", choices=["mean", "true"], default="mean",
+                    help="Rahu/Ketu: mean node (default, the project standard) or true node")
     ap.add_argument("--role", choices=["boy", "girl"], default="boy",
                     help="D1/D2/D3: the main person is the groom (boy) or the bride (girl); Ashtakoota depends on it")
     # P1
