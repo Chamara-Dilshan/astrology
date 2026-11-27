@@ -21,6 +21,7 @@ import re
 import struct
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -78,11 +79,31 @@ JUPITER_FROM_MOON_SI = {1: "මිශ්‍ර — ආත්ම වර්ධන�
 DIGNITY_SI = [("Uchcha", "උච්ච"), ("Neecha", "නීච"), ("Moolatrikona", "මූලත්‍රිකෝණ"), ("Swakshetra", "ස්වක්ෂේත්‍ර"), ("Own", "ස්වක්ෂේත්‍ර"),
               ("exalted", "උච්ච"), ("debilitated", "නීච"), ("friend", "මිත්‍ර ක්ෂේත්‍ර"), ("enemy", "සතුරු ක්ෂේත්‍ර"), ("neutral", "සම ක්ෂේත්‍ර")]
 YOGA_SI = {"Gaja-Kesari": "ගජකේසරී යෝගය — කීර්තිය, බුද්ධිය, ගුරු–චන්ද්‍ර සම්බන්ධය",
-           "Mangal dosha": "කුජ දෝෂ ඇඟවීම — විවාහ ගැලපීමේදී cancellations පරීක්ෂා කළ යුතුයි",
+           "Mangal dosha": "කුජ දෝෂ ඇඟවීම — විවාහ ගැලපීමේදී දෝෂය නිෂ්ප්‍රභ වන අවස්ථා පරීක්ෂා කළ යුතුයි",
            "Kemadruma": "කේමද්‍රුම යෝගය — චන්ද්‍රට සහාය ග්‍රහ නැති බව; ශ්‍රමයෙන් ජය",
            "Raja": "රාජ යෝගය — කේන්ද්‍ර–ත්‍රිකෝණ අධිපති සම්බන්ධය", "Dhana": "ධන යෝගය", "Budha-Aditya": "බුධාදිත්‍ය යෝගය — බුද්ධිය, දක්ෂතාව",
            "Chandra-Mangala": "චන්ද්‍ර–මංගල යෝගය — ලෞකික සාර්ථකත්වය", "Kala Sarpa": "කාල සර්ප යෝග ඇඟවීම — රාහු–කේතු අක්ෂය",
            "Neecha Bhanga": "නීච භංග රාජ යෝගය", "Vipareeta": "විපරීත රාජ යෝගය — බාධක වලින්ම ජය"}
+_YOGA_WHY_SI = [("Guru in kendra from Chandra", "චන්ද්‍රයාගෙන් කේන්ද්‍රයක ගුරු"),
+                ("no planets 2nd/12th from Chandra", "චන්ද්‍රයාගෙන් 2 සහ 12 වැන්නේ ග්‍රහයන් නැත"),
+                ("all grahas within Rahu-Ketu axis", "සියලු ග්‍රහයෝ රාහු–කේතු අක්ෂයේ එක් පැත්තක"),
+                ("Surya-Budha conjunct", "රවි සහ බුධ එකම රාශියේ")]
+
+
+def si_yoga_why(y):
+    """The reason in brackets after a basic yoga line, in Sinhala: the engine's
+    'Mangal dosha indication (Kuja in house 8 from Lagna) — check cancellations' -> 'ලග්නයෙන් 8 වැන්නේ කුජ'."""
+    m = re.search(r"Kuja in house (\d+) from Lagna", y)
+    if m:
+        return f"ලග්නයෙන් {m.group(1)} වැන්නේ කුජ"
+    return next((si for en, si in _YOGA_WHY_SI if en in y), "")
+
+
+def pl_si(x):
+    """A planet in Sinhala from its code ('Mo') or the engine's name for it ('Chandra')."""
+    return PLANET_SI.get(x) or PL_EN2SI.get(x, x)
+
+
 WEEKDAY_SI = ["සඳුදා", "අඟහරුවාදා", "බදාදා", "බ්‍රහස්පතින්දා", "සිකුරාදා", "සෙනසුරාදා", "ඉරිදා"]
 
 # ---------------------------------------------------------------- English vocabulary (G report with --lang en)
@@ -183,8 +204,25 @@ def south_indian_html_si(sign_labels, title, size_mm=120, lang="si"):
 
 
 # ---------------------------------------------------------------- compute
+def with_thead(page):
+    """Each table's first row of header cells becomes a <thead>. WeasyPrint repeats a thead on every
+    page a table runs onto, so a long table never leaves its header alone at the foot of a page
+    (D2's 'එක් එක් අයගේ කවුළු' did) and its continuation is labelled."""
+    return re.sub(r"(<table[^>]*>)\s*(<tr[^>]*>\s*<th\b.*?</tr>)", r"\1<thead>\2</thead>", page, flags=re.S)
+
+
 def run_calc(a, dasha_from, dasha_to, workdir, extra=()):
-    jpath = os.path.join(workdir, "calc.json")
+    # A file of its own for each call: with one shared calc.json, two reports made at the same
+    # time into one folder could read each other's chart (found 2026-11-27, four builds at once).
+    fd, jpath = tempfile.mkstemp(prefix="calc-", suffix=".json", dir=workdir)
+    os.close(fd)
+    try:
+        return _run_calc(a, dasha_from, dasha_to, jpath, extra)
+    finally:
+        os.remove(jpath)
+
+
+def _run_calc(a, dasha_from, dasha_to, jpath, extra):
     # --opt=value for text: a name like "-Nimal" would otherwise be read as an option
     cmd = [sys.executable, os.path.join(HERE, "jyotisha_calc.py"), f"--name={a.name}", "--date", a.date, "--time", a.time,
            "--lat", str(a.lat), "--lon", str(a.lon), "--tz", a.tz, f"--place={a.place or ''}", "--vargas", "D9,D10",
@@ -450,11 +488,12 @@ def build_a1(d, a, tr, changes, notes, now_local):
     yl = []
     for y in d.get("yoga_indications", []):
         key = next((k for k in YOGA_SI if k.lower() in y.lower()), None)
-        yl.append(f"<li><b>{esc(YOGA_SI[key].split(' — ')[0]) if key else esc(y)}</b>" + (f" — {esc(YOGA_SI[key].split(' — ', 1)[1])}" if key and ' — ' in YOGA_SI[key] else "") +
-                  f' <span class="muted">({esc(y)})</span></li>')
+        why = si_yoga_why(y)
+        yl.append(f"<li><b>{esc(YOGA_SI[key].split(' — ')[0]) if key else esc(si_text(y))}</b>" + (f" — {esc(YOGA_SI[key].split(' — ', 1)[1])}" if key and ' — ' in YOGA_SI[key] else "") +
+                  (f' <span class="muted">({esc(why)})</span>' if why else "") + "</li>")
     vt = d.get("vargottama", [])
     if vt:
-        yl.append(f"<li><b>වර්ගෝත්තම</b>: {esc(', '.join(PLANET_SI.get(v, v) if v in PLANET_SI else v for v in vt))} — D1 සහ D9 දෙකේම එකම රාශියේ; ශක්තිමත්</li>")
+        yl.append(f"<li><b>වර්ගෝත්තම</b>: {esc(', '.join(pl_si(v) for v in vt))} — D1 සහ D9 දෙකේම එකම රාශියේ; ශක්තිමත්</li>")
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]:
         dg = si_dignity(P[c]["dignity"])
         if "උච්ච" in dg or "නීච" in dg:
@@ -585,7 +624,7 @@ def build_a1(d, a, tr, changes, notes, now_local):
                    + (f" (වක්‍ර චලනයෙන් පසු ස්ථිර {st.astimezone(ZoneInfo(tz)).strftime('%Y-%m')})" if (st - dt).days > 20 else "") + ": ගෝචර වෙනස</li>")
     H.append("<ul>" + "".join(sorted(win)) + "</ul>")
     H.append('<p class="small muted">වක්‍ර චලනය නිසා ග්‍රහයෙක් රාශියකට ඇතුළු වී ආපසු ගොස් නැවත ඇතුළු වන විට පළමු ඇතුළුවීමේ දිනයත්, ස්ථිර වන දිනයත් දෙකම දක්වා ඇත.</p>')
-    H.append('<p class="small">දශාව, ගෝචරය සහ වාර්ෂික චක්‍රය එකට ගැලපෙන කාල කවුළු වඩාත් වැදගත්; තනි ඇඟවීමක් මත පමණක් තීරණ නොගන්න. විස්තර timing සහ Varsha Kundali A2/C1 වාර්තා වල.</p>')
+    H.append('<p class="small">දශාව, ගෝචරය සහ වාර්ෂික චක්‍රය එකට ගැලපෙන කාල කවුළු වඩාත් වැදගත්; තනි ඇඟවීමක් මත පමණක් තීරණ නොගන්න. සවිස්තර කාල නිර්ණය A2 වාර්තාවේත්, වර්ෂ කේන්දරය (වර්ෂඵල) C1 වාර්තාවේත් ඇත.</p>')
     H.append(note_block(notes, "upcoming"))
     if (notes or {}).get("remedies"):
         H.append("<h2>8. යෝජනා</h2>" + note_block(notes, "remedies", "ප්‍රතිකර්ම / ආකල්ප යෝජනා"))
@@ -605,7 +644,9 @@ def build_a1(d, a, tr, changes, notes, now_local):
 
 # ================================================================ Sinhala rendering of engine strings
 SIGN_EN2SI = {"Mesha": "මේෂ", "Vrishabha": "වෘෂභ", "Mithuna": "මිථුන", "Karka": "කටක", "Simha": "සිංහ", "Kanya": "කන්‍යා",
-              "Tula": "තුලා", "Vrischika": "වෘශ්චික", "Dhanu": "ධනු", "Makara": "මකර", "Kumbha": "කුම්භ", "Meena": "මීන"}
+              "Tula": "තුලා", "Vrischika": "වෘශ්චික", "Dhanu": "ධනු", "Makara": "මකර", "Kumbha": "කුම්භ", "Meena": "මීන",
+              # the engine's five-letter forms (Tajaka yoga lines print SIGNS[s][:5])
+              "Vrish": "වෘෂභ", "Mithu": "මිථුන", "Vrisc": "වෘශ්චික", "Makar": "මකර", "Kumbh": "කුම්භ"}
 PL_EN2SI = {"Surya": "රවි", "Chandra": "චන්ද්‍ර", "Chand": "චන්ද්‍ර", "Kuja": "කුජ", "Budha": "බුධ", "Guru": "ගුරු",
             "Shukra": "ශුක්‍ර", "Shukr": "ශුක්‍ර", "Shani": "ශනි", "Rahu": "රාහු", "Ketu": "කේතු"}
 PHRASE_SI = [
@@ -628,13 +669,31 @@ PHRASE_SI = [
     ("th lords", " වන භාවාධිපතීන්"), ("st lords", " වන භාවාධිපතීන්"),
     ("nd lords", " වන භාවාධිපතීන්"), ("rd lords", " වන භාවාධිපතීන්"), ("also", "ද"),
     ("in a kendra", "කේන්ද්‍රස්ථානයක"), ("kendra", "කේන්ද්‍ර"), ("trikona", "ත්‍රිකෝණ"),
-    ("deeply exalted", "ගැඹුරින් උච්ච"), ("own/exalted", "ස්වක්ෂේත්‍ර/උච්ච"),
+    ("deeply exalted", "ගැඹුරින් උච්ච"), ("moolatrikona", "මූලත්‍රිකෝණ"), ("own/exalted", "ස්වක්ෂේත්‍ර/උච්ච"),
     ("exalted", "උච්ච"), ("debilitated", "නීච"), ("mutual", "අන්‍යෝන්‍ය"),
     ("strong", "ශක්තිමත්"), ("together", "එකට"), ("benefic", "ශුභ ග්‍රහ"), ("malefic", "පාප ග්‍රහ"),
     (" & ", " සහ "), (" or ", " හෝ "),
     # Tajaka aspects / yogas
     ("conjunction", "සංයෝගය"), ("opposition", "ප්‍රතියෝගය"), ("trine", "ත්‍රිකෝණ දෘෂ්ටිය"), ("square", "චතුරස්‍ර දෘෂ්ටිය"),
-    ("sextile", "ෂඩාෂ්ටක දෘෂ්ටිය"), ("vartamana", "වර්තමාන"), ("poorna", "පූර්ණ"), ("bhavishya", "භවිෂ්‍ය"),
+    # a Tajaka sextile is the 3/11 aspect and semi-sextile 2/12 (ෂඩාෂ්ටක would mean 6/8)
+    ("semi-sextile", "ද්වි-ද්වාදශ (2/12) දෘෂ්ටිය"), ("sextile", "ත්‍රි-ඒකාදශ (3/11) දෘෂ්ටිය"), ("vartamana", "වර්තමාන"),
+    ("ITHASALA", "ඉථසාල"), ("ithasala", "ඉථසාල"), ("EESARPHA", "ඊසර්ඵ"), ("MANAHOO", "මනාහූ"),
+    ("Hora lord", "හෝරාධිපති"), ("lagna lord", "ලග්නාධිපති"), ("in 6/8/12 from lagna", "ලග්නයෙන් 6/8/12 වැන්නේ"),
+    ("(unfavorable)", "(අශුභ)"),
+    # yoga reasons (ch.11)
+    ("papa-kartari", "පාප කර්තරී"), ("exchange (parivartana)", "පරිවර්තනය"), ("parivartana", "පරිවර්තනය"),
+    ("exchanges", "පරිවර්තන"), ("exchange", "පරිවර්තනය"),
+    ("all grahas in movable rasis", "සියලු ග්‍රහයෝ චර රාශිවල"), ("all grahas in fixed rasis", "සියලු ග්‍රහයෝ ස්ථිර රාශිවල"),
+    ("all grahas in dual rasis", "සියලු ග්‍රහයෝ ද්විස්වභාව රාශිවල"),
+    ("(malefic also in a kendra — weakened)", "(කේන්ද්‍රයක පාප ග්‍රහයෙක්ද සිටී — දුර්වල වී ඇත)"),
+    ("(benefic also in a kendra — weakened)", "(කේන්ද්‍රයක ශුභ ග්‍රහයෙක්ද සිටී — දුර්වල වී ඇත)"),
+    ("even houses", "යුග්ම භාවවල"), ("odd houses", "ඔජ භාවවල"),
+    ("movable rasi", "චර රාශිය"), ("well placed", "හොඳ ස්ථානයක"), ("unafflicted", "පීඩාවකින් තොරව"),
+    ("maraka-afflicted", "මාරක පීඩිත"), ("maraka", "මාරක"),
+    # Ashtakoota notes
+    ("(same rasi, different nakshatra)", "(එකම රාශිය, වෙනස් නැකත්)"),
+    ("(same nakshatra, different rasi)", "(එකම නැකත, වෙනස් රාශි)"),
+    ("(same nakshatra & rasi, different pada)", "(එකම නැකත සහ රාශිය, වෙනස් පාද)"), ("poorna", "පූර්ණ"), ("bhavishya", "භවිෂ්‍ය"),
     ("Kamboola", "කම්බූල"), ("gap", "පරතරය"), ("Ithasala", "ඉථසාල"), ("Eesarpha", "ඊසර්ඵ"),
     # Shatpanchasika verdicts
     ("SUCCESS indicated", "සාර්ථක වීමේ ප්‍රවණතාව"), ("FAILURE indicated", "අසාර්ථක වීමේ ප්‍රවණතාව"),
@@ -734,7 +793,114 @@ _WORD_SI = {"wide": "පුළුල්", "grahas": "ග්‍රහයන්", 
             "exaltation": "උච්ච ස්ථානය",
             "with": "සමඟ", "and": "සහ", "in": "—", "no": "නැති", "aspect": "දෘෂ්ටිය", "aspected": "දෘෂ්ටි වන",
             "planets": "ග්‍රහයන්", "planet": "ග්‍රහයා", "sign": "රාශිය", "signs": "රාශි", "day": "දිවා", "night": "රාත්‍රී",
-            "empty": "හිස්", "conjunct": "සංයුක්ත", "retrograde": "වක්‍ර", "secondary": "ද්විතීයික"}
+            "empty": "හිස්", "conjunct": "සංයුක්ත", "retrograde": "වක්‍ර", "secondary": "ද්විතීයික",
+            "without": "නොමැතිව", "only": "පමණක්", "two": "දෙකක්", "nakshatra": "නැකත", "graha": "ග්‍රහයා"}
+
+
+# Whole engine sentences, translated as a unit: word-by-word Sinhala comes out in the wrong order.
+WHOLE_SI = {
+    # ch.11 "popular" yogas: the condition behind each
+    "benefic in Lagna or subha-kartari": "ලග්නයේ ශුභ ග්‍රහයෙක්, හෝ ලග්නය ශුභ කර්තරියේ",
+    "malefic in Lagna or papa-kartari": "ලග්නයේ පාප ග්‍රහයෙක්, හෝ ලග්නය පාප කර්තරියේ",
+    "Guru & Kuja conjunct/opposite": "ගුරු සහ කුජ එකට, හෝ එකිනෙකාට 7 වැන්නේ",
+    "kendras only benefics; 7th/8th empty or benefic": "කේන්ද්‍රවල ශුභ ග්‍රහයන් පමණක්; 7 සහ 8 වැන්න හිස් හෝ ශුභ ග්‍රහයන් සහිත",
+    "4th lord exalted/own with 10th lord": "4 වන අධිපති උච්ච/ස්වක්ෂේත්‍රව, 10 වන අධිපති සමඟ",
+    "4th lord & Guru in mutual kendras, Lagna lord strong": "4 වන අධිපති සහ ගුරු අන්‍යෝන්‍ය කේන්ද්‍රවල; ලග්නාධිපති ශක්තිමත්",
+    "Lagna lord exalted in kendra with Guru's aspect, or two benefics in 7/9/10":
+        "ලග්නාධිපති කේන්ද්‍රයක උච්චව ගුරු දෘෂ්ටිය සහිතව, හෝ 7/9/10 හි ශුභ ග්‍රහයන් දෙදෙනෙක්",
+    "Lagna lord strong; 5th & 6th lords in mutual kendras": "ලග්නාධිපති ශක්තිමත්; 5 සහ 6 වන අධිපතීන් අන්‍යෝන්‍ය කේන්ද්‍රවල",
+    "Lagna & 10th lords together in movable rasi; 9th lord strong":
+        "ලග්නාධිපති සහ 10 වන අධිපති චර රාශියක එකට; 9 වන අධිපති ශක්තිමත්",
+    "9th lord strong; 1/2/7/12 occupied or Guru-Shukra-Lagna lord in mutual kendras":
+        "9 වන අධිපති ශක්තිමත්; 1/2/7/12 භාවවල ග්‍රහයන්, හෝ ගුරු, ශුක්‍ර සහ ලග්නාධිපති අන්‍යෝන්‍ය කේන්ද්‍රවල",
+    "own/exalted graha in kendra/trikona; Lagna lord strong": "කේන්ද්‍ර/ත්‍රිකෝණයක ස්වක්ෂේත්‍ර/උච්ච ග්‍රහයෙක්; ලග්නාධිපති ශක්තිමත්",
+    "7th lord exalted in 10th; 10th & 9th lords together": "7 වන අධිපති 10 වැන්නේ උච්චව; 10 සහ 9 වන අධිපතීන් එකට",
+    "benefics in 1 & 9, grahas in 5, malefics in 4/8": "1 සහ 9 හි ශුභ ග්‍රහයන්, 5 හි ග්‍රහයන්, 4/8 හි පාප ග්‍රහයන්",
+    "2nd-9th lords exchange; Lagna lord in kendra/trikona": "2 සහ 9 වන අධිපතීන්ගේ පරිවර්තනය; ලග්නාධිපති කේන්ද්‍ර/ත්‍රිකෝණයක",
+    "fixed Lagna, Shukra in kendra, Chandra in trikona with benefic, Shani in 10th":
+        "ස්ථිර ලග්නය; ශුක්‍ර කේන්ද්‍රයක, චන්ද්‍ර ශුභ ග්‍රහයෙකු සමඟ ත්‍රිකෝණයක, ශනි 10 වැන්නේ",
+    "benefics in 7 & 8 from Lagna, unafflicted": "ලග්නයෙන් 7 සහ 8 හි ශුභ ග්‍රහයන්, පීඩාවකින් තොරව",
+    "benefics in 2/12/8 from 2nd lord": "2 වන අධිපතිගෙන් 2/12/8 හි ශුභ ග්‍රහයන්",
+    "benefics in 4/9/8 from 7th lord": "7 වන අධිපතිගෙන් 4/9/8 හි ශුභ ග්‍රහයන්",
+    "benefics in 4/10/11 from Lagna lord": "ලග්නාධිපතිගෙන් 4/10/11 හි ශුභ ග්‍රහයන්",
+    "Guru kendra from 9L, Shukra kendra from 11L, Budha kendra from 1L/10L":
+        "9 වන අධිපතිගෙන් කේන්ද්‍රයක ගුරු, 11 වන අධිපතිගෙන් කේන්ද්‍රයක ශුක්‍ර, 1/10 වන අධිපතීන්ගෙන් කේන්ද්‍රයක බුධ",
+    "9th & 10th lords and navamsa dispositor of 9L in 2nd": "9 සහ 10 වන අධිපතීන් සහ 9 වන අධිපතිගේ නවාංශ අධිපති 2 වැන්නේ",
+    "5L in 9, 9L in 10, 10L in 5": "5 වන අධිපති 9 හි, 9 වන අධිපති 10 හි, 10 වන අධිපති 5 හි",
+    "Surya, Chandra, Kuja in mutual trines": "රවි, චන්ද්‍ර, කුජ අන්‍යෝන්‍ය ත්‍රිකෝණවල",
+    "navamsa dispositor of 10L exalted in 10th with Lagna lord": "10 වන අධිපතිගේ නවාංශ අධිපති උච්චව ලග්නාධිපති සමඟ 10 වැන්නේ",
+    "9th lord own/exalted in kendra; Lagna lord strong": "9 වන අධිපති කේන්ද්‍රයක ස්වක්ෂේත්‍ර/උච්චව; ලග්නාධිපති ශක්තිමත්",
+    "10L in 5, Budha kendra, Surya in Simha, Budha/Guru trine from Chandra, Kuja in 11":
+        "10 වන අධිපති 5 හි, බුධ කේන්ද්‍රයක, රවි සිංහයේ, චන්ද්‍රයාගෙන් ත්‍රිකෝණයක බුධ/ගුරු, කුජ 11 හි",
+    "Budha, Guru, Shukra in kendra/trikona/2nd; Guru well placed": "බුධ, ගුරු, ශුක්‍ර කේන්ද්‍ර/ත්‍රිකෝණ/2 වැන්නේ; ගුරු හොඳ ස්ථානයක",
+    "Guru, Shukra & exalted Shani in kendras": "ගුරු, ශුක්‍ර සහ උච්ච ශනි කේන්ද්‍රවල",
+    "fixed Lagna; 2-10 and 1-11 exchanges": "ස්ථිර ලග්නය; 2–10 සහ 1–11 අධිපති පරිවර්තන",
+    "5-11 exchange; Chandra in 5th": "5–11 අධිපති පරිවර්තනය; චන්ද්‍ර 5 වැන්නේ",
+    "Surya in 10; 10L in 3 with Shani": "රවි 10 හි; 10 වන අධිපති ශනි සමඟ 3 හි",
+    "Chandra 12th & Budha 2nd from Surya; Guru 5/9 from Chandra": "රවිගෙන් 12 වැන්නේ චන්ද්‍ර සහ 2 වැන්නේ බුධ; චන්ද්‍රයාගෙන් 5/9 හි ගුරු",
+    "every graha in 5th from Lagna, Chandra or Surya": "සෑම ග්‍රහයෙක්ම ලග්නය, චන්ද්‍ර හෝ රවිගෙන් 5 වැන්නේ",
+    "10L trine from 7th; Guru with Lagna lord; Surya exalted; Chandra in 9":
+        "10 වන අධිපති 7 වැන්නෙන් ත්‍රිකෝණයක; ගුරු ලග්නාධිපති සමඟ; රවි උච්ච; චන්ද්‍ර 9 හි",
+    "Guru in moolatrikona with 2L; Lagna lord exalted": "ගුරු මූලත්‍රිකෝණයේ 2 වන අධිපති සමඟ; ලග්නාධිපති උච්ච",
+    "11L deeply exalted with Shukra, kendra from Lagna lord": "11 වන අධිපති ගැඹුරින් උච්චව ශුක්‍ර සමඟ, ලග්නාධිපතිගෙන් කේන්ද්‍රයක",
+    "4-10 exchange; Lagna lord exalted": "4–10 අධිපති පරිවර්තනය; ලග්නාධිපති උච්ච",
+    "Guru 9th from 9L; benefic 9th from Guru; Shani in 10": "9 වන අධිපතිගෙන් 9 වැන්නේ ගුරු; ගුරුගෙන් 9 වැන්නේ ශුභ ග්‍රහයෙක්; ශනි 10 හි",
+    "10L deeply exalted; 6L debilitated": "10 වන අධිපති ගැඹුරින් උච්ච; 6 වන අධිපති නීච",
+    "no grahas in 1/2/12 from Chandra and none in kendras from Lagna":
+        "චන්ද්‍රයාගෙන් 1/2/12 හි ග්‍රහයන් නැත; ලග්නයෙන් කේන්ද්‍රවලද ග්‍රහයන් නැත",
+    "no grahas 1/2/12 from Chandra, but kendras from Lagna occupied (cancellation per 11.3.4)":
+        "චන්ද්‍රයාගෙන් 1/2/12 හි ග්‍රහයන් නැත, නමුත් ලග්නයෙන් කේන්ද්‍රවල ග්‍රහයන් සිටී (11.3.4 අනුව නිෂ්ප්‍රභ වේ)",
+    # Tajaka general yogas
+    "Ishkavala yoga (all grahas in kendras/panapharas) — wealth, fortune":
+        "ඉෂ්කවාල යෝගය (සියලු ග්‍රහයෝ කේන්ද්‍ර/පණපර ස්ථානවල) — ධනය, වාසනාව",
+    "Induvara yoga (all grahas in apoklimas) — disappointments":
+        "ඉන්දුවාර යෝගය (සියලු ග්‍රහයෝ අපොක්ලිම ස්ථානවල) — බලාපොරොත්තු කඩවීම්",
+    # muhurta task notes (textbook ch.36)
+    "8th house should be empty (Le, Sc lagnas also acceptable)": "8 වන භාවය හිස්ව තිබිය යුතුයි (සිංහ, වෘශ්චික ලග්නද පිළිගත හැක)",
+    "8th empty, 4th strong; hora lord favorable w.r.t. natal 4th/A4; check D-4 (Venus strong)":
+        "8 වැන්න හිස්, 4 වැන්න ශක්තිමත්; හෝරාධිපති ජන්ම කේන්දරයේ 4 වැන්නට/A4ට හිතකර විය යුතුයි; D-4 බලන්න (ශුක්‍ර ශක්තිමත්)",
+    "8th house should be empty": "8 වන භාවය හිස්ව තිබිය යුතුයි",
+    "10th house should be empty; even/odd month for boys/girls":
+        "10 වන භාවය හිස්ව තිබිය යුතුයි; පිරිමි දරුවන්ට ඉරට්ටේ මාස, ගැහැනු දරුවන්ට ඔත්තේ මාස",
+    "8th empty; Uttarayana better; check D-24": "8 වැන්න හිස්; උත්තරායනය වඩා හොඳයි; D-24 බලන්න",
+    "8th empty (tithis 6, 12 secondary)": "8 වැන්න හිස් (6 සහ 12 තිථි ද්විතීයික)",
+    "7th house should be clean; hora lord favorable w.r.t. natal 7th & UL; check D-9":
+        "7 වන භාවය පිරිසිදුව තිබිය යුතුයි; හෝරාධිපති ජන්ම කේන්දරයේ 7 වැන්නට සහ උපපද ලග්නයට හිතකර විය යුතුයි; D-9 බලන්න",
+    "Uttarayana for gentle deities, Dakshinayana for aggressive deities": "සෞම්‍ය දෙවිවරුන්ට උත්තරායනය, උග්‍ර දෙවිවරුන්ට දක්ෂිණායනය",
+    "36.4: Lagna, 6th, 10th strong in rasi and D-10; first Vimshottari dasa lord favorable":
+        "36.4: රාශි සහ D-10 කේන්දරවල ලග්නය, 6 සහ 10 වැන්න ශක්තිමත්; පළමු විංශෝත්තරී දශා අධිපති හිතකර",
+    "Treat like job/venture start: 1, 2, 10, 11 strong; check D-10":
+        "රැකියාවක්/ව්‍යාපාරයක් ආරම්භයක් ලෙස සලකන්න: 1, 2, 10, 11 ශක්තිමත්; D-10 බලන්න",
+    "36.4: 1st, 4th (and A4) strong in rasi and D-16": "36.4: රාශි සහ D-16 කේන්දරවල 1 සහ 4 වැන්න (සහ A4) ශක්තිමත්",
+    "36.4: 1st, 4th strong; Mars strong in D-4": "36.4: 1 සහ 4 වැන්න ශක්තිමත්; D-4 හි කුජ ශක්තිමත්",
+    "General: benefic lagna, good tara, 8th empty": "සාමාන්‍ය: ශුභ ලග්නය, හොඳ තාරා බලය, 8 වැන්න හිස්",
+    "Generic auspicious start: good tara, benefic hora/lagna, 8th empty":
+        "සාමාන්‍ය සුබ ආරම්භය: හොඳ තාරා බලය, ශුභ හෝරාව/ලග්නය, 8 වැන්න හිස්",
+}
+
+# Engine sentences with a planet, sign or number in them. Applied once planets and signs are in Sinhala.
+_PW = r"[^\s;,()\[\]—]+"   # one word: a Sinhala planet name, a number, a slash list
+_FROM_SI = {"ලග්නය": "ලග්නයෙන්", "Lagna": "ලග්නයෙන්", "චන්ද්‍ර": "චන්ද්‍රයාගෙන්", "රවි": "රවිගෙන්"}
+REGEX_SI = [
+    (rf"only benefics \(({_PW})\) in 10th from ({_PW})", lambda m: f"{_FROM_SI.get(m[2], m[2] + 'ගෙන්')} 10 වැන්නේ ශුභ ග්‍රහයන් පමණක් ({m[1]})"),
+    (r"ගුරු in (\d+)th with බුධ & ශුක්‍ර association", r"ගුරු \1 වැන්නේ, බුධ සහ ශුක්‍ර සම්බන්ධයෙන්"),
+    (r"^(.+) all in kendra/trikona/exaltation$", r"\1 සියල්ලම කේන්ද්‍ර/ත්‍රිකෝණ/උච්ච ස්ථානවල"),
+    (r"navamsa dispositor of (\d+)L exalted with 9L", r"\1 වන අධිපතිගේ නවාංශ අධිපති උච්චව, 9 වන අධිපති සමඟ"),
+    (rf"benefics ({_PW}) in 6/7/8 from චන්ද්‍ර", r"චන්ද්‍රයාගෙන් 6/7/8 හි ශුභ ග්‍රහයන් (\1)"),
+    (rf"({_PW}) 2nd & ({_PW}) 12th from (රවි|චන්ද්‍ර)", lambda m: f"{_FROM_SI[m[3]]} 2 වැන්නේ {m[1]}, 12 වැන්නේ {m[2]}"),
+    (rf"({_PW}) in ({_PW}) in house (\d+)", r"\1 \2 රාශියේ, \3 වැන්නේ"),
+    (r"benefics in kendras (\[[\d, ]+\])", r"කේන්ද්‍රවල ශුභ ග්‍රහයන් \1"),
+    (r"malefics in kendras (\[[\d, ]+\])", r"කේන්ද්‍රවල පාප ග්‍රහයන් \1"),
+    (rf"({_PW}) in Lagna with ({_PW})", r"\1 ලග්නයේ, \2 සමඟ"),
+    (rf"MANAHOO by ({_PW}) \(ithasala spoiled\)", r"\1 නිසා මනාහූ (ඉථසාල බිඳේ)"),
+    (rf"Kamboola \(({_PW}) ithasala with ({_PW})\)", r"කම්බූල (\1–\2 ඉථසාල)"),
+    (rf"Nakta: ({_PW}) – ({_PW}) via ({_PW})", r"නක්ත: \1 – \2, \3 හරහා"),
+    (rf"Yamaya: ({_PW}) – ({_PW}) via ({_PW}) \(after delay\)", r"යමයා: \1 – \2, \3 හරහා (ප්‍රමාදයකින් පසු)"),
+    (rf"Hora lord ({_PW}) \(hora (\d+) from sunrise\)", r"හෝරාධිපති \1 (හිරු උදාවේ සිට \2 වන හෝරාව)"),
+    (r"karana (.+?) \(unfavorable\)", lambda m: f"{KARANA_SI.get(m[1], m[1])} කරණය (අශුභ)"),
+    (r"\bin house (\d{1,2})\b", r"\1 වැන්නේ"),
+]
+REGEX_SI = [(re.compile(p), r) for p, r in REGEX_SI]
 
 
 YOGA_NAME_SI = {"Dharma-Karmadhipati Raja yoga": "ධර්ම-කර්මාධිපති රාජ යෝගය",
@@ -743,17 +909,52 @@ YOGA_NAME_SI = {"Dharma-Karmadhipati Raja yoga": "ධර්ම-කර්මා�
                 "Gaja-Kesari": "ගජකේසරී", "Budha-Aditya": "බුධාදිත්‍ය", "Ubhayachari": "උභයචරී",
                 "Anapha": "අනඵා", "Sunapha": "සුනඵා", "Durudhara": "දුරුධරා", "Kemadruma": "කේමද්‍රැම",
                 "Subha": "ශුභ", "Asubha": "අශුභ", "Nipuna": "නිපුණ",
-                "Daridra yoga": "දරිද්‍ර යෝගය", "Dhana yoga": "ධන යෝගය", "association": "සම්බන්ධය"}
+                "Daridra yoga": "දරිද්‍ර යෝගය", "Dhana yoga": "ධන යෝගය", "association": "සම්බන්ධය",
+                # every other name the ch.11 detector prints, in Sinhala script
+                "Duradhara": "දුරුධරා", "Adhi yoga": "අධි යෝගය", "Chandra-Mangala": "චන්ද්‍ර-මංගල",
+                "Guru-Mangala": "ගුරු-මංගල", "Vesi": "වේසි", "Vosi": "වෝසි", "Kemadruma — partial": "කේමද්‍රැම — අර්ධ",
+                "Ruchaka": "රුචක", "Bhadra": "භද්‍ර", "Sasa": "ශශ", "Malavya": "මාලව්‍ය", "Hamsa": "හංස",
+                "Rajju": "රජ්ජු", "Musala": "මුසල", "Nala": "නල", "Maala": "මාලා", "Sarpa": "සර්ප",
+                "Chakra": "චක්‍ර", "Chapa": "චාප", "Chatra": "ඡත්‍ර", "Dama": "දාම", "Danda": "දණ්ඩ", "Gada": "ගදා",
+                "Gola": "ගෝල", "Hala": "හල", "Kedara": "කේදාර", "Kuta": "කූට", "Nauka": "නෞකා", "Pasa": "පාශ",
+                "Sakata": "ශකට", "Sakti": "ශක්ති", "Samudra": "සමුද්‍ර", "Sara": "ශර", "Sringataka": "ශෘංගාටක",
+                "Sula": "ශූල", "Vajra": "වජ්‍ර", "Vapi": "වාපී", "Veena": "වීණා", "Vihanga": "විහඟ", "Yava": "යව",
+                "Yuga": "යුග", "Yupa": "යූප", "Kamala": "කමල",
+                "Harsha": "හර්ෂ", "Sarala": "සරල", "Vimala": "විමල",
+                "Amala": "අමල", "Parvata": "පර්වත", "Kahala": "කාහල", "Chamara": "චාමර", "Sankha": "ශංඛ",
+                "Bheri": "භේරී", "Mridanga": "මෘදංග", "Sreenatha": "ශ්‍රීනාථ", "Matsya": "මත්ස්‍ය", "Khadga": "ඛඩ්ග",
+                "Kusuma": "කුසුම", "Kalanidhi": "කලානිධි", "Kalpadruma": "කල්පද්‍රැම", "Parijata": "පාරිජාත",
+                "Lagnadhi": "ලග්නාධි", "Hari": "හරි", "Hara": "හර", "Brahma": "බ්‍රහ්ම", "Vishnu": "විෂ්ණු",
+                "Siva": "ශිව", "Trilochana": "ත්‍රිලෝචන", "Gouri": "ගෞරී", "Lakshmi": "ලක්ෂ්මී", "Saarada": "ශාරදා",
+                "Bharathi": "භාරතී", "Saraswathi": "සරස්වතී", "Amsavatara": "අංශාවතාර", "Devendra": "දේවේන්ද්‍ර",
+                "Indra": "ඉන්ද්‍ර", "Ravi": "රවි", "Bhaskara": "භාස්කර", "Kulavardhana": "කුලවර්ධන",
+                "Gandharva": "ගන්ධර්ව", "Go": "ගෝ", "Vidyut": "විද්‍යුත්", "Makuta": "මකුට", "Jaya": "ජය",
+                "Vasumati": "වසුමතී", "(full)": "(සම්පූර්ණ)", "(bad)": "(අශුභ)", "(alt.)": "(විකල්ප)",
+                "Exalted benefic in 2nd": "2 වැන්නේ උච්ච ශුභ ග්‍රහයෙක්", "Parasara lagna-specific": "පරාශර ලග්න-විශේෂ",
+                "(1) 1L-12L exchange with maraka": "(1) 1 සහ 12 වන අධිපතීන්ගේ පරිවර්තනය, මාරක සම්බන්ධයෙන්",
+                "(3) Ketu with Lagna/Chandra, 1L in 8 with maraka": "(3) ලග්නය/චන්ද්‍ර සමඟ කේතු; 1 වන අධිපති මාරක සමඟ 8 හි",
+                "(4) 1L with malefic in dusthana; 2L weak": "(4) 1 වන අධිපති පාප ග්‍රහයෙකු සමඟ දුස්ථානයක; 2 වන අධිපති දුර්වල",
+                "(5) 5L in 6, 9L in 12 with maraka": "(5) 5 වන අධිපති 6 හි, 9 වන අධිපති මාරක සමඟ 12 හි",
+                "(6) malefics in Lagna without 9L/10L, maraka-afflicted":
+                    "(6) 9/10 වන අධිපතීන් නොමැතිව ලග්නයේ පාප ග්‍රහයන්; මාරක පීඩිත"}
+
+
+# Whole words only: a plain replace turned "restraint" into "restවර්ෂාවt" ("rain" inside it).
+# A phrase that starts or ends with a letter must not touch a letter outside it.
+_PHRASE_RX = [(re.compile((r"(?<![A-Za-z])" if en[0].isalpha() else "") + re.escape(en)
+                          + (r"(?![A-Za-z])" if en[-1].isalpha() else "")), si.replace("\\", "\\\\"))
+              for en, si in sorted(PHRASE_SI, key=lambda kv: -len(kv[0]))]
 
 
 def si_yoga_name(s):
-    """Yoga names keep their Sanskrit form; the English qualifiers around them do not."""
+    """Yoga names in Sinhala script; the English qualifiers around them too."""
     out = str(s)
     for en, si in sorted(YOGA_NAME_SI.items(), key=lambda kv: -len(kv[0])):
-        out = out.replace(en, si)
+        # whole words only: "Go" must not eat the start of "Gola"
+        out = re.sub(r"(?<![A-Za-z])" + re.escape(en) + r"(?![A-Za-z])", si, out)
     out = re.sub(r"(\d{1,2})L\b", r"\1ප", out)
-    for en, si in sorted(PHRASE_SI, key=lambda kv: -len(kv[0])):
-        out = out.replace(en, si)
+    for rx, si in _PHRASE_RX:
+        out = rx.sub(si, out)
     out = re.sub(r"\b(" + "|".join(_WORD_SI) + r")\b", lambda m: _WORD_SI[m.group(1)], out)
     return re.sub(r"\s{2,}", " ", out).strip()
 
@@ -762,10 +963,15 @@ def si_text(s):
     """Best-effort Sinhala rendering of an engine-generated English line.
     Order matters: proper names first (so 'Chand' is not eaten by the word 'and'), then phrases, then single words."""
     out = str(s)
+    if out.strip() in WHOLE_SI:
+        return WHOLE_SI[out.strip()]
     for en, si in sorted(PL_EN2SI.items(), key=lambda kv: -len(kv[0])):
         out = out.replace(en, si)
     for en, si in sorted(SIGN_EN2SI.items(), key=lambda kv: -len(kv[0])):
         out = out.replace(en, si)
+    for rx, rep in REGEX_SI:
+        out = rx.sub(rep, out)
+    out = re.sub(r"\b(\d{1,2})L\b", r"\1 වන අධිපති", out)
     for en, si in sorted(SAHAM_SI.items(), key=lambda kv: -len(kv[0])):
         out = out.replace(en, si)
     for tbl in (NAK_EN2SI, TITHI_SI):
@@ -777,21 +983,21 @@ def si_text(s):
     out = re.sub(rf"({_W}) in (\d{{1,2}})(?:st|nd|rd|th) from ({_W})", r"\3ගෙන් \2 වැන්නේ \1", out)
     out = re.sub(rf"({_W}) in an? kendra from ({_W})|({_W}) in kendra from ({_W})",
                  lambda m: f"{m.group(2) or m.group(4)}ගෙන් කේන්ද්‍රයක {m.group(1) or m.group(3)}", out)
-    for en, si in sorted(PHRASE_SI, key=lambda kv: -len(kv[0])):
-        out = out.replace(en, si)
+    for rx, si in _PHRASE_RX:
+        out = rx.sub(si, out)
     out = re.sub(r"\b(" + "|".join(_WORD_SI) + r")\b", lambda m: _WORD_SI[m.group(1)], out)
     out = re.sub(r"\b(\d{1,2})(st|nd|rd|th)\b", r"\1 වැනි", out)
     out = out.replace("ලග්නයගෙන්", "ලග්නයෙන්").replace("චන්ද්‍රගෙන්", "චන්ද්‍රයාගෙන්")
     return re.sub(r"\s{2,}", " ", out).strip()
 
 
-VARNA_SI = {"Brahmin": "බ්‍රාහ්මණ", "Kshatriya": "ක්ෂත්‍රිය", "Vaishya": "වෛශ්‍ය", "Shudra": "ශූද්‍ර"}
+VARNA_SI = {"Brahmana": "බ්‍රාහ්මණ", "Brahmin": "බ්‍රාහ්මණ", "Kshatriya": "ක්ෂත්‍රිය", "Vaishya": "වෛශ්‍ය", "Shudra": "ශූද්‍ර"}
 VASHYA_SI = {"Chatushpada": "චතුෂ්පද", "Manava": "මානව", "Jalachara": "ජලචර", "Vanachara": "වනචර", "Keeta": "කීට"}
 YONI_SI = {"Horse": "අශ්ව", "Elephant": "ගජ", "Sheep": "මේෂ", "Serpent": "සර්ප", "Dog": "ශ්වාන", "Cat": "මාර්ජාර",
            "Rat": "මූෂික", "Cow": "ගෝ", "Buffalo": "මහිෂ", "Tiger": "ව්‍යාඝ්‍ර", "Deer": "මෘග", "Monkey": "වානර",
            "Mongoose": "නකුල", "Lion": "සිංහ"}
 GANA_SI = {"Deva": "දේව", "Manushya": "මනුෂ්‍ය", "Rakshasa": "රාක්ෂස"}
-NADI_SI = {"Aadi": "ආදි", "Madhya": "මධ්‍ය", "Antya": "අන්ත්‍ය"}
+NADI_SI = {"Adi": "ආදි", "Aadi": "ආදි", "Madhya": "මධ්‍ය", "Antya": "අන්ත්‍ය"}
 NAK_EN2SI = {jc.NAKSHATRAS[i]: NAK_SI[i] for i in range(27)}
 TITHI_SI = {"Shukla": "පුර", "Krishna": "අව", "Prathama": "පළවක", "Dwitiya": "දෙවක", "Tritiya": "තෙවක", "Chaturthi": "සතරවක",
             "Panchami": "පස්වක", "Shashthi": "සයවක", "Saptami": "සත්වක", "Ashtami": "අටවක", "Navami": "නවවක",
@@ -836,6 +1042,22 @@ KOOTA_SI = {"Varna": ("වර්ණ", "මානසික/ආධ්‍යාත�
             "Tara": ("තාරා", "සෞභාග්‍යය සහ සෞඛ්‍යය"), "Yoni": ("යෝනි", "ශාරීරික/ලිංගික ගැලපීම"),
             "Graha Maitri": ("ග්‍රහ මෛත්‍රී", "මනස්, මිත්‍රත්වය"), "Gana": ("ගණ", "ස්වභාවය සහ හැසිරීම"),
             "Bhakoot": ("භකූට", "පවුල් සමෘද්ධිය, දරුවන්"), "Nadi": ("නාඩි", "සෞඛ්‍යය සහ පරම්පරාව")}
+_KOOTA_WORDS_SI = [("Bhakoot dosha", "භකූට දෝෂය"), ("Nadi dosha", "නාඩි දෝෂය"), ("cancelled", "නිෂ්ප්‍රභ වී ඇත"),
+                   ("same/friendly අධිපතීන්", "අධිපතීන් සම/මිත්‍ර"), ("same/friendly lords", "අධිපතීන් සම/මිත්‍ර"),
+                   ("(same)", "(සම)"), ("(6/8)", "(6/8 තත්ත්වය)"), ("(friend)", "(මිත්‍ර)"), ("(neutral)", "(සම)"),
+                   ("(enemy)", "(සතුරු)"), ("(own)", "(ස්වකීය)")]
+
+
+def si_koota(det):
+    """Sinhala for an Ashtakoota detail line, e.g. 'Guru (friend) / Kuja (friend)' or
+    'Dhanu / Mesha (5/9) — Bhakoot dosha, cancelled (same/friendly lords)'."""
+    for tbl in (VARNA_SI, VASHYA_SI, YONI_SI, GANA_SI, NADI_SI, NAK_EN2SI):
+        for en, si in sorted(tbl.items(), key=lambda kv: -len(kv[0])):
+            det = re.sub(r"\b" + re.escape(en) + r"\b", si, det)
+    det = si_text(det)
+    for en, si in _KOOTA_WORDS_SI:
+        det = det.replace(en, si)
+    return det
 MUDDA_HINT = {"Su": "අධිකාරිය, පිය, තත්ත්වය", "Mo": "මනස, මව, ජනතාව", "Ma": "ශක්තිය, තරඟ, ඉඩම්", "Me": "කථනය, ව්‍යාපාර, ලේඛන",
               "Ju": "ප්‍රඥාව, ගුරු, දරුවන්, ධනය", "Ve": "සම්බන්ධතා, කලා, සුවපහසුව", "Sa": "ශ්‍රමය, විනය, ප්‍රමාද",
               "Ra": "අනපේක්ෂිත, විදේශ, අභිලාශ", "Ke": "ඉවත්වීම, පර්යේෂණ, ආධ්‍යාත්මික"}
@@ -1086,14 +1308,7 @@ def build_d1(d, a, notes, now_local):
     krow = []
     for k in comp["kootas"]:
         si, meaning = KOOTA_SI.get(k["name"], (k["name"], ""))
-        det = k["detail"]
-        for tbl in (VARNA_SI, VASHYA_SI, YONI_SI, GANA_SI, NADI_SI, NAK_EN2SI):
-            for en, sisi in sorted(tbl.items(), key=lambda kv: -len(kv[0])):
-                det = re.sub(r"\b" + re.escape(en) + r"\b", sisi, det)
-        det = (si_text(det).replace("Bhakoot dosha", "භකූට දෝෂය").replace("Nadi dosha", "නාඩි දෝෂය")
-               .replace("cancelled", "නිෂ්ප්‍රභ වී ඇත").replace("same/friendly අධිපතිs", "අධිපතියන් සම/මිත්‍ර")
-               .replace("same/friendly lords", "අධිපතියන් සම/මිත්‍ර")
-               .replace("(same)", "(සම)").replace("(6/8)", "(6/8 තත්ත්වය)"))
+        det = si_koota(k["detail"])
         krow.append(f"<tr><td>{si}</td><td>{meaning}</td><td><b>{k['points']}</b> / {k['max']}</td><td>{esc(det)}</td></tr>")
     H.append("<table><tr><th>කූටය</th><th>මනින දේ</th><th>ලකුණු</th><th>විස්තර</th></tr>" + "".join(krow)
              + f"<tr class='cur'><td colspan='2'><b>එකතුව</b></td><td><b>{total} / 36</b></td><td>{verdict}</td></tr></table>")
@@ -1106,7 +1321,8 @@ def build_d1(d, a, notes, now_local):
         if "dosha" in k["detail"].lower():
             nm = "භකූට දෝෂය" if k["name"] == "Bhakoot" else "නාඩි දෝෂය"
             canc = "cancel" in k["detail"].lower()
-            dosha.append(f"<li><b>{nm}</b> — {esc(si_text(k['detail']))}. "
+            # just the signs or nadis here: the cancellation is said in Sinhala right after
+            dosha.append(f"<li><b>{nm}</b> — {esc(si_koota(k['detail'].split(' — ')[0]))}. "
                          + ("<b>නිෂ්ප්‍රභ වී ඇත</b> (සම්භාව්‍ය ග්‍රන්ථවල දක්වා ඇති නිෂ්ප්‍රභ වීමේ නියමයක් අනුව)." if canc
                             else "නිෂ්ප්‍රභ වීමේ නියමයක් මෙහි ක්‍රියාත්මක නොවේ — වැඩිදුර පරීක්ෂාව අවශ්‍යයි.") + "</li>")
     mangal = [y for y in d.get("yoga_indications", []) if "Mangal" in y]
@@ -1114,7 +1330,8 @@ def build_d1(d, a, notes, now_local):
         dosha.append("<li><b>කුජ දෝෂ ඇඟවීම</b> (පළමු කේන්දරයේ) — දෙදෙනාගේම කේන්දර දෙකේම කුජ ස්ථානය සහ නිෂ්ප්‍රභ වීම් එකට පරීක්ෂා කළ යුතුයි.</li>")
     H.append("<h2>4. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2><ul>" + ("".join(dosha) if dosha else "<li>ප්‍රධාන දෝෂ ඇඟවීම් නොමැත.</li>") + "</ul>")
     H.append(note_block(notes, "dosha") or note_block(notes, "yogas"))
-    H.append('<div class="pb"></div><h2>5. ජ්‍යොතිෂවේදියාගේ විග්‍රහය</h2>')
+    # its own page only when the astrologer wrote something for it
+    H.append(('<div class="pb"></div>' if (notes or {}).get("summary") else '') + '<h2>5. ජ්‍යොතිෂවේදියාගේ විග්‍රහය</h2>')
     H.append(note_block(notes, "summary") or '<p class="muted">(සවිස්තර විග්‍රහය සඳහා සම්පූර්ණ පොරොන්දම් වාර්තාව — D2 — බලන්න.)</p>')
     H.append(note_block(notes, "upcoming", "විවාහ කාලය සහ ඉදිරි කාලය"))
     H.append(disclaimer_block("අෂ්ටකූට ගුණ මිලන ක්‍රමය සහ දෝෂ නිෂ්ප්‍රභ වීමේ නියම — P.V.R. Narasimha Rao, ch. 26. "
@@ -1499,7 +1716,7 @@ def mangal_dosha_html(d):
         verdict = "කුජ දෝෂයක් පෙන්නුම් නොකරයි."
     elif "ලග්නය" in flagged:
         verdict = ("ලග්නයෙන් දෝෂ ලකුණක් ඇති බැවින් පොරොන්දම් බලන විට "
-                   "අවලංගු වීමේ (cancellation) නීති පරීක්ෂා කළ යුතුය.")
+                   "නිෂ්ප්‍රභ වීමේ නීති පරීක්ෂා කළ යුතුය.")
     else:
         verdict = (f"ලග්නයෙන් දෝෂයක් නැත; {', '.join(flagged)} අනුව පමණක් ලකුණක් ඇත — "
                    "එබැවින් මෘදු ලෙස සලකනු ලැබේ. පොරොන්දම් අවස්ථාවකදී තහවුරු කර ගන්න.")
@@ -1702,7 +1919,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
         H.append(f'<div class="two vblock" style="margin-bottom:8pt"><div style="flex:0 0 76mm">{south_indian_html_si(vlab, f"{vname} · {nm}", 76)}</div>'
                  f'<div><p class="small"><b>{vname} — {nm}</b>: {purpose}. ලග්නය {SIGN_SI[vl]}; අධිපති {PLANET_SI[jc.SIGN_LORD[vl]]} '
                  f'එම කේන්දරයේ {jc.house_from(vl, inv[v[jc.SIGN_LORD[vl]]])} වැන්නේ.'
-                 + (f' වර්ගෝත්තම: {", ".join(PLANET_SI.get(x, x) for x in d.get("vargottama", []))}.' if vname == "D9" and d.get("vargottama") else "")
+                 + (f' වර්ගෝත්තම: {", ".join(pl_si(x) for x in d.get("vargottama", []))}.' if vname == "D9" and d.get("vargottama") else "")
                  + "</p></div></div>")
 
     # ---- 6 yogas
@@ -1720,9 +1937,10 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
         yl = []
         for y in d.get("yoga_indications", []):
             key = next((k for k in YOGA_SI if k.lower() in y.lower()), None)
-            yl.append(f"<li><b>{esc(YOGA_SI[key].split(' — ')[0]) if key else esc(y)}</b>"
+            why = si_yoga_why(y)
+            yl.append(f"<li><b>{esc(YOGA_SI[key].split(' — ')[0]) if key else esc(si_text(y))}</b>"
                       + (f" — {esc(YOGA_SI[key].split(' — ', 1)[1])}" if key and " — " in YOGA_SI[key] else "")
-                      + f' <span class="muted">({esc(y)})</span></li>')
+                      + (f' <span class="muted">({esc(why)})</span>' if why else "") + "</li>")
         for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]:
             dg = si_dignity(P[c]["dignity"])
             if "උච්ච" in dg or "නීච" in dg:
@@ -2008,7 +2226,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
                  f'<div><p class="small">{purpose}. ලග්නය <b>{SIGN_SI[vl]}</b>; අධිපති {PLANET_SI[jc.SIGN_LORD[vl]]} '
                  f'එම කේන්දරයේ {jc.house_from(vl, inv[v[jc.SIGN_LORD[vl]]])} වැන්නේ. '
                  f'D1 හි {h} වන භාවාධිපති {PLANET_SI[hlord]} මෙහි {vh} වැන්නේ. '
-                 + (f'වර්ගෝත්තම ග්‍රහයන්: {", ".join(PLANET_SI.get(x, x) for x in d.get("vargottama", []))}.' if spec["varga"] == "D9" and d.get("vargottama") else "")
+                 + (f'වර්ගෝත්තම ග්‍රහයන්: {", ".join(pl_si(x) for x in d.get("vargottama", []))}.' if spec["varga"] == "D9" and d.get("vargottama") else "")
                  + "</p></div></div>")
         vrow = []
         for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
@@ -2280,7 +2498,7 @@ def build_c3(d, a, notes, now_local, tr):
             sgn = (ms + h - 1) % 12
             H.append(f'<p class="small">• {tag} — {ph_label(h)} — {SIGN_SI[sgn]} රාශියේ ({s0.astimezone(ZoneInfo(tz)).strftime("%Y-%m")}–'
                      f'{s1.astimezone(ZoneInfo(tz)).strftime("%Y-%m")}): ශනි බින්දු <b>{sat_bav[sgn]}</b>, SAV {av["sav"][sgn]}</p>')
-    H.append('<div class="pb"></div><h2>5. ප්‍රායෝගික ආකල්ප</h2><ul>' + "".join(f"<li>{x}</li>" for x in SS_ADVICE) + "</ul>")
+    H.append('<h2>5. ප්‍රායෝගික ආකල්ප</h2><ul>' + "".join(f"<li>{x}</li>" for x in SS_ADVICE) + "</ul>")
     H.append('<div class="note"><div class="lbl">වැදගත්</div><p>සඩේ සති කාලයක් සෞඛ්‍ය ප්‍රශ්නයක් හෝ අර්බුදයක් ලෙස නොසලකන්න. '
              'සෞඛ්‍ය, මූල්‍ය හෝ නීතිමය කාරණා සඳහා අදාළ වෘත්තිකයන් හමුවන්න. ජ්‍යොතිෂය එම උපදෙස් වෙනුවට නොවේ.</p></div>')
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ විග්‍රහය"))
@@ -2483,13 +2701,7 @@ def build_d2(dA, dB, a, notes, now_local):
     krow = []
     for k in comp["kootas"]:
         si, meaning = KOOTA_SI.get(k["name"], (k["name"], ""))
-        det = k["detail"]
-        for tbl in (VARNA_SI, VASHYA_SI, YONI_SI, GANA_SI, NADI_SI, NAK_EN2SI):
-            for en, sisi in sorted(tbl.items(), key=lambda kv: -len(kv[0])):
-                det = re.sub(r"\b" + re.escape(en) + r"\b", sisi, det)
-        det = (si_text(det).replace("Bhakoot dosha", "භකූට දෝෂය").replace("Nadi dosha", "නාඩි දෝෂය")
-               .replace("cancelled", "නිෂ්ප්‍රභ වී ඇත").replace("same/friendly අධිපතිs", "අධිපතියන් සම/මිත්‍ර")
-               .replace("same/friendly lords", "අධිපතියන් සම/මිත්‍ර").replace("(same)", "(සම)").replace("(6/8)", "(6/8 තත්ත්වය)"))
+        det = si_koota(k["detail"])
         krow.append(f"<tr><td>{si}</td><td>{meaning}</td><td><b>{k['points']}</b> / {k['max']}</td><td>{esc(det)}</td></tr>")
     H.append("<table><tr><th>කූටය</th><th>මනින දේ</th><th>ලකුණු</th><th>විස්තර</th></tr>" + "".join(krow)
              + f"<tr class='cur'><td colspan='2'><b>එකතුව</b></td><td><b>{total} / 36</b></td><td>{verdict}</td></tr></table>")
@@ -2737,7 +2949,7 @@ def build_e1(d, a, notes, now_local, events, scan):
       <div style="margin:12pt auto 0 auto; width:100mm">{south_indian_html_si(labels, "දෙන ලද වේලාවට D1", 100)}</div></div>''']
     H.append('<div class="pb"></div><h2>1. ක්‍රමවේදය</h2>')
     H.append('<div class="box">උපන් වේලාව මිනිත්තු කිහිපයකින් වෙනස් වූ විට ලග්නය, නවාංශක ලග්නය සහ දශා ආරම්භය වෙනස් වේ. '
-             'මේ වාර්තාවේ කරන්නේ: (1) දෙන ලද වේලාව වටා නියමිත පරාසයක් scan කර, (2) ඔබ දුන් පසුගිය සිදුවීම් එක් එක් '
+             'මේ වාර්තාවේ කරන්නේ: (1) දෙන ලද වේලාව වටා නියමිත පරාසයක සෑම වේලාවක්ම පරීක්ෂා කර, (2) ඔබ දුන් පසුගිය සිදුවීම් එක් එක් '
              'වේලාවකට අදාළ දශා සමඟ ගැලපේද බලා, (3) වැඩිම ගැලපීම ලැබෙන කාල කවුළු ඉදිරිපත් කිරීමයි.<br><br>'
              '<b>වැදගත්:</b> විම්ශෝත්තරී දශා ආරම්භය චන්ද්‍රගේ ස්ථානය මත රඳා පවතින නිසා පැයක් ඇතුළත එය බොහෝ දුරට එකමයි. '
              'වෙනස් වන්නේ <b>ලග්නය</b> — එබැවින් දශාධිපතීන් කුමන භාවවලට අධිපති වෙනවාද, කුමන භාවවල සිටිනවාද යන්නයි. '
@@ -2747,7 +2959,7 @@ def build_e1(d, a, notes, now_local, events, scan):
              + "".join(f"<tr><td>{i + 1}</td><td>{EVENT_TYPES[e['type']][0]}{(' — ' + esc(e['note'])) if e.get('note') else ''}</td>"
                        f"<td>{esc(e['date'])}</td><td>{', '.join(str(h) for h in EVENT_TYPES[e['type']][1])}</td></tr>"
                        for i, e in enumerate(events)) + "</table>")
-    H.append('<div class="pb"></div><h2>3. වේලා scan එක</h2>')
+    H.append('<div class="pb"></div><h2>3. වේලා පරීක්ෂාව</h2>')
     rows = []
     for s in scan:
         mark = " class=cur" if s["score"] == best else ""
@@ -2775,7 +2987,7 @@ def build_e1(d, a, notes, now_local, events, scan):
                         f"වඩාත් ගැලපෙන කවුළුව {wins[0][0]['time']} – {wins[0][-1]['time']} අතරයි. "
                         "මෙය යෝජනාවක් පමණි; තවත් සිදුවීම් එකතු කිරීමෙන් නිරවද්‍යතාව වැඩි කරගත හැක.") + "</div>")
     else:
-        H.append("<p>scan පරාසය තුළ වෙනසක් හඳුනාගත නොහැක.</p>")
+        H.append("<p>පරීක්ෂා කළ පරාසය තුළ වෙනසක් හඳුනාගත නොහැක.</p>")
     H.append('<div class="pb"></div><h2>5. සිදුවීම් අනුව විස්තරය</h2>')
     show = [s for s in scan if s["score"] == best][:1] + ([next(s for s in scan if s["off"] == 0)] if best != (next((s["score"] for s in scan if s["off"] == 0), None)) else [])
     for s in show:
@@ -2835,6 +3047,37 @@ def parse_muhurta_output(text):
     return rows, best, note
 
 
+def muhurta_chart_html(a, when, best):
+    """M1 section 3: the chart for the middle of the best window, drawn and tabled in Sinhala.
+    (The engine prints it as English text for the astrologer; `best` holds those lines, used for the D-n note.)"""
+    jd, _ = jc.to_jd_ut(datetime.strptime(when, "%Y-%m-%d %H:%M"), a.tz)
+    pos, _ = jc.compute_positions(jd)
+    ls = jc.sign_of(jc.compute_lagna(jd, a.lat, a.lon))
+    labels, rows = {ls: ["ලග්න"]}, []
+    for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
+        s = jc.sign_of(pos[c]["lon"])
+        retro = " (වක්‍ර)" if pos[c].get("retro") and c not in ("Ra", "Ke") else ""
+        labels.setdefault(s, []).append(PLANET_SI[c])
+        rows.append(f"<tr><td>{PLANET_SI[c]}{retro}</td><td>{SIGN_SI[s]}</td>"
+                    f"<td>{jc.dms(jc.deg_in_sign(pos[c]['lon']))}</td><td>{jc.house_from(ls, s)}</td></tr>")
+    varga = ""
+    for ln in best:
+        m = re.search(r"D-(\d+) lagna (\w+); relevant houses \[([\d, ]+)\] in D-\d+: (.*)$", ln)
+        if m:
+            parts = []
+            for hp in m[4].split("; "):
+                h, _, who = hp.partition(": ")
+                names = [PL_EN2SI.get(w.strip(), w.strip()) for w in who.split(",") if w.strip() not in ("", "-")]
+                parts.append(f"{h.lstrip('h')} වැන්න: {', '.join(names) or 'හිස්'}")
+            varga = (f'<p class="small">D-{m[1]} කේන්දරයේ ලග්නය {SIGN_EN2SI.get(m[2], m[2])}; '
+                     f'කාර්යයට අදාළ භාව — {"; ".join(parts)}.</p>')
+    return (f'<div class="two"><div style="flex:0 0 80mm">{south_indian_html_si(labels, f"මුහූර්ත කේන්දරය · {when}", 80)}</div>'
+            '<div><table><tr><th>ග්‍රහයා</th><th>රාශිය</th><th>අංශක</th><th>භාවය</th></tr>' + "".join(rows) + "</table></div></div>"
+            + varga
+            + '<p class="small muted">කවුළුවේ මැද මොහොතේ ග්‍රහ පිහිටීම. ග්‍රහ ශක්තිය සාමාන්‍ය නියමවලට වඩා වැදගත් බැවින් (ch. 36.4), '
+              'අවසන් තීරණයට පෙර මේ කේන්දරය ජන්ම කේන්දරයක් මෙන් පරීක්ෂා කිරීම සුදුසුයි.</p>')
+
+
 def build_m1(a, notes, now_local, task, out_text, natal=None):
     rows, best, note = parse_muhurta_output(out_text)
     tsi = MUHURTA_TASK_SI.get(task, task)
@@ -2854,21 +3097,26 @@ def build_m1(a, notes, now_local, task, out_text, natal=None):
         H.append(f'<p class="small muted">කාර්යයට අදාළ විශේෂ නියමය: {esc(si_text(note))}</p>')
     H.append(f"<h2>2. සුබ කවුළු — {esc(tsi)}</h2>")
     if rows:
-        H.append("<table><tr><th>දිනය</th><th>වේලාව</th><th>ලග්නය</th><th>තිථි</th><th>වාරය</th><th>නැකත</th><th>හෝරා</th><th>ලකුණු</th><th>සටහන්</th></tr>"
+        # the weekday sits under the date, so the notes column gets room to breathe
+        H.append("<table><tr><th>දිනය</th><th>වේලාව</th><th>ලග්නය</th><th>තිථි</th><th>නැකත</th><th>හෝරා</th><th>ලකුණු</th>"
+                 "<th style='width:32%'>සටහන්</th></tr>"
                  + "".join(f"<tr{' class=cur' if r['score'] == max(x['score'] for x in rows) else ''}>"
-                           f"<td>{r['date']}</td><td>{r['t0']}–{r['t1']}</td><td>{esc(si_text(r['lagna']))}</td>"
-                           f"<td>{esc(si_text(r['tithi']))}</td><td>{esc(VARA_SI2.get(r['vara'], si_text(r['vara'])))}</td><td>{esc(si_text(r['nak']))}</td>"
+                           f"<td>{r['date']}<br><span class='small'>{esc(VARA_SI2.get(r['vara'], si_text(r['vara'])))}</span></td>"
+                           f"<td>{r['t0']}–{r['t1']}</td><td>{esc(si_text(r['lagna']))}</td>"
+                           f"<td>{esc(si_text(r['tithi']))}</td><td>{esc(si_text(r['nak']))}</td>"
                            f"<td>{esc(si_text(r['hora']))}</td><td>{r['score']}</td>"
-                           f"<td class='small'>{esc(si_text(r['notes'])[:70])}</td></tr>" for r in rows) + "</table>")
+                           # one reason per line, each whole (cutting Sinhala mid-word can break a letter)
+                           f"<td class='small'>{'<br>'.join(esc(si_text(x)) for x in r['notes'].split('; ') if x)}</td></tr>"
+                           for r in rows) + "</table>")
         H.append('<p class="small muted">ලකුණු වැඩි කවුළු වඩාත් සුබ ලෙස සලකනු ලැබේ. කවුළුවක් තුළ ඕනෑම මොහොතක් ගත හැක; '
                  'කවුළුවේ මැද වඩාත් ආරක්ෂිතයි (ලග්න මාරුවෙන් දුරින්).</p>')
     else:
         H.append("<p>දෙන ලද පරාසය තුළ සියලු නියම සපුරන කවුළුවක් හමු නොවීය. දින පරාසය පුළුල් කිරීම හෝ "
                  "වේලා පරාසය 0–24 දක්වා විහිදුවීම උත්සාහ කරන්න.</p>")
-    if best:
+    when = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2})", best[0]) if best else None
+    if when:
         H.append("<h2>3. හොඳම කවුළුවේ කේන්දරය</h2>")
-        H.append('<pre class="small" style="white-space:pre-wrap; font-family:\'Noto Sans Sinhala\', \'Noto Sans\', monospace; background:#faf6ee; padding:8pt; border:1px solid #e4dccb">'
-                 + esc(si_text("\n".join(best[:16]))) + "</pre>")
+        H.append(muhurta_chart_html(a, when.group(1), best))
     H.append("<h2>4. ප්‍රායෝගිකව</h2><ul>"
              "<li>කවුළුව තුළ කාර්යය <b>ආරම්භ</b> කිරීම ප්‍රමාණවත් — මුළු කාර්යයම එතුළ අවසන් විය යුතු නැත.</li>"
              "<li>දින දෙකක් සමාන ලකුණු ගත්තොත්, ඔබට ප්‍රායෝගිකව පහසු දිනය තෝරන්න.</li>"
@@ -3262,6 +3510,7 @@ def main():
         css = CSS.replace("FONTDIR", font_uri()).replace("BRANDNAME", BRAND)
         page = f'<!DOCTYPE html><html lang="si"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} M1</title>' \
                f'<style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
+        page = with_thead(page)
         if a.html:
             open(a.html, "w", encoding="utf-8").write(page)
         from weasyprint import HTML
@@ -3379,6 +3628,7 @@ def main():
     if a.lang == "en":   # English page numbers, and Latin text set in Noto Sans rather than the Sinhala font's Latin
         css = css.replace('content: "පිටුව " counter(page)', 'content: "Page " counter(page)') + CSS_EN
     page = f'<!DOCTYPE html><html lang="{a.lang}"><head><meta charset="utf-8"><title>{esc(a.name)} — {esc(BRAND)} {esc(a.report)}</title><style>{css}{CHART_CSS}</style></head><body>{body}</body></html>'
+    page = with_thead(page)
     if a.html:
         open(a.html, "w", encoding="utf-8").write(page)
     from weasyprint import HTML

@@ -45,6 +45,9 @@ jobs:
           python jyotisha_report.py --report A1 --name Test --date 1990-05-15 --time 10:30
           --lat 6.93 --lon 79.85 --place Colombo --brand "Jyothisha Insight" --out test_A1.pdf --qa
 
+      - name: Every report type with visual QA and the Sinhala text check
+        run: python tools/qa_all_reports.py qa_all --jobs 2
+
       - name: Social graphics (post 14 must blur the birth data)
         run: |
           python jyotisha_gfx.py --out gfx --report test_A1.pdf
@@ -57,6 +60,7 @@ jobs:
           path: |
             test_*.pdf
             test_*_qa/
+            qa_all/*.pdf
 
   docker:
     runs-on: ubuntu-latest

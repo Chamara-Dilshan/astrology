@@ -40,6 +40,9 @@ Sample PDFs (fictional birth data): [`sample_G.pdf`](docs/samples/sample_G.pdf) 
   general, one dense in ු/ූ and ්‍ර), renders every page to PNG, and flags
   fallback fonts, overflow and blank pages. Sinhala shaping failures raise no
   error anywhere in the stack, so they have to be measured.
+  `python tools/qa_all_reports.py` builds all 25 report types (and English G) with
+  fixed sample data, runs that QA on each, and also fails on leftover placeholders or
+  untranslated engine English in a Sinhala report; CI runs it on every change.
 
 ```
 web form / CLI ─► jyotisha_calc ─► jyotisha_report (HTML/CSS) ─► WeasyPrint + Pango/HarfBuzz ─► PDF ─► --qa (PyMuPDF)
