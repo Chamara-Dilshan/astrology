@@ -131,3 +131,16 @@ def test_muhurta_rows_are_read_by_name_not_by_gaps():
     assert [(r["vara"], r["nak"], r["hora"], r["score"]) for r in rows] == [
         ("Mangala", "Magha", "Surya/Shukr", 3), ("Budha", "Uttara Bhadrapada", "Budha", 2),
         ("Shukra", "Hasta", "Budha/Chand/Shani", 5)]
+
+
+def test_utc_offsets_read_as_plus_or_minus_hours():
+    """Births abroad are possible now: west of Greenwich Python writes -5 h as '-1 day, 19:00:00'."""
+    from datetime import timedelta
+    assert [jr.utc_offset_txt(str(timedelta(hours=h))) for h in (5.5, 6, 0, -5, -3.5, 9.75)] == \
+        ["+5:30", "+6:00", "+0:00", "-5:00", "-3:30", "+9:45"]
+
+
+def test_coordinates_say_north_south_east_west():
+    assert jr.latlon_txt(6.9271, 79.8612) == "6.9271° N, 79.8612° E"
+    assert jr.latlon_txt(-33.8688, 151.2093) == "33.8688° S, 151.2093° E"
+    assert jr.latlon_txt(40.7128, -74.006) == "40.7128° N, 74.0060° W"

@@ -570,6 +570,21 @@ def esc(x):
     return html.escape(str(x))
 
 
+def latlon_txt(lat, lon):
+    """'6.9271° N, 79.8612° E'; a birth abroad can be south or west: '33.8688° S, 151.2093° E'."""
+    return f"{abs(lat):.4f}° {'S' if lat < 0 else 'N'}, {abs(lon):.4f}° {'W' if lon < 0 else 'E'}"
+
+
+def utc_offset_txt(off):
+    """The engine's UTC offset (Python's timedelta text) as '+5:30' or '-5:00': west of Greenwich
+    Python writes -5 h as '-1 day, 19:00:00'."""
+    m = re.match(r"(?:(-?\d+) days?, )?(\d+):(\d\d):\d\d$", str(off))
+    if not m:
+        return str(off)
+    mins = int(m.group(1) or 0) * 1440 + int(m.group(2)) * 60 + int(m.group(3))
+    return f"{'-' if mins < 0 else '+'}{abs(mins) // 60}:{abs(mins) % 60:02d}"
+
+
 def note_block(notes, key, label="ජ්‍යොතිෂවේදියාගේ සටහන"):
     t = (notes or {}).get(key)
     if not t:
@@ -725,8 +740,8 @@ def build_a1(d, a, tr, changes, notes, now_local):
                     + f"ශනි ගෝචරය: {tr['sade_sati'] if tr['sade_sati'] != 'නැත' else 'ඒරාෂ්ටක / අෂ්ටම ශනි නැත'}; ගුරු චන්ද්‍රගෙන් {ju['from_moon']} වැන්නේ.")
 
     birth_rows = [("නම", a.name), ("උපන් දිනය", a.date), ("උපන් වේලාව", f"{a.time} ({'නිශ්චිත' if not approx else 'ආසන්න'})"),
-                  ("ස්ථානය", a.place or "—"), ("අක්ෂාංශ / දේශාංශ", f"{a.lat:.4f}° N, {a.lon:.4f}° E"),
-                  ("කාල කලාපය", f"{a.tz} (UTC{'+' if not str(d['birth']['utc_offset']).startswith('-') else ''}{str(d['birth']['utc_offset'])[:-3]})"),
+                  ("ස්ථානය", a.place or "—"), ("අක්ෂාංශ / දේශාංශ", latlon_txt(a.lat, a.lon)),
+                  ("කාල කලාපය", f"{a.tz} (UTC{utc_offset_txt(d['birth']['utc_offset'])})"),
                   ("අයනාංශය", f"ලාහිරි {dms(d['ayanamsa'])}"), ("පංචාංගය", f"{esc(pch_si(d['panchanga'])['vara'])} · {esc(pch_si(d['panchanga'])['tithi'])} තිථි · {esc(pch_si(d['panchanga'])['yoga'])} යෝග · {esc(pch_si(d['panchanga'])['karana'])} කරණ · හිරු උදාව {d['panchanga']['sunrise']}"),
                   ("වාර්තා දිනය", now_local.strftime("%Y-%m-%d"))]
 
@@ -1718,6 +1733,277 @@ def build_c1(d, a, notes, now_local, year, plain=None):
 
 
 # ================================================================ D1 — Porondam (compatibility)
+# ---------------------------------------------------------------- plain words for D1, D2, D3 and N
+# The Ashtakoota kootas in everyday words (KOOTA_SI keeps the textbook meaning shown in the tables)
+_KOOTA_PLAIN_DN = {"Varna": "මානසික ගැලපීම", "Vashya": "එකිනෙකා කෙරෙහි ආකර්ෂණය", "Tara": "වාසනාව සහ සුවය",
+                   "Yoni": "ශාරීරික සමීපත්වය", "Graha Maitri": "අදහස් සහ මිත්‍රත්වය", "Gana": "ස්වභාවය සහ හැසිරීම",
+                   "Bhakoot": "පවුලේ සමගිය සහ දියුණුව", "Nadi": "සෞඛ්‍යය සහ දරුවන්"}
+_DOSHA_NAME_DN = {"Bhakoot": "භකූට දෝෂය", "Nadi": "නාඩි දෝෂය"}
+_DOSHA_MEANING_DN = {
+    "Bhakoot": "පවුලේ සමගිය ගැන සැලකිලිමත් වන්නට කියන ඇඟවීමකි",
+    "Nadi": "සෞඛ්‍යය සහ දරුවන් ගැන සැලකිලිමත් වන්නට කියන ඇඟවීමකි"}
+_CANC_YES_DN = "<b>නිෂ්ප්‍රභ වී ඇත</b> (ග්‍රන්ථවල නියමයක් අනුව බලය නැත)."
+_CANC_NO_DN = "නිෂ්ප්‍රභ වීමේ නියමයක් මෙහි නැත; එය තනිවම තීරණය කරන කරුණක් නොවේ."
+_KUJA_MEANING_DN = ("කුජ (අඟහරු) ලග්නයෙන්, චන්ද්‍රයාගෙන් හෝ ශුක්‍රයාගෙන් 1, 2, 4, 7, 8 හෝ 12 වැනි තැනක සිටීම. "
+                    "බොහෝ කේන්දරවල දක්නට ලැබෙන මෙය, වෙනත් ග්‍රහ ස්ථාන නිසා බොහෝ විට අඩු වේ හෝ නැති වේ; "
+                    "දෙදෙනාගේම කේන්දරවල තිබේ නම් එකිනෙක සමබර වන බව සම්ප්‍රදායික මතයයි.")
+_DOSHA_INTRO_DN = ('<p class="small">දෝෂයක් යනු සැලකිලිමත් විය යුතු කරුණක් මිස විවාහය නොකළ යුතු බවට සලකුණක් නොවේ; '
+                   'බොහෝ ඒවා <b>නිෂ්ප්‍රභ</b> වේ (බලය අඩු වේ හෝ නැති වේ).</p>')
+_KUJA_FROM_DN = {"ලග්නය": "ලග්නයෙන්", "චන්ද්‍ර": "චන්ද්‍රයාගෙන්", "ශුක්‍ර": "ශුක්‍රයාගෙන්"}
+_CLOSING_DN = ("<li><b>මතක තබා ගන්න:</b> පොරොන්දම් යනු එක් මගපෙන්වීමක් පමණි. විවාහයක සතුට රඳා පවතින්නේ "
+               "ඔබ දෙදෙනාගේ අවබෝධය, ගෞරවය සහ සන්නිවේදනය මතයි.</li>")
+_PR_READ_DN = ('<p class="small muted">වගුව කියවන හැටි: <b>ඉතා ශුභ, ශුභ, මධ්‍යම</b> = ගැලපේ; <b>අශුභ</b> (පාට කළ පේළි) = '
+               'නොගැලපේ — එක් පොරොන්දමක් නොගැලපීමෙන් විවාහය නරක බවක් අදහස් නොවේ; <b>—</b> = ලිතේ නියමයක් නැත. '
+               'කුඩා අකුරින් ඇති දෙවන පේළිය එම නියමයම ලග්න දෙකට යෙදූ ප්‍රතිඵලයයි. තේරුම් “වචන කිහිපයක තේරුම” කොටසේ.</p>')
+_BIRTH_READ_DN = ('<p class="small muted">වගුව කියවන හැටි: <b>ලග්නය</b> = උපන් මොහොතේ නැගෙනහිරින් උදා වූ රාශිය; '
+                  '<b>චන්ද්‍ර රාශිය</b> = උපන් මොහොතේ චන්ද්‍රයා සිටි රාශිය — පොරොන්දම් ගණන් කරන්නේ මෙයින් සහ ජන්ම නැකතෙනි.</p>')
+
+# The glossary: the twenty porondam, the Ashtakoota and the doshas, one short line each (grouped where alike)
+_VISI_GLOSS_DN = ("විසි පොරොන්දම", "ශ්‍රී ලාංකික ලිත් අනුව කරුණු 20කින් ගැලපීම බලන ක්‍රමය.")
+_PR_GLOSS_DN = [
+    _VISI_GLOSS_DN,
+    ("නක්ෂත්‍ර, මහේන්ද්‍ර, ස්ත්‍රී දීර්ඝ", "නැකත් අතර ගණන අනුව: එදිනෙදා සතුට; පවුලේ දියුණුව; බිරිඳගේ සුවය."),
+    ("ගණ", "ස්වභාවය: දේව (මෘදු), මනුෂ්‍ය (මධ්‍යස්ථ), රාක්ෂස (දැඩි — නරක නොවේ)."),
+    ("යෝනි", "නැකතට අයත් සතා අනුව ශාරීරික සමීපත්වය සහ ආකර්ෂණය."),
+    ("රාශි, රාශ්‍යාධිපති, වශ්‍ය", "චන්ද්‍ර රාශි අතර දුර, අධිපතීන්ගේ මිත්‍රත්වය සහ එකිනෙකා කෙරෙහි ඇදීම."),
+    ("රජ්ජු", "නැකත් කණ්ඩායම් පහ (පාද, ඌරු, නාභි, බාහු, ශිරෝ); එකම එකේ නම් නොගැලපේ."),
+    ("වේධ", "එකිනෙකට බාධා කරන ලෙස සලකන නැකත් යුගල; එසේ නොවේ නම් ගැලපේ."),
+    ("ආයුෂ", "එකට ගත කරන දිගු ජීවිතය; ලිතේ ක්‍රමයක් නැති නිසා ප්‍රතිඵලයක් නැත."),
+    ("වෘක්ෂ, පක්ෂි, භූත, ගෝත්‍ර, වර්ණ, ලිංග", "නැකතට අයත් ගස (කිරි ගසක්ද), පක්ෂියා, පංච භූතය, ඍෂි ගෝත්‍රය, වර්ණය "
+     "(කුලය නොවේ) සහ ලිංගය අනුව ගැලපීම."),
+    ("නාඩි", "නැකත් කණ්ඩායම් තුන (පූර්ව, මධ්‍ය, අන්ත්‍ය); එකම එකේ නම් නාඩි දෝෂයයි."),
+    ("දින", "උපන් සතියේ දින අතර ගණන; එදිනෙදා එකඟතාව."),
+    ("ග්‍රහ", "කුජ, ශනි, රාහු ලග්නයෙන්, චන්ද්‍රයාගෙන් හෝ ශුක්‍රයාගෙන් 1, 7, 8 වැන්නේ සිටීම."),
+]
+_ASHTA_GLOSS_DN = ("අෂ්ටකූට", "චන්ද්‍ර නැකත් අනුව කරුණු 8කින් (කූට) ගැලපීම ලකුණු 36න් මනින ක්‍රමය.")
+_DOSHA_GLOSS_DN = [
+    ("නිෂ්ප්‍රභ වීම", "දෝෂයක බලය නැති වීම හෝ අඩු වීම; බොහෝ දෝෂවලට එවැනි නියම ඇත."),
+    ("භකූට දෝෂය", "චන්ද්‍ර රාශි 2/12, 5/9 හෝ 6/8 වීම; අධිපතීන් එකම හෝ මිත්‍ර නම් නිෂ්ප්‍රභ වේ."),
+    ("කුජ (අඟහරු) දෝෂය", "කුජ ලග්නයෙන්, චන්ද්‍රයාගෙන් හෝ ශුක්‍රයාගෙන් 1, 2, 4, 7, 8, 12 වැන්නේ සිටීම; ඉතා සුලබයි."),
+]
+_NADI_GLOSS_DN = ("නාඩි දෝෂය", "නැකත් දෙක එකම නාඩි කණ්ඩායමේ වීම; එකම රාශියේ වෙනස් නැකත් වැනි අවස්ථාවල නිෂ්ප්‍රභ වේ.")
+_SYN_GLOSS_DN = ("සංයෝජනය", "එක් අයෙකුගේ ග්‍රහයන් අනෙකාගේ කේන්දරයේ වැටෙන භාවය: 1, 4, 5, 7, 9, 11 හිතකර; "
+                 "6, 8, 12 ඉවසීම ඉල්ලයි.")
+_D1_TERMS_DN = ("ලග්නය", "නැකත සහ පාදය")
+_D1_GLOSS_DN = _PR_GLOSS_DN + [_ASHTA_GLOSS_DN] + _DOSHA_GLOSS_DN
+# D2 explains its UL / DK, marriage planets, kendra / trikona, synastry and Jupiter's transit where they appear
+_D2_TERMS_DN = ("ලග්නය", "භාවය", "නැකත සහ පාදය", "මහා දශාව / අන්තර් දශාව", "උච්ච / නීච / ස්වක්ෂේත්‍ර", "නවාංශකය (D9)")
+_D2_GLOSS_DN = _D1_GLOSS_DN
+_D3_GLOSS_DN = [
+    _VISI_GLOSS_DN,
+    ("අෂ්ටකූට", _ASHTA_GLOSS_DN[1] + " කූට 8 (වරහන් තුළ උපරිම ලකුණු): වර්ණ (1) — මානසික ගැලපීම; වශ්‍ය (2) — එකිනෙකා කෙරෙහි "
+     "ආකර්ෂණය; තාරා (3) — වාසනාව සහ සුවය; යෝනි (4) — ශාරීරික සමීපත්වය; ග්‍රහ මෛත්‍රී (5) — අදහස් සහ මිත්‍රත්වය; "
+     "ගණ (6) — ස්වභාවය; භකූට (7) — පවුලේ සමගිය සහ දියුණුව; නාඩි (8) — සෞඛ්‍යය සහ දරුවන්."),
+    _DOSHA_GLOSS_DN[0], _DOSHA_GLOSS_DN[1], _NADI_GLOSS_DN, _DOSHA_GLOSS_DN[2],
+    ("රජ්ජු / වේධ පොරොන්දම", "රජ්ජු: නැකත් කණ්ඩායම් පහෙන් දෙදෙනාම එකම එකේ නම් නොගැලපේ (සමහර ග්‍රන්ථවල ව්‍යතිරේක ඇත). "
+     "වේධ: එකිනෙකට බාධා කරන ලෙස සලකන නැකත් යුගල."),
+    _SYN_GLOSS_DN,
+]
+_N_GLOSS_DN = [
+    ("නාම අකුර", "දරුවාගේ නම පටන් ගැනීමට සම්ප්‍රදායිකව සුබ යැයි සලකන අකුර; උපන් මොහොතේ චන්ද්‍රයා සිටි නැකතේ පාදයෙන් තීරණය වේ."),
+    ("අවකහඩ චක්‍රය", "නැකත් 27හි පාද 108ට එක් අකුර බැගින් දෙන සම්ප්‍රදායික වගුව."),
+    ("චන්ද්‍ර රාශිය", "උපන් මොහොතේ චන්ද්‍රයා සිටි රාශිය."),
+    ("මුහූර්තය (නැකත් වේලාව)", "වැදගත් කටයුත්තක් ඇරඹීමට සුබ යැයි සලකන වේලාව; තිථිය, වාරය, නැකත සහ ලග්නය අනුව තෝරයි."),
+]
+
+
+def _gloss_disc_dn(terms, extra, method_line, new_page=True):
+    """The glossary (on a new page, or straight on where the last page has room), then the method note on
+    the same page (disclaimer_block without its page break)."""
+    return (('<div class="pb"></div>' if new_page else '') + '<h2>වචන කිහිපයක තේරුම</h2>' + glossary_html(terms, extra)
+            + disclaimer_block(method_line).replace('<div class="pb"></div>', "", 1))
+
+
+def _box_dn(items):
+    return '<div class="box plain"><div class="lbl">සරලව කිවහොත්</div><ul>' + "".join(items) + "</ul></div>"
+
+
+def _verdict_dn(total):
+    """The Ashtakoota total in everyday words (the reports' own 24 / 18 lines)."""
+    if total >= 24:
+        return "සමස්තයක් ලෙස හොඳ ගැලපීමක්"
+    if total >= 18:
+        return "මධ්‍යම ගැලපීමක් — හොඳ පැති මෙන්ම සැලකිලිමත් විය යුතු පැතිද ඇත"
+    return "ලකුණු අඩු ගැලපීමක් — නමුත් ලකුණු පමණක් බලා තීරණය නොකර, කේන්දර දෙකම සම්පූර්ණයෙන් බලන්න"
+
+
+def _koota_plain_dn(k):
+    return f"{_KOOTA_PLAIN_DN.get(k['name'], k['name'])} ({KOOTA_SI.get(k['name'], (k['name'], ''))[0]})"
+
+
+_KOOTA_PORONDAM_DN = {"Varna": "varna", "Vashya": "vashya", "Yoni": "yoni", "Gana": "gana", "Nadi": "nadi"}
+
+
+def _visi_grade_dn(comp, koota):
+    """The grade of the twenty-porondam rule with the same name as an Ashtakoota koota (None if none)."""
+    key = _KOOTA_PORONDAM_DN.get(koota)
+    return next((r["grade"] for r in comp.get("visi_porondam") or [] if r["key"] == key), None)
+
+
+def _strengths_dn(comp, n=3):
+    """Kootas with full points, heaviest first. A dosha that was only cancelled is said with the doshas, and a
+    koota whose namesake porondam does not match is left out (the two systems would seem to disagree)."""
+    full = [k for k in comp["kootas"] if k["points"] >= k["max"] and "dosha" not in k["detail"].lower()
+            and not (_visi_grade_dn(comp, k["name"]) or 0) < 0]
+    return [_koota_plain_dn(k) for k in sorted(full, key=lambda k: -k["max"])[:n]]
+
+
+def _weak_dn(comp, n=2):
+    """Kootas with half the points or fewer, weakest first (doshas are said on their own; a koota whose
+    namesake porondam matches well is left out)."""
+    low = [k for k in comp["kootas"] if k["points"] <= k["max"] / 2 and "dosha" not in k["detail"].lower()
+           and not (_visi_grade_dn(comp, k["name"]) or 0) > 0]
+    return [_koota_plain_dn(k) for k in sorted(low, key=lambda k: (k["points"] / k["max"], -k["max"]))[:n]]
+
+
+def _porondam_names_dn(comp, test):
+    return [PORONDAM_SI[r["key"]] for r in comp.get("visi_porondam") or [] if r["grade"] is not None and test(r["grade"])]
+
+
+def _pr_bad_dn(comp, key):
+    r = next((r for r in comp.get("visi_porondam") or [] if r["key"] == key), None)
+    return bool(r) and r["grade"] is not None and r["grade"] < 0
+
+
+def _rajju_vedha_li_dn(comp):
+    """The rajju and vedha porondam, when they do not match, said kindly (the dosha sections)."""
+    out = []
+    if _pr_bad_dn(comp, "rajju"):
+        out.append("<li><b>රජ්ජු පොරොන්දම</b> — නැකත් දෙක එකම රජ්ජු කණ්ඩායමේ නිසා නොගැලපේ. සම්ප්‍රදායිකව වැදගත් ලෙස "
+                   "සලකන නමුත්, සමහර ග්‍රන්ථවල මෙයට ව්‍යතිරේක ඇත.</li>")
+    if _pr_bad_dn(comp, "vedha"):
+        out.append("<li><b>වේධ පොරොන්දම</b> — නැකත් දෙක එකිනෙකට බාධා කරන (වේධ වන) ලෙස සලකන යුගලයකි; මෙයද තනිවම "
+                   "තීරණය කරන කරුණක් නොවේ.</li>")
+    return out
+
+
+def _match_lis_dn(comp, total, good=(), care=(), kuja=()):
+    """The points every matching report's box shares: overall, strengths, what needs care, the doshas.
+    kuja: short phrases naming a kuja dosha indication (said with the other doshas)."""
+    vs = comp.get("visi_summary")
+    L = [f"<li><b>සමස්ත ගැලපීම:</b> අෂ්ටකූට ක්‍රමයට (කරුණු 8කින් ගැලපීම මනින ක්‍රමය) ලකුණු 36න් <b>{total:g}</b>ක් "
+         f"ලැබේ — {_verdict_dn(total)}."
+         + (f" ශ්‍රී ලාංකික විසි පොරොන්දමෙන් <b>{vs['match']}</b>ක් ගැලපේ." if vs else "") + "</li>"]
+    gl = []
+    st = _strengths_dn(comp)
+    if st:
+        gl.append(f"{', '.join(st)} යන පැතිවලින් ඔබ දෙදෙනා හොඳින් ගැලපේ")
+    vg = _porondam_names_dn(comp, lambda g: g == 2)
+    if vg:
+        gl.append(f"විසි පොරොන්දමේ {', '.join(vg)} {'පොරොන්දම්' if len(vg) > 1 else 'පොරොන්දම'} ඉතා හොඳින් ගැලපේ")
+    gl += list(good)
+    if gl:
+        L.append("<li><b>ශක්තිමත් පැති:</b> " + "; ".join(gl) + ".</li>")
+    cl = []
+    wk = _weak_dn(comp)
+    if wk:
+        cl.append(f"{', '.join(wk)} අතින් ලකුණු අඩුයි")
+    nm = _porondam_names_dn(comp, lambda g: g < 0)
+    if nm:
+        cl.append(f"විසි පොරොන්දමෙන් {len(nm)}ක් ({', '.join(nm)}) නොගැලපේ")
+    cl += list(care)
+    L.append("<li><b>සැලකිලිමත් විය යුතු තැන්:</b> "
+             + ("; ".join(cl) + ". මේවා බිය විය යුතු දේ නොව, අවබෝධයෙන් සහ ඉවසීමෙන් කටයුතු කළ යුතු පැති ලෙස සලකන්න."
+                if cl else "විශේෂයෙන් අඩු ලකුණු ලැබුණු කරුණක් නැත.") + "</li>")
+    canc, open_ = [], []
+    for k in comp["kootas"]:
+        if "dosha" in k["detail"].lower():
+            (canc if "cancel" in k["detail"].lower() else open_).append(_DOSHA_NAME_DN.get(k["name"], k["name"]))
+    if _pr_bad_dn(comp, "rajju"):
+        open_.append("රජ්ජු පොරොන්දම නොගැලපීම")
+    if _pr_bad_dn(comp, "vedha"):
+        open_.append("වේධ නැකත් යුගලය")
+    open_ += list(kuja)
+    t = []
+    if canc:
+        t.append(f"{' සහ '.join(canc)} පෙනුණත් {'එය' if len(canc) == 1 else 'ඒවා'} නිෂ්ප්‍රභ වී ඇත (බලය නැත).")
+    if open_:
+        t.append("සලකා බැලිය යුතු කරුණු: " + ", ".join(open_) + ". " + ("මෙය" if len(open_) == 1 else "මේ කිසිවක්")
+                 + " තනිවම තීරණය කරන කරුණක් නොවේ — බොහෝ දෝෂවලට නිෂ්ප්‍රභ වීම් හෝ ව්‍යතිරේක ඇති නිසා, ජ්‍යොතිෂවේදියා "
+                 "කේන්දර දෙකම එකට බලා තක්සේරු කරයි. දෝෂයක් යනු සැලකිලිමත් විය යුතු කරුණක් මිස විවාහය නොකළ යුතු බවට සලකුණක් නොවේ.")
+    else:
+        t.append("භකූට, නාඩි, රජ්ජු, වේධ වැනි ප්‍රධාන දෝෂ කිසිවක් මෙහි ක්‍රියාත්මක නැත.")
+    L.append("<li><b>දෝෂ ගැන:</b> " + " ".join(t) + "</li>")
+    return L
+
+
+def _d1_plain_dn(d, a, comp, total):
+    kuja = []
+    for y in d.get("yoga_indications", []):
+        if "Mangal" in y:
+            why = si_yoga_why(y)
+            kuja.append(f"{esc(a.name)} ගේ කේන්දරයේ කුජ දෝෂ ඇඟවීම ({why + ', ' if why else ''}ඉතා සුලබ ඇඟවීමකි)")
+    return _box_dn(_match_lis_dn(comp, total, kuja=kuja) + [_CLOSING_DN])
+
+
+def _d2_plain_dn(comp, total, kuja_hits, good, bad, overlap, tz):
+    """kuja_hits: [(name, hits, cancellations)] for both; good/bad: the synastry tally; overlap: shared windows."""
+    eg, ec = [], []
+    if good > bad + 2:
+        eg.append("ග්‍රහ ස්ථාන අනුවද (කේන්දර දෙකේ සංයෝජනය) ඔබ දෙදෙනා එකිනෙකාට සහාය වන පැත්තට බර වැඩියි")
+    elif bad > good:
+        ec.append("ග්‍රහ ස්ථාන අනුව (කේන්දර දෙකේ සංයෝජනය) ඝර්ෂණ ඇති විය හැකි තැන් වැඩියි — සන්නිවේදනය සහ ඉවසීම වැදගත්")
+    else:
+        ec.append("ග්‍රහ ස්ථාන අනුව (කේන්දර දෙකේ සංයෝජනය) ශක්තිමත් පැති මෙන්ම ඝර්ෂණ ඇති විය හැකි තැන්ද ඇත")
+    if all(h for _, h, _ in kuja_hits):
+        kj = ["දෙදෙනාගේම කේන්දරවල කුජ දෝෂ ඇඟවීම් (දෙදෙනාටම ඇති නිසා සම්ප්‍රදාය අනුව එකිනෙක සමබර වේ)"]
+    else:
+        kj = [f"{esc(n)} ගේ කේන්දරයේ කුජ දෝෂ ඇඟවීම (ඉතා සුලබ ඇඟවීමකි" + ("; අඩු කරන සාධකද ඇත)" if c else ")")
+              for n, h, c in kuja_hits if h]
+    L = _match_lis_dn(comp, total, eg, ec, kj)
+    ym = lambda x: x.astimezone(ZoneInfo(tz)).strftime("%Y-%m")  # noqa: E731
+    if overlap:
+        first = f"{ym(overlap[0][0])} සිට {ym(overlap[0][1])} දක්වා"
+        L.append("<li><b>විවාහ කාලය:</b> ඉදිරි වසර 6 තුළ දෙදෙනාගේම විවාහය පෙන්වන ග්‍රහ කාල (දශා) එකවර ක්‍රියාත්මක වන "
+                 + (f"කාලයක් ඇත: {first}.</li>" if len(overlap) == 1
+                    else f"කාල {len(overlap)}ක් ඇත; පළමුවැන්න {first}.</li>"))
+    else:
+        L.append("<li><b>විවාහ කාලය:</b> ඉදිරි වසර 6 තුළ දෙදෙනාගේම විවාහය පෙන්වන ග්‍රහ කාල (දශා) එකවර එන පැහැදිලි කාලයක් "
+                 "නැත. එයින් බාධාවක් අදහස් නොවේ — ජ්‍යොතිෂවේදියා ගුරු ග්‍රහයාගේ ගමන (ගෝචරය) සමඟ සුදුසු කාලය බලයි.</li>")
+    return _box_dn(L + [_CLOSING_DN])
+
+
+def _verdict_short_dn(total):
+    return "හොඳ ගැලපීමක්" if total >= 24 else "මධ්‍යම ගැලපීමක්" if total >= 18 else "ලකුණු අඩු ගැලපීමක්"
+
+
+def _d3_plain_dn(rows):
+    """One line per proposal: how well it matches, its strengths, what needs care; best score first."""
+    L = [f"<li><b>යෝජනා {len(rows)}ක් සංසන්දනය කර ඇත.</b> අෂ්ටකූට ලකුණු (චන්ද්‍ර නැකත් අනුව කරුණු 8කින් ගැලපීම මනින "
+         f"ක්‍රමය, 36න්) අනුව ඉහළින්ම සිටින්නේ <b>{esc(rows[0]['name'])}</b>. නමුත් ලකුණු පමණක් නොව, එක් එක් යෝජනාවේ "
+         "සැලකිලිමත් විය යුතු කරුණුද බලන්න.</li>"]
+    for r in rows:
+        comp = r["comp"]
+        st = _strengths_dn(comp, 2)
+        care = [_DOSHA_NAME_DN.get(x, x) + " (නිෂ්ප්‍රභ නැත)" for x in r["doshas"]]
+        if _pr_bad_dn(comp, "rajju"):
+            care.append("රජ්ජු පොරොන්දම නොගැලපීම")
+        if _pr_bad_dn(comp, "vedha"):
+            care.append("වේධ නැකත් යුගලයක් වීම")
+        if r["mangal"]:
+            care.append("කුජ දෝෂ ඇඟවීම" + (" (අඩු කරන සාධක ඇත)" if r["mangal_c"] else ""))
+        if r["bad"] > r["good"]:
+            care.append("ග්‍රහ ස්ථාන අතර ඝර්ෂණ වැඩි වීම")
+        care += [w + " අතින් අඩු ලකුණු" for w in _weak_dn(comp, 1)]
+        L.append(f"<li><b>{esc(r['name'])}</b> — {_verdict_short_dn(r['total'])}: අෂ්ටකූට {r['total']:g}/36"
+                 + (f", විසි පොරොන්දම {r['visi']}/20" if r["visi"] is not None else "") + ". "
+                 + (f"ශක්තිමත් පැති: {', '.join(st)}. " if st else "")
+                 + f"සැලකිලිමත් විය යුතු: {', '.join(care) if care else 'විශේෂ කරුණක් නැත'}.</li>")
+    if len(rows) <= 4:
+        L.append("<li><b>මතක තබා ගන්න:</b> දෝෂයක් යනු සැලකිලිමත් විය යුතු කරුණක් පමණි; බොහෝ දෝෂ නිෂ්ප්‍රභ වේ හෝ අඩු වේ. "
+                 "අවසන් තීරණය දෙදෙනාගේ අවබෝධය සහ පවුල්වල එකඟතාව මතයි.</li>")
+    return _box_dn(L)
+
+
+def _n_plain_dn(nm, nak_si):
+    return _box_dn([
+        f"<li><b>නමට සුදුසු අකුර:</b> සම්ප්‍රදාය අනුව දරුවාගේ නම <b>{esc(nm['sinhala'])}</b> අකුරින් (ශබ්දයෙන්) පටන් ගැනීම සුබයි.</li>",
+        f"<li><b>මේ අකුර ලැබුණේ ඇයි:</b> දරුවා උපන් මොහොතේ චන්ද්‍රයා සිටියේ <b>{nak_si}</b> නැකතේ (තාරකා කොටසේ) "
+        f"{nm['pada']} වන පාදයේ. සෑම නැකතක්ම පාද (කොටස්) හතරකට බෙදී ඇති අතර, එක් පාදයකට එක් අකුර බැගින් ලැබේ.</li>",
+        "<li><b>නම තෝරන හැටි:</b> මේ අකුරින් පටන් ගන්නා, හොඳ අර්ථයක් ඇති, කීමට පහසු නමක් තෝරන්න. "
+        "මෙය සම්ප්‍රදායික යෝජනාවක් පමණි; පවුලේ කැමැත්තද වැදගත්.</li>"])
+
+
 def build_d1(d, a, notes, now_local):
     comp = d["compatibility"]
     if not comp:
@@ -1739,15 +2025,16 @@ def build_d1(d, a, notes, now_local):
       <div style="margin:16pt auto; font-size:15pt"><b>{total} / 36</b> — {verdict}{visi_line}</div>
       <div style="width:104mm; margin:0 auto">{south_indian_html_si(labels, "රාශි චක්‍රය (පළමු කේන්දරය)", 104)}</div></div>''']
     first, second = ("මනාලයා", "මනාලිය") if getattr(a, "role", "boy") == "boy" else ("මනාලිය", "මනාලයා")
-    H.append('<div class="pb"></div><h2>1. උපන් දත්ත</h2><table>'
+    H.append('<div class="pb"></div>' + _d1_plain_dn(d, a, comp, total) + '<h2>1. උපන් දත්ත</h2><table>'
              f'<tr><th></th><th>පළමු අය ({first})</th><th>දෙවන අය ({second})</th></tr>'
              f'<tr><td><b>නම</b></td><td>{esc(a.name)}</td><td>{esc(a.match_name or "—")}</td></tr>'
              f'<tr><td><b>උපන් දිනය</b></td><td>{esc(a.date)}</td><td>{esc(pt["date"])}</td></tr>'
              f'<tr><td><b>වේලාව</b></td><td>{esc(a.time)}</td><td>{esc(pt["time"])}</td></tr>'
              f'<tr><td><b>ලග්නය</b></td><td>{SIGN_SI[ls]}</td><td>{SIGN_SI[inv[pt["lagna"]]]}</td></tr>'
              f'<tr><td><b>චන්ද්‍ර රාශිය</b></td><td>{SIGN_SI[P["Mo"]["sign_idx"]]}</td><td>{SIGN_SI[inv[pt["moon"]]]}</td></tr>'
-             "</table>")
-    H.append(porondam_block(comp, title="2. විසි පොරොන්දම (ශ්‍රී ලාංකික ක්‍රමය)"))
+             "</table>" + _BIRTH_READ_DN)
+    H.append(porondam_block(comp, title="2. විසි පොරොන්දම (ශ්‍රී ලාංකික ක්‍රමය)")
+             + (_PR_READ_DN if comp.get("visi_porondam") else ""))
     H.append('<div class="pb"></div><h2>3. අෂ්ටකූට ලකුණු</h2>')
     krow = []
     for k in comp["kootas"]:
@@ -1766,19 +2053,22 @@ def build_d1(d, a, notes, now_local):
             nm = "භකූට දෝෂය" if k["name"] == "Bhakoot" else "නාඩි දෝෂය"
             canc = "cancel" in k["detail"].lower()
             # just the signs or nadis here: the cancellation is said in Sinhala right after
-            dosha.append(f"<li><b>{nm}</b> — {esc(si_koota(k['detail'].split(' — ')[0]))}. "
-                         + ("<b>නිෂ්ප්‍රභ වී ඇත</b> (සම්භාව්‍ය ග්‍රන්ථවල දක්වා ඇති නිෂ්ප්‍රභ වීමේ නියමයක් අනුව)." if canc
-                            else "නිෂ්ප්‍රභ වීමේ නියමයක් මෙහි ක්‍රියාත්මක නොවේ — වැඩිදුර පරීක්ෂාව අවශ්‍යයි.") + "</li>")
+            dosha.append(f"<li><b>{nm}</b> — {esc(si_koota(k['detail'].split(' — ')[0]))}"
+                         + (f". {_CANC_YES_DN}" if canc else f": {_DOSHA_MEANING_DN[k['name']]}. {_CANC_NO_DN}") + "</li>")
+    dosha += _rajju_vedha_li_dn(comp)
     mangal = [y for y in d.get("yoga_indications", []) if "Mangal" in y]
     if mangal:
-        dosha.append("<li><b>කුජ දෝෂ ඇඟවීම</b> (පළමු කේන්දරයේ) — දෙදෙනාගේම කේන්දර දෙකේම කුජ ස්ථානය සහ නිෂ්ප්‍රභ වීම් එකට පරීක්ෂා කළ යුතුයි.</li>")
-    H.append("<h2>4. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2><ul>" + ("".join(dosha) if dosha else "<li>ප්‍රධාන දෝෂ ඇඟවීම් නොමැත.</li>") + "</ul>")
+        why = si_yoga_why(mangal[0])
+        dosha.append(f"<li><b>කුජ දෝෂ ඇඟවීම</b> (පළමු කේන්දරයේ{', ' + why if why else ''}) — ඉතා සුලබ, බොහෝ විට "
+                     "වෙනත් ග්‍රහ ස්ථාන නිසා අඩු වන ඇඟවීමකි; දෙදෙනාගේම කේන්දරවල ඇත්නම් එකිනෙක සමබර වේ.</li>")
+    H.append("<h2>4. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2>" + _DOSHA_INTRO_DN + "<ul>"
+             + ("".join(dosha) if dosha else "<li>ප්‍රධාන දෝෂ ඇඟවීම් නොමැත.</li>") + "</ul>")
     H.append(note_block(notes, "dosha") or note_block(notes, "yogas"))
     # its own page only when the astrologer wrote something for it
     H.append(('<div class="pb"></div>' if (notes or {}).get("summary") else '') + '<h2>5. ජ්‍යොතිෂවේදියාගේ විග්‍රහය</h2>')
     H.append(note_block(notes, "summary") or '<p class="muted">(සවිස්තර විග්‍රහය සඳහා සම්පූර්ණ පොරොන්දම් වාර්තාව — D2 — බලන්න.)</p>')
     H.append(note_block(notes, "upcoming", "විවාහ කාලය සහ ඉදිරි කාලය"))
-    H.append(disclaimer_block("අෂ්ටකූට ගුණ මිලන ක්‍රමය සහ දෝෂ නිෂ්ප්‍රභ වීමේ නියම — P.V.R. Narasimha Rao, ch. 26. "
+    H.append(_gloss_disc_dn(_D1_TERMS_DN, _D1_GLOSS_DN, new_page=False, method_line="අෂ්ටකූට ගුණ මිලන ක්‍රමය සහ දෝෂ නිෂ්ප්‍රභ වීමේ නියම — P.V.R. Narasimha Rao, ch. 26. "
                               "මේ වාර්තාව ගැලපීම පිළිබඳ එක් දෘෂ්ටි කෝණයක් පමණි. විවාහය පිළිබඳ තීරණය දෙදෙනාගේ අවබෝධය, "
                               "සන්නිවේදනය සහ පවුල්වල එකඟතාව මත පදනම් විය යුතුයි — ලකුණු එකතුවක් මත නොවේ."))
     return "\n".join(H)
@@ -2920,8 +3210,8 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
         H.append('<div class="note"><div class="lbl">උපන් වේලාව ගැන</div><p>උපන් වේලාව ආසන්න බැවින් D1, දශා සහ ගෝචරය ප්‍රමුඛ කර ඇත; '
                  'සියුම් වර්ග (D9, D10, D24, D60) ලග්න මිනිත්තු කිහිපයකින් වෙනස් විය හැක. නිශ්චිත වේලාවක් සොයා ගැනීමට E1 (ජන්ම කාල ශුද්ධි) වාර්තාව උපකාරී වේ.</p></div>')
     birth_rows = [("නම", a.name), ("උපන් දිනය", a.date), ("උපන් වේලාව", f"{a.time} ({'නිශ්චිත' if not approx else 'ආසන්න'})"),
-                  ("ස්ථානය", a.place or "—"), ("අක්ෂාංශ / දේශාංශ", f"{a.lat:.4f}° N, {a.lon:.4f}° E"),
-                  ("කාල කලාපය", f"{a.tz} (UTC{d['birth']['utc_offset']})"), ("අයනාංශය", f"ලාහිරි {dms(d['ayanamsa'])} (රාශි චක්‍රය ගණන් කරන ආරම්භක ලක්ෂ්‍යය)"),
+                  ("ස්ථානය", a.place or "—"), ("අක්ෂාංශ / දේශාංශ", latlon_txt(a.lat, a.lon)),
+                  ("කාල කලාපය", f"{a.tz} (UTC{utc_offset_txt(d['birth']['utc_offset'])})"), ("අයනාංශය", f"ලාහිරි {dms(d['ayanamsa'])} (රාශි චක්‍රය ගණන් කරන ආරම්භක ලක්ෂ්‍යය)"),
                   ("පංචාංගය", f"{pch_si(d['panchanga'])['vara']} · {pch_si(d['panchanga'])['tithi']} · {pch_si(d['panchanga'])['yoga']} යෝග · {pch_si(d['panchanga'])['karana']} කරණ · හිරු උදාව {d['panchanga']['sunrise']}"),
                   ("වාර්තා දිනය", now_local.strftime("%Y-%m-%d"))]
     H.append("<h2>2. උපන් දත්ත</h2><table>" + "".join(f"<tr><td style='width:34%'><b>{k}</b></td><td>{esc(v)}</td></tr>" for k, v in birth_rows) + "</table>")
@@ -3840,7 +4130,9 @@ def build_d2(dA, dB, a, notes, now_local):
       <div class="two" style="margin-top:6pt"><div style="flex:1">{chart(PA, lsA, nameA, 80)}</div><div style="flex:1">{chart(PB, lsB, nameB, 80)}</div></div></div>''']
 
     # --- 1 birth data
-    H.append('<div class="pb"></div><h2>1. උපන් දත්ත</h2><table><tr><th></th><th>' + esc(nameA) + "</th><th>" + esc(nameB) + "</th></tr>"
+    H.append('<div class="pb"></div>')
+    plain_at = len(H)      # the "in simple words" box goes here once the whole match is worked out
+    H.append('<h2>1. උපන් දත්ත</h2><table><tr><th></th><th>' + esc(nameA) + "</th><th>" + esc(nameB) + "</th></tr>"
              f'<tr><td><b>උපන් දිනය</b></td><td>{esc(a.date)}</td><td>{esc(a.match_date)}</td></tr>'
              f'<tr><td><b>වේලාව</b></td><td>{esc(a.time)}</td><td>{esc(a.match_time)}</td></tr>'
              f'<tr><td><b>ලග්නය</b></td><td>{SIGN_SI[lsA]} ({dms(dA["lagna"]["deg_in_sign"])})</td><td>{SIGN_SI[lsB]} ({dms(dB["lagna"]["deg_in_sign"])})</td></tr>'
@@ -3848,7 +4140,8 @@ def build_d2(dA, dB, a, notes, now_local):
              f'<tr><td><b>ජන්ම නැකත</b></td><td>{NAK_SI[jc.NAKSHATRAS.index(PA["Mo"]["nakshatra"])]} {PA["Mo"]["pada"]}</td>'
              f'<td>{NAK_SI[jc.NAKSHATRAS.index(PB["Mo"]["nakshatra"])]} {PB["Mo"]["pada"]}</td></tr>'
              f'<tr><td><b>ලග්නාධිපති</b></td><td>{PLANET_SI[jc.SIGN_LORD[lsA]]} — {PA[jc.SIGN_LORD[lsA]]["house"]} වැන්නේ</td>'
-             f'<td>{PLANET_SI[jc.SIGN_LORD[lsB]]} — {PB[jc.SIGN_LORD[lsB]]["house"]} වැන්නේ</td></tr></table>')
+             f'<td>{PLANET_SI[jc.SIGN_LORD[lsB]]} — {PB[jc.SIGN_LORD[lsB]]["house"]} වැන්නේ</td></tr></table>'
+             + _BIRTH_READ_DN.replace("නැකතෙනි.</p>", "නැකතෙනි (චන්ද්‍රයා සිටි තාරකා කොටස); <b>ලග්නාධිපති</b> = ලග්න රාශියේ අධිපති ග්‍රහයා සහ එය සිටින භාවය.</p>"))
 
     # --- 2 ashtakoota
     H.append("<h2>2. අෂ්ටකූට ලකුණු</h2>")
@@ -3860,27 +4153,32 @@ def build_d2(dA, dB, a, notes, now_local):
     H.append("<table><tr><th>කූටය</th><th>මනින දේ</th><th>ලකුණු</th><th>විස්තර</th></tr>" + "".join(krow)
              + f"<tr class='cur'><td colspan='2'><b>එකතුව</b></td><td><b>{total} / 36</b></td><td>{verdict}</td></tr></table>")
     H.append('<div class="note"><div class="lbl">ලකුණු කියවන ආකාරය</div>'
-             '<p>අෂ්ටකූට ලකුණු ගැලපීමේ එක් ස්තරයක් පමණි. පහත කේන්දර දෙකේ සංයෝජනය (synastry), 7 වන භාවය, උපපද ලග්නය සහ දශා ගැලපීම '
+             '<p>අෂ්ටකූට ලකුණු ගැලපීමේ එක් ස්තරයක් පමණි: ලකුණු 36න් 24ක් හෝ වැඩි නම් හොඳ, 18–24 මධ්‍යම ලෙස සැලකේ. '
+             'පහත කේන්දර දෙකේ සංයෝජනය (synastry), 7 වන භාවය, උපපද ලග්නය සහ දශා ගැලපීම '
              'ලකුණු එකතුවට වඩා ප්‍රායෝගික තොරතුරු දෙයි.</p></div>')
-    H.append(porondam_block(comp, heading="h3"))
+    H.append(porondam_block(comp, heading="h3") + (_PR_READ_DN if comp.get("visi_porondam") else ""))
 
     # --- 3 doshas
-    H.append('<h2>3. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2>')
+    H.append('<h2>3. දෝෂ සහ නිෂ්ප්‍රභ වීම්</h2>' + _DOSHA_INTRO_DN.replace("</p>", f" <b>කුජ දෝෂය</b> යනු {_KUJA_MEANING_DN}</p>"))
     dl = []
     for k in comp["kootas"]:
         if "dosha" in k["detail"].lower():
             nm = "භකූට දෝෂය" if k["name"] == "Bhakoot" else "නාඩි දෝෂය"
             canc = "cancel" in k["detail"].lower()
-            dl.append(f"<li><b>{nm}</b> — {'නිෂ්ප්‍රභ වී ඇත' if canc else 'නිෂ්ප්‍රභ වීමේ නියමයක් මෙහි ක්‍රියාත්මක නොවේ'}. "
-                      + ("භකූට දෝෂය පවුල් සමෘද්ධියට, නාඩි දෝෂය සෞඛ්‍යයට සම්බන්ධ ලෙස සම්භාව්‍ය ග්‍රන්ථවල දැක්වේ; "
-                         "නිෂ්ප්‍රභ වීමේ නියම කිහිපයක් ද ඇත." if not canc else "") + "</li>")
+            dl.append(f"<li><b>{nm}</b> — " + (_CANC_YES_DN if canc else f"{_DOSHA_MEANING_DN[k['name']]}. {_CANC_NO_DN}") + "</li>")
+    dl += _rajju_vedha_li_dn(comp)
+    kuja_dn = []
     for nm_, P_, ls_ in ((nameA, PA, lsA), (nameB, PB, lsB)):
         hits, canc = mangal_check(P_, ls_)
+        kuja_dn.append((nm_, hits, canc))
         if hits:
-            dl.append(f"<li><b>කුජ දෝෂ ඇඟවීම — {esc(nm_)}</b>: කුජ {', '.join(f'{k}ගෙන් {v} වැන්නේ' for k, v in hits.items())}. "
-                      + (f"නිෂ්ප්‍රභ වීමේ සාධක: {', '.join(canc)}." if canc else "පැහැදිලි නිෂ්ප්‍රභ වීමේ සාධකයක් නැත.") + "</li>")
+            dl.append(f"<li><b>කුජ දෝෂ ඇඟවීම — {esc(nm_)}</b>: කුජ {', '.join(f'{_KUJA_FROM_DN.get(k, k)} {v} වැන්නේ' for k, v in hits.items())}. "
+                      + (f"නිෂ්ප්‍රභ වීමේ සාධක: {', '.join(canc)}." if canc
+                         else "පැහැදිලි නිෂ්ප්‍රභ වීමේ සාධකයක් නැත; අනෙක් කේන්දරයේ කුජ ස්ථානය සමඟ එකට බැලිය යුතුයි.") + "</li>")
         else:
             dl.append(f"<li>කුජ දෝෂ ඇඟවීමක් නැත — {esc(nm_)}</li>")
+    if all(h for _, h, _ in kuja_dn):
+        dl.append("<li>දෙදෙනාගේම කේන්දරවල කුජ දෝෂ ඇඟවීම් ඇති නිසා, සම්ප්‍රදායික මතය අනුව ඒවා එකිනෙක සමබර වේ.</li>")
     H.append("<ul>" + "".join(dl) + "</ul>")
     H.append('<p class="small muted">දෝෂ පිළිබඳ සම්ප්‍රදායන් අතර වෙනස්කම් ඇත; මෙහි දක්වා ඇත්තේ P.V.R. Narasimha Rao ගේ ග්‍රන්ථයේ ක්‍රමයයි. '
              'දෝෂයක් තිබීම විවාහය නොකළ යුතු බවක් නොවේ — නිෂ්ප්‍රභ වීම්, කේන්දර දෙකේ සමස්ත ගැලපීම සහ දෙදෙනාගේ අවබෝධය වැදගත්.</p>')
@@ -3899,6 +4197,9 @@ def build_d2(dA, dB, a, notes, now_local):
                     f"<td>{SIGN_SI[PB[c]['sign_idx']]}</td><td>{hB} — {tone(hB)}</td></tr>")
     H.append(f"<table><tr><th>ග්‍රහයා</th><th>{esc(nameA)} රාශිය</th><th>→ {esc(nameB)} භාවය</th>"
              f"<th>{esc(nameB)} රාශිය</th><th>→ {esc(nameA)} භාවය</th></tr>" + "".join(rows) + "</table>")
+    H.append(f'<p class="small muted">වගුව කියවන හැටි: “{esc(nameA)} රාශිය” = {esc(nameA)} ගේ කේන්දරයේ එම ග්‍රහයා සිටින රාශිය; '
+             f'“→ {esc(nameB)} භාවය” = එම රාශිය {esc(nameB)} ගේ ලග්නයෙන් කීවෙනි භාවයද යන්න (අනෙක් තීරු දෙක එලෙසම අනෙක් පැත්තට). '
+             '<b>හිතකර</b> = සහාය; <b>අවධානය</b> = ඉවසීම සහ සන්නිවේදනය ඉල්ලන තැන; <b>මධ්‍යම</b> = සාමාන්‍ය.</p>')
     good = sum(1 for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]
                if jc.house_from(lsB, PA[c]["sign_idx"]) in (1, 4, 5, 7, 9, 11)) \
         + sum(1 for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]
@@ -3933,8 +4234,9 @@ def build_d2(dA, dB, a, notes, now_local):
                     f"<td>{PLANET_SI['Ve']} {P_['Ve']['house']} වැන්නේ{', ' + si_dignity(P_['Ve']['dignity']) if si_dignity(P_['Ve']['dignity']) != '—' else ''}</td></tr>")
     H.append("<table><tr><th></th><th>7 වන රාශිය</th><th>7 වන ග්‍රහයන්</th><th>7 වන අධිපති</th><th>උපපදය (UL)</th><th>දාරාකාරක</th><th>ශුක්‍ර</th></tr>"
              + "".join(rows) + "</table>")
-    H.append('<p class="small muted">7 වන භාවය සහකරු සහ විවාහ ජීවිතය; උපපද ලග්නය (UL) විවාහයේ පිටතට පෙනෙන ස්වරූපය; '
-             'දාරාකාරක (DK) සහකරු පිළිබඳ ජෛමිනි කාරකයා; ශුක්‍ර ආකර්ෂණය සහ රසිකත්වය.</p>')
+    H.append('<p class="small muted">වගුව කියවන හැටි: 7 වන භාවය සහකරු සහ විවාහ ජීවිතය; 7 වන අධිපති = එම රාශියේ අධිපති ග්‍රහයා සහ එය සිටින තැන; '
+             'උපපද ලග්නය (UL) විවාහයේ පිටතට පෙනෙන ස්වරූපය; '
+             'දාරාකාරක (DK) සහකරු පිළිබඳ ජෛමිනි කාරකයා (වරහන් තුළ එය සිටින භාවය); ශුක්‍ර ආකර්ෂණය සහ රසිකත්වය.</p>')
     H.append('<h3>නවාංශක (D9) කේන්දර</h3>')
     H.append(f'<div class="two"><div style="flex:1">{varga_chart(dA, "D9", f"D9 · {nameA}", 80)}</div>'
              f'<div style="flex:1">{varga_chart(dB, "D9", f"D9 · {nameB}", 80)}</div></div>')
@@ -3942,7 +4244,8 @@ def build_d2(dA, dB, a, notes, now_local):
     if v9A and v9B:
         H.append(f'<p class="small">D9 ලග්න: {esc(nameA)} — {SIGN_SI[inv[v9A["La"]]]}; {esc(nameB)} — {SIGN_SI[inv[v9B["La"]]]}. '
                  f'{esc(nameA)} ගේ D9 චන්ද්‍ර {SIGN_SI[inv[v9A["Mo"]]]}, {esc(nameB)} ගේ {SIGN_SI[inv[v9B["Mo"]]]}. '
-                 'නවාංශකයේ ලග්න හෝ චන්ද්‍ර රාශි එකිනෙකට කේන්ද්‍ර/ත්‍රිකෝණ වීම දිගු කාලීන ගැලපීමට හිතකර ලෙස සලකනු ලැබේ — '
+                 'නවාංශකයේ (විවාහය බලන දෙවන කේන්දරයේ) ලග්න හෝ චන්ද්‍ර රාශි එකිනෙකට කේන්ද්‍ර/ත්‍රිකෝණ (1, 4, 7, 10 හෝ 5, 9 වැනි තැන්) '
+                 'වීම දිගු කාලීන ගැලපීමට හිතකර ලෙස සලකනු ලැබේ — '
                  f'මෙහි D9 ලග්න අතර දුර {(inv[v9B["La"]] - inv[v9A["La"]]) % 12 + 1} වැන්න.</p>')
 
     # --- 6 timing overlap
@@ -3968,7 +4271,7 @@ def build_d2(dA, dB, a, notes, now_local):
                     out.append((max(st, now_utc), min(en, horizon), f"{PLANET_SI[m['lord']]}/{PLANET_SI[s_['lord']]}"))
         return out
     wA, wB = windows(dA, kA), windows(dB, kB)
-    H.append(f'<p class="small">විවාහ කාරක ග්‍රහයන් — {esc(nameA)}: {", ".join(PLANET_SI[p] for p in sorted(kA))}; '
+    H.append(f'<p class="small">විවාහ කාරක ග්‍රහයන් (විවාහය පෙන්වන ග්‍රහයන්: 7 වන අධිපති, ශුක්‍ර, දාරාකාරක සහ උපපද අධිපති) — {esc(nameA)}: {", ".join(PLANET_SI[p] for p in sorted(kA))}; '
              f'{esc(nameB)}: {", ".join(PLANET_SI[p] for p in sorted(kB))}.</p>')
     overlap = []
     for s1, e1, l1 in wA:
@@ -3981,10 +4284,11 @@ def build_d2(dA, dB, a, notes, now_local):
         H.append("<table><tr><th>කවුළුව</th><th>" + esc(nameA) + " දශාව</th><th>" + esc(nameB) + " දශාව</th><th>දින</th></tr>"
                  + "".join(f"<tr><td>{s.astimezone(ZoneInfo(tz)).strftime('%Y-%m')} → {e.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</td>"
                            f"<td>{l1}</td><td>{l2}</td><td>{(e - s).days}</td></tr>" for s, e, l1, l2 in overlap[:12]) + "</table>")
-        H.append('<p class="small">දෙදෙනාගේම විවාහ කාරක දශා එකවර ක්‍රියාත්මක වන කාල ඉහත දැක්වේ. ගුරු ගෝචරය එම කාලවලට ගැලපේද යන්නත් බලන්න.</p>')
+        H.append('<p class="small">දෙදෙනාගේම විවාහ කාරක දශා එකවර ක්‍රියාත්මක වන කාල ඉහත දැක්වේ (දශාව තීරුවේ “X/Y” = X මහා දශාවේ '
+                 'Y අන්තර් දශාව; “දින” = එම කාලය පවතින දින ගණන). ගුරු ගෝචරය (ගුරු ග්‍රහයා දැන් ගමන් කරන තැන) එම කාලවලට ගැලපේද යන්නත් බලන්න.</p>')
     else:
         H.append("<p>ඉදිරි වසර 6 තුළ දෙදෙනාගේම විවාහ කාරක දශා එකවර ක්‍රියාත්මක වන පැහැදිලි කවුළුවක් නැත; "
-                 "එක් අයෙකුගේ දශාව සහ ගුරු ගෝචරය එකට ගැලපෙන කාල බලන්න.</p>")
+                 "එක් අයෙකුගේ දශාව සහ ගුරු ගෝචරය එකට ගැලපෙන කාල බලන්න. එයින් විවාහයට බාධාවක් අදහස් නොවේ.</p>")
     if wA or wB:
         H.append("<h3>එක් එක් අයගේ කවුළු</h3><table><tr><th>අය</th><th>දශාව</th><th>ආරම්භය</th><th>අවසානය</th></tr>"
                  + "".join(f"<tr><td>{esc(nameA)}</td><td>{l}</td><td>{s.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</td>"
@@ -4003,7 +4307,8 @@ def build_d2(dA, dB, a, notes, now_local):
     H.append('<div class="box">' + "<br>".join(pts) + "</div>")
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ විග්‍රහය"))
     H.append(note_block(notes, "upcoming", "කාලය පිළිබඳ යෝජනා"))
-    H.append(disclaimer_block("අෂ්ටකූට ගුණ මිලන, උපපද ලග්නය සහ චර කාරක — P.V.R. Narasimha Rao, ch. 6, 9, 26. වාර්තා වර්ගය D2. "
+    H.insert(plain_at, _d2_plain_dn(comp, total, kuja_dn, good, bad, overlap, tz))
+    H.append(_gloss_disc_dn(_D2_TERMS_DN, _D2_GLOSS_DN, new_page=False, method_line="අෂ්ටකූට ගුණ මිලන, උපපද ලග්නය සහ චර කාරක — P.V.R. Narasimha Rao, ch. 6, 9, 26. වාර්තා වර්ගය D2. "
                               "මේ වාර්තාව ගැලපීම පිළිබඳ ජ්‍යොතිෂමය දෘෂ්ටි කෝණයක් පමණි; විවාහ තීරණය දෙදෙනාගේ අවබෝධය, "
                               "සන්නිවේදනය සහ පවුල්වල එකඟතාව මත පදනම් විය යුතුයි."))
     return "\n".join(H)
@@ -4322,7 +4627,7 @@ def build_n(d, a, notes, now_local):
       <div style="margin:16pt auto; font-size:34pt; color:#6b1010"><b>{esc(nm["sinhala"])}</b></div>
       <div class="muted">{NAK_SI[nak_i]} නැකත · {nm["pada"]} වන පාදය</div>
       <div style="margin:14pt auto 0 auto; width:94mm">{south_indian_html_si(labels, "D1 · රාශි චක්‍රය", 94)}</div></div>''']
-    H.append('<div class="pb"></div><h2>1. නාම අකුර</h2>')
+    H.append('<div class="pb"></div>' + _n_plain_dn(nm, NAK_SI[nak_i]) + '<h2>1. නාම අකුර</h2>')
     H.append("<table>"
              f"<tr><td style='width:34%'><b>ජන්ම නැකත</b></td><td>{NAK_SI[nak_i]} ({esc(moon['nakshatra'])})</td></tr>"
              f"<tr><td><b>පාදය</b></td><td>{nm['pada']} වන පාදය</td></tr>"
@@ -4330,17 +4635,18 @@ def build_n(d, a, notes, now_local):
              f"<tr><td><b>නාම අකුර</b></td><td style='font-size:15pt'><b>{esc(nm['sinhala'])}</b> ({esc(nm['syllable'])})</td></tr>"
              "</table>")
     H.append(f'<div class="box">සම්ප්‍රදාය අනුව නම <b>{esc(nm["sinhala"])}</b> යන අකුරින් පටන් ගැනීම සුබ ලෙස සලකනු ලැබේ. '
-             f'මෙය චන්ද්‍ර සිටින නැකතේ පාදය අනුව තීරණය වේ.</div>')
+             f'මෙය උපන් මොහොතේ චන්ද්‍රයා සිටි නැකතේ පාදය අනුව තීරණය වේ.</div>')
     H.append(f"<h2>2. {NAK_SI[nak_i]} නැකතේ පාද හතරේ අකුරු</h2><table><tr><th>පාදය</th><th>අකුර</th><th>ලතින්</th></tr>"
              + "".join(f"<tr{' class=cur' if i + 1 == nm['pada'] else ''}><td>{i + 1}</td><td style='font-size:13pt'>{esc(si_)}</td><td>{esc(la)}</td></tr>"
                        for i, (la, si_) in enumerate(nm["all_padas"])) + "</table>")
-    H.append('<p class="small muted">මූලාශ්‍රය: අවකහඩ චක්‍රය (සම්භාව්‍ය නාම නක්ෂත්‍ර වගුව). මෙය ව්‍යාකරණ නීතියක් නොව සම්ප්‍රදායික යෝජනාවකි; '
+    H.append('<p class="small muted">වගුව කියවන හැටි: පාට කළ පේළිය දරුවා උපන් පාදයයි; “ලතින්” තීරුවේ ඇත්තේ එම අකුර ඉංග්‍රීසි අකුරින් ලියූ ආකාරයයි. '
+             'මූලාශ්‍රය: අවකහඩ චක්‍රය (සම්භාව්‍ය නාම නක්ෂත්‍ර වගුව). මෙය ව්‍යාකරණ නීතියක් නොව සම්ප්‍රදායික යෝජනාවකි; '
              'නමේ අර්ථය සහ පවුලේ කැමැත්තද සලකා බලන්න.</p>')
     H.append("<h2>3. නම් තැබීමේ මොහොත</h2>")
     H.append('<p>නම් තැබීමේ උත්සවයට සුබ මොහොතක් අවශ්‍ය නම්, අපගේ <b>මුහූර්ත වාර්තාව (M1 — නම් තැබීම)</b> වෙන් වශයෙන් ලබාගත හැක. '
-             'එහි තිථි, වාර, නක්ෂත්‍ර සහ ලග්නය අනුව සුබ කවුළු දක්වා ඇත.</p>')
+             'එහි තිථිය (චන්ද්‍ර මාසයේ දිනය), වාරය (සතියේ දිනය), නැකත සහ ලග්නය අනුව සුබ කාල (කවුළු) දක්වා ඇත.</p>')
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ සටහන"))
-    H.append(disclaimer_block("නාම නක්ෂත්‍රය — අවකහඩ චක්‍රය (සම්භාව්‍ය සම්ප්‍රදාය; ව්‍යාපෘතියේ ප්‍රධාන ග්‍රන්ථයේ නොමැත). වාර්තා වර්ගය N."))
+    H.append(_gloss_disc_dn(("ලග්නය", "රාශිය", "නැකත සහ පාදය"), _N_GLOSS_DN, new_page=False, method_line="නාම නක්ෂත්‍රය — අවකහඩ චක්‍රය (සම්භාව්‍ය සම්ප්‍රදාය; ව්‍යාපෘතියේ ප්‍රධාන ග්‍රන්ථයේ නොමැත). වාර්තා වර්ගය N."))
     return "\n".join(H)
 
 
@@ -4377,8 +4683,9 @@ def build_d3(dA, partners, a, notes, now_local):
         mh, mc = mangal_check(PB, lsB)
         rows.append(dict(name=nm_, meta=meta, total=tot, kootas=comp["kootas"], doshas=doshas, good=good, bad=bad,
                          lagna=lsB, moon=PB["Mo"]["sign_idx"], nak=PB["Mo"]["nakshatra"], mangal=bool(mh), mangal_c=bool(mc),
-                         visi=(comp.get("visi_summary") or {}).get("match")))
+                         visi=(comp.get("visi_summary") or {}).get("match"), comp=comp))
     rows.sort(key=lambda r: (-r["total"], r["bad"] - r["good"]))
+    H.append(_d3_plain_dn(rows))
     H.append("<table><tr><th>යෝජනාව</th><th>උපන් දිනය</th><th>ලග්නය</th><th>චන්ද්‍ර රාශිය</th><th>අෂ්ටකූට</th>"
              "<th>විසි පොරොන්දම</th><th>නිෂ්ප්‍රභ නොවූ දෝෂ</th><th>සංයෝජනය (හිතකර/ඝර්ෂණ)</th><th>කුජ දෝෂ</th></tr>"
              + "".join(f"<tr{' class=cur' if i == 0 else ''}><td><b>{esc(r['name'])}</b></td><td>{esc(r['meta']['date'])}</td>"
@@ -4388,7 +4695,10 @@ def build_d3(dA, partners, a, notes, now_local):
                        f"<td>{r['good']} / {r['bad']}</td>"
                        f"<td>{'ඇත' + (' (නිෂ්ප්‍රභ සාධක ඇත)' if r['mangal_c'] else '') if r['mangal'] else 'නැත'}</td></tr>"
                        for i, r in enumerate(rows)) + "</table>")
-    H.append('<p class="small muted">වගුව අෂ්ටකූට ලකුණු අනුව පෙළගස්වා ඇත. ලකුණු එකතුව පමණක් නොව දෝෂ සහ සංයෝජනයද බලන්න.</p>')
+    H.append('<p class="small muted">වගුව කියවන හැටි: යෝජනා අෂ්ටකූට ලකුණු අනුව (වැඩිම ලකුණු ඉහළින්) පෙළගස්වා ඇත. '
+             '<b>නිෂ්ප්‍රභ නොවූ දෝෂ</b> = බලය නැති නොවූ භකූට හෝ නාඩි දෝෂ; <b>සංයෝජනය</b> = ග්‍රහයන් එකිනෙකාගේ කේන්දරයේ '
+             'හිතකර / ඝර්ෂණ තැන්වලට වැටෙන වාර ගණන (14න්); <b>කුජ දෝෂ</b> = යෝජිත අයගේ කේන්දරයේ. '
+             'ලකුණු එකතුව පමණක් නොව දෝෂ සහ සංයෝජනයද බලන්න.</p>')
     H.append('<div class="pb"></div><h2>2. කූට අනුව විස්තර</h2>')
     knames = [k["name"] for k in rows[0]["kootas"]]
     H.append("<table><tr><th>කූටය</th>" + "".join(f"<th>{esc(r['name'])}</th>" for r in rows) + "</tr>"
@@ -4397,11 +4707,14 @@ def build_d3(dA, partners, a, notes, now_local):
                                  f"{next(k['max'] for k in r['kootas'] if k['name'] == kn)}</td>" for r in rows) + "</tr>"
                        for kn in knames)
              + "<tr class='cur'><td><b>එකතුව</b></td>" + "".join(f"<td><b>{r['total']:g}/36</b></td>" for r in rows) + "</tr></table>")
+    H.append('<p class="small muted">වගුව කියවන හැටි: එක් එක් කූටයට ලැබුණු ලකුණු / එම කූටයේ උපරිම ලකුණු. '
+             'එක් එක් කූටය මනින දේ “වචන කිහිපයක තේරුම” පිටුවේ ඇත.</p>')
     H.append('<div class="note"><div class="lbl">තීරණය ගැන</div><p>ලකුණු වැඩිම යෝජනාව හොඳම එක යැයි කියන්නට බැහැ. '
              'නිෂ්ප්‍රභ නොවූ දෝෂ, සංයෝජනයේ ඝර්ෂණ ස්ථාන සහ දෙදෙනාගේ දශා ගැලපීම එකට සලකා බැලිය යුතුයි. '
              'ඉහළම යෝජනා දෙක සඳහා සම්පූර්ණ පොරොන්දම් වාර්තාවක් (D2) ලබා ගැනීම යෝජනා කරමු.</p></div>')
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ විග්‍රහය"))
-    H.append(disclaimer_block("අෂ්ටකූට ගුණ මිලන — P.V.R. Narasimha Rao, ch. 26. වාර්තා වර්ගය D3. "
+    H.append(_gloss_disc_dn(("ලග්නය", "රාශිය", "නැකත සහ පාදය"), _D3_GLOSS_DN, new_page=False,
+                            method_line="අෂ්ටකූට ගුණ මිලන — P.V.R. Narasimha Rao, ch. 26. වාර්තා වර්ගය D3. "
                               "විවාහ තීරණය දෙදෙනාගේ අවබෝධය සහ පවුල්වල එකඟතාව මත පදනම් විය යුතුයි."))
     return "\n".join(H)
 
