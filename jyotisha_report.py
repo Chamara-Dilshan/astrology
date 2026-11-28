@@ -157,9 +157,9 @@ GLOSSARY_SI = [
 ]
 
 
-def glossary_html(terms=None):
-    """The glossary table (all terms, or just the named ones)."""
-    rows = [(t, m) for t, m in GLOSSARY_SI if terms is None or t in terms]
+def glossary_html(terms=None, extra=()):
+    """The glossary table: the shared terms (all, or just the named ones), then a report's own (term, meaning) pairs."""
+    rows = [(t, m) for t, m in GLOSSARY_SI if terms is None or t in terms] + list(extra)
     return ('<table class="gloss">' + "".join(f"<tr><td style='width:31%'><b>{esc(t)}</b></td><td>{esc(m)}</td></tr>"
                                                for t, m in rows) + "</table>")
 

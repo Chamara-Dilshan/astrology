@@ -60,10 +60,10 @@ def copy_check(pdf, page_html):
     return [f"copied Sinhala is not the report's text: {', '.join(sorted(bad)[:8])}"] if bad else []
 
 
-def build(tag, code, out):
+def build(tag, code, out, script="jyotisha_report.py"):
     args = [a.replace("{out}", out) for a in EXTRA.get(code, [])]
     pdf, page_html = os.path.join(out, f"{tag}.pdf"), os.path.join(out, f"{tag}.html")
-    cmd = [sys.executable, os.path.join(ROOT, "jyotisha_report.py"), f"--report={code}", *BASE, *args,
+    cmd = [sys.executable, os.path.join(ROOT, script), f"--report={code}", *BASE, *args,
            *(["--lang=en"] if tag == "G-en" else []), f"--out={pdf}", f"--html={page_html}", "--qa",
            f"--qa-dir={os.path.join(out, tag + '_qa')}"]
     t = time.time()
@@ -91,6 +91,8 @@ def main():
     ap.add_argument("out", nargs="?", default="qa_all")
     ap.add_argument("--jobs", type=int, default=2)
     ap.add_argument("--only", default="")
+    ap.add_argument("--script", default="jyotisha_report.py",
+                    help="the generator to check (a working copy beside it in the project folder)")
     a = ap.parse_args()
     out = os.path.abspath(a.out)
     os.makedirs(out, exist_ok=True)
@@ -100,7 +102,7 @@ def main():
     if a.only:
         jobs = [j for j in jobs if j[0] in a.only.split(",")]
     with cf.ThreadPoolExecutor(max_workers=a.jobs) as ex:
-        results = list(ex.map(lambda j: build(j[0], j[1], out), jobs))
+        results = list(ex.map(lambda j: build(j[0], j[1], out, a.script), jobs))
     failed = 0
     for tag, secs, problems in results:
         print(f"{tag:5} {secs:5.1f}s  {'OK' if not problems else 'FAIL'}")
