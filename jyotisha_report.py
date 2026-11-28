@@ -81,30 +81,146 @@ LAGNA_NATURE_SI = [
     "නව්‍ය චින්තන, මානුෂීය, ස්වාධීන; හුදකලා වීමට ප්‍රවණතාව",
     "අනුකම්පාව, කලාත්මක, ආධ්‍යාත්මික ප්‍රවණතාව; ප්‍රායෝගික සීමා තබාගත යුතු",
 ]
-PLANET_NATURE_SI = {"Su": "ආත්මය, පියා, අධිකාරිය, රජය, ආත්ම විශ්වාසය", "Mo": "මනස, මව, හැඟීම්, ජනතාව, සුවපහසුව",
-                    "Ma": "ශක්තිය, ධෛර්යය, සහෝදරයන්, ඉඩම්, ඉංජිනේරු/තාක්ෂණික කටයුතු", "Me": "බුද්ධිය, කථනය, ව්‍යාපාර, අධ්‍යාපනය, ලේඛන",
-                    "Ju": "ප්‍රඥාව, ගුරුවරයා, දරුවන්, ධනය, ධර්මය, වාසනාව", "Ve": "ප්‍රේමය, විවාහය, කලා, සුඛෝපභෝගී, වාහන",
-                    "Sa": "කර්මය, ශ්‍රමය, විනය, ප්‍රමාදය, දිගු කාලීන ප්‍රතිඵල", "Ra": "අභිලාශ, විදේශ, තාක්ෂණය, අනපේක්ෂිත, මායා",
-                    "Ke": "ඉවත්වීම, ආධ්‍යාත්මිකත්වය, පර්යේෂණ, අතීත කර්ම"}
-SATURN_FROM_MOON_SI = {1: "සඩේ සති මධ්‍ය අවධිය: වගකීම් බර, සෞඛ්‍යය සහ මානසික සමබරතාවය ගැන අවධානය",
-                       2: "සඩේ සති අවසන් අවධිය: ධන කටයුතු, පවුල් වගකීම්; ක්‍රමයෙන් සැහැල්ලු වීම", 3: "හිතකර — ධෛර්යය, ශ්‍රමයට ප්‍රතිඵල",
-                       4: "අර්ධාෂ්ටම ශනි (ධයියා): නිවස/මව/මානසික සතුට ගැන අවධානය", 5: "දරුවන්/අධ්‍යාපනය සම්බන්ධ ප්‍රමාද; ඉවසීම",
-                       6: "හිතකර — සතුරන්/ණය/රෝග ජය ගැනීමට ශක්තිය", 7: "විවාහ/හවුල් සම්බන්ධතා වල පරිණතභාවය අවශ්‍ය",
-                       8: "අෂ්ටම ශනි (ධයියා): හදිසි බාධක, සෞඛ්‍යය, වියදම් — ප්‍රවේශම්", 9: "වාසනාව/පියා/දුර ගමන් වල ප්‍රමාද; ධර්මයට නැඹුරුව",
-                       10: "රැකියාවේ බර වගකීම්, ශ්‍රමයෙන් තත්ත්වය ගොඩනැගීම", 11: "හිතකර — ශ්‍රමයට ලාභ, ස්ථාවර ආදායම්",
-                       12: "සඩේ සති ආරම්භය: වියදම්, නින්ද/විවේකය, විදේශ සම්බන්ධ වෙනස්කම්"}
-JUPITER_FROM_MOON_SI = {1: "මිශ්‍ර — ආත්ම වර්ධනය, ඒත් අධික විශ්වාසය", 2: "හිතකර — ධනය, පවුල් සතුට, කථනය",
-                        3: "අඩු හිතකර — වෙහෙස, සහෝදර කටයුතු", 4: "අඩු හිතකර — නිවස/මව සම්බන්ධ වෙනස්",
-                        5: "හිතකර — දරුවන්, අධ්‍යාපනය, බුද්ධිය", 6: "අඩු හිතකර — සතුරන්, සෞඛ්‍යය ගැන අවධානය",
-                        7: "හිතකර — විවාහය, සම්බන්ධතා, ගමන්", 8: "අඩු හිතකර — වියදම්, බාධක", 9: "හිතකර — වාසනාව, ධර්මය, උසස් අධ්‍යාපනය",
-                        10: "මිශ්‍ර — රැකියා වෙනස්කම්, ප්‍රයත්නය", 11: "හිතකර — ලාභ, මිතුරන්, බලාපොරොත්තු ඉටුවීම", 12: "අඩු හිතකර — වියදම්, විදේශ ගමන්"}
+PLANET_NATURE_SI = {"Su": "ආත්ම විශ්වාසය, පියා, නායකත්වය, රජයේ කටයුතු", "Mo": "සිත, මව, හැඟීම්, ජනතාව, සුවපහසුව",
+                    "Ma": "ශක්තිය, ධෛර්යය, සහෝදරයන්, ඉඩකඩම්, තාක්ෂණික කටයුතු", "Me": "බුද්ධිය, කථනය, ව්‍යාපාර, අධ්‍යාපනය, ලේඛන",
+                    "Ju": "ප්‍රඥාව, ගුරුවරුන්, දරුවන්, ධනය, ධර්මය, වාසනාව", "Ve": "ආදරය, විවාහය, කලා, සුඛෝපභෝග, වාහන",
+                    "Sa": "මහන්සිය, විනය, ඉවසීම, ප්‍රමාද, දිගු කාලීන ප්‍රතිඵල", "Ra": "විශාල අභිලාශ, විදේශ, නව තාක්ෂණය, අනපේක්ෂිත වෙනස්කම්",
+                    "Ke": "ඇලීම් අඩු වීම, අධ්‍යාත්මිකත්වය, පර්යේෂණ, අතීත කර්ම"}
+# Saturn and Jupiter in transit, counted from the natal Moon, in everyday words (Sri Lankan names:
+# ඒරාෂ්ටක ශනි = Sade Sati, 12/1/2 from the Moon; අෂ්ටම / අර්ධාෂ්ටම ශනි = 8th / 4th)
+SATURN_FROM_MOON_SI = {1: "ඒරාෂ්ටක ශනියේ (සඩේ සති) මැද කාලය — වගකීම් වැඩි විය හැක; සෞඛ්‍යය සහ සිතේ සමබරතාව රැකගන්න",
+                       2: "ඒරාෂ්ටක ශනියේ (සඩේ සති) අවසාන කාලය — මුදල් සහ පවුල් වගකීම් ගැන සැලකිලිමත් වන්න; ක්‍රමයෙන් සැහැල්ලු වේ",
+                       3: "හොඳ කාලයක් — මහන්සියට හොඳ ප්‍රතිඵල, ධෛර්යය වැඩි වේ",
+                       4: "අර්ධාෂ්ටම ශනි (අවුරුදු 2½ක කාලයක්) — නිවස, මව සහ සිතේ සැනසීම ගැන සැලකිලිමත් වන්න",
+                       5: "දරුවන් සහ අධ්‍යාපන කටයුතු ප්‍රමාද විය හැක — ඉවසීමෙන් කටයුතු කරන්න",
+                       6: "හොඳ කාලයක් — ගැටලු, ණය සහ තරඟ ජය ගැනීමට ශක්තිය ලැබේ",
+                       7: "විවාහ සහ හවුල් සම්බන්ධතා වල ඉවසීම සහ අවබෝධය අවශ්‍යයි",
+                       8: "අෂ්ටම ශනි (අවුරුදු 2½ක කාලයක්) — හදිසි බාධා සහ වියදම් ගැන ප්‍රවේශම් වන්න; සෞඛ්‍යය රැකගන්න",
+                       9: "වාසනාව, පියා සහ දුර ගමන් සම්බන්ධ කටයුතු ප්‍රමාද විය හැක; ධර්මයට නැඹුරු වේ",
+                       10: "රැකියාවේ වගකීම් වැඩි වේ — මහන්සියෙන් තත්ත්වය ගොඩනැගේ",
+                       11: "හොඳ කාලයක් — මහන්සියට ලාභ, ස්ථාවර ආදායම්",
+                       12: "ඒරාෂ්ටක ශනියේ (සඩේ සති) ආරම්භය — වියදම් වැඩි විය හැක; විවේකය සහ නින්ද රැකගන්න"}
+JUPITER_FROM_MOON_SI = {1: "මිශ්‍ර කාලයක් — පෞද්ගලික දියුණුව, නමුත් අධික විශ්වාසයෙන් වළකින්න",
+                        2: "හොඳ කාලයක් — මුදල්, පවුලේ සතුට, කථනයට බලය", 3: "එතරම් හිතකර නැත — වෙහෙස වැඩි විය හැක; සහෝදර කටයුතු",
+                        4: "එතරම් හිතකර නැත — නිවස හෝ මව සම්බන්ධ වෙනස්කම්", 5: "හොඳ කාලයක් — දරුවන්, අධ්‍යාපනය, බුද්ධිය",
+                        6: "එතරම් හිතකර නැත — සෞඛ්‍යය සහ තරඟ ගැන සැලකිලිමත් වන්න", 7: "හොඳ කාලයක් — විවාහය, සම්බන්ධතා, ගමන්",
+                        8: "එතරම් හිතකර නැත — වියදම් සහ බාධා ගැන සැලකිලිමත් වන්න", 9: "හොඳ කාලයක් — වාසනාව, ධර්මය, උසස් අධ්‍යාපනය",
+                        10: "මිශ්‍ර කාලයක් — රැකියා වෙනස්කම්, වැඩි උත්සාහයක් අවශ්‍යයි",
+                        11: "හොඳ කාලයක් — ලාභ, මිතුරන්, බලාපොරොත්තු ඉටුවීම", 12: "එතරම් හිතකර නැත — වියදම්; විදේශ ගමන් වලට ඉඩ"}
+# The life area each house stands for, in plain words: short (a label) and in full. HOUSE_SI keeps
+# the traditional significations (the prashna form lists those); readings use these.
+HOUSE_AREA_SI = {1: "ඔබේ පෞරුෂය සහ සුවය", 2: "මුදල් සහ පවුල", 3: "උත්සාහය සහ සහෝදරයන්", 4: "නිවස සහ මව",
+                 5: "දරුවන් සහ අධ්‍යාපනය", 6: "වැඩ, සෞඛ්‍ය පුරුදු සහ තරඟ", 7: "විවාහය සහ හවුල්කාරිත්වය",
+                 8: "හදිසි වෙනස්කම් සහ උරුම", 9: "වාසනාව සහ පියා", 10: "රැකියාව සහ තනතුර", 11: "ආදායම සහ ලාභ",
+                 12: "වියදම් සහ විදේශ"}
+HOUSE_PLAIN_SI = {1: "ඔබ ගැනම — පෞරුෂය, ශරීර සුවය, ආත්ම විශ්වාසය", 2: "මුදල්, පවුල, කථනය, ආහාර",
+                  3: "උත්සාහය, ධෛර්යය, සහෝදරයන්, කෙටි ගමන්, සන්නිවේදනය", 4: "නිවස, මව, වාහන, අධ්‍යාපනය, සිතේ සැනසීම",
+                  5: "දරුවන්, බුද්ධිය, අධ්‍යාපනය, නිර්මාණශීලීත්වය, පින", 6: "දෛනික වැඩ, සේවය, සෞඛ්‍ය පුරුදු, ණය, තරඟ",
+                  7: "විවාහය, සහකරු, හවුල් ව්‍යාපාර", 8: "හදිසි වෙනස්කම්, රහස්, උරුම, පර්යේෂණ",
+                  9: "වාසනාව, පියා, ධර්මය, උසස් අධ්‍යාපනය, දුර ගමන්", 10: "රැකියාව, වෘත්තිය, තනතුර, සමාජ පිළිගැනීම",
+                  11: "ආදායම, ලාභ, මිතුරන්, බලාපොරොත්තු ඉටුවීම", 12: "වියදම්, විදේශ, නින්ද සහ විවේකය, අධ්‍යාත්මිකත්වය"}
+# Each Lagna in two plain sentences: what the person is like, and one friendly tip.
+LAGNA_PLAIN_SI = [
+    ("ක්‍රියාශීලී, ඉක්මනින් තීරණ ගන්නා, නායකත්වය ගන්නට කැමති කෙනෙක්", "ඉවසීම පුරුදු කර ගැනීම ඔබට වාසිදායකයි"),
+    ("ස්ථාවර, ඉවසිලිවන්ත, ජීවිතයේ සුවපහසුව අගය කරන කෙනෙක්", "අලුත් වෙනස්කම් වලට ටිකක් විවෘත වීම හොඳයි"),
+    ("බුද්ධිමත්, කතාවට දක්ෂ, අලුත් දේ ඉගෙන ගන්නට කැමති කෙනෙක්", "එකවර වැඩ ගොඩකට අත නොගසා එකකට අවධානය දෙන්න"),
+    ("සංවේදී, පවුලට ආදරය කරන, ආරක්ෂිත බව සොයන කෙනෙක්", "හැඟීම් වලට පමණක් නොව, හොඳින් සිතා බලා තීරණ ගන්න"),
+    ("ආත්ම විශ්වාසය ඇති, ගෞරවය අගය කරන, ත්‍යාගශීලී කෙනෙක්", "අභිමානය තුලනය කර ගැනීම ඔබට වාසිදායකයි"),
+    ("විස්තර ගැන සැලකිලිමත්, පිළිවෙළට වැඩ කරන, අනුන්ට උදව් කරන්නට කැමති කෙනෙක්", "තමන්ටත් අනුන්ටත් අධික ලෙස විවේචනය නොකරන්න"),
+    ("සමබර, සම්බන්ධතා අගය කරන, සුන්දර දේට කැමති කෙනෙක්", "තීරණ කල් නොදමා, නියමිත වේලාවට තීරණය කරන්න"),
+    ("ගැඹුරින් සිතන, දැඩි කැපවීමක් ඇති, දේවල් ගවේෂණය කරන්නට කැමති කෙනෙක්", "අනුන් කෙරෙහි විශ්වාසය සහ නම්‍යශීලී බව වර්ධනය කර ගන්න"),
+    ("අවංක, ධර්මයට ළැදි, දුර දකින, දාර්ශනික කෙනෙක්", "විශාල අවදානම් ගැනීමට පෙර හොඳින් සිතා බලන්න"),
+    ("විනයගරුක, ප්‍රායෝගික, මහන්සියෙන් ඉහළට යන කෙනෙක්", "ළඟ ඉන්න අයට ඔබේ හැඟීම් පෙන්වන්නත් ඉඩ දෙන්න"),
+    ("අලුත් අදහස් ඇති, මානුෂීය, ස්වාධීන කෙනෙක්", "හුදකලා නොවී, ළඟ ඉන්න අය සමඟ සම්බන්ධතා රැකගන්න"),
+    ("අනුකම්පාව ඇති, කලාත්මක, අධ්‍යාත්මික නැඹුරුවක් ඇති කෙනෙක්", "ප්‍රායෝගික සීමා සහ සැලසුම් තබා ගැනීම වැදගත්"),
+]
+TONE_GOOD_SI, TONE_CARE_SI = "හොඳ කාලයක්", "ඉවසීමෙන් සහ සැලකිලිමත්ව කටයුතු කළ යුතු කාලයක්"
+# Words a reader meets in the reports, explained once (the glossary page)
+GLOSSARY_SI = [
+    ("ලග්නය", "ඔබ උපන් මොහොතේ නැගෙනහිර ක්ෂිතිජයෙන් උදා වෙමින් තිබූ රාශිය. කේන්දරයේ පළමු කොටුව (1 වන භාවය) එයයි."),
+    ("රාශිය", "ග්‍රහයන් අහසේ ගමන් කරන මාර්ගයේ සමාන කොටස් 12න් එකක් — මේෂ සිට මීන දක්වා."),
+    ("භාවය", "ජීවිතයේ ක්ෂේත්‍ර 12: 1 ඔබ ගැනම, 2 මුදල් සහ පවුල, 4 නිවස, 5 දරුවන්, 7 විවාහය, 10 රැකියාව, 11 ආදායම, 12 වියදම් ආදී ලෙස."),
+    ("ලග්නාධිපති", "ලග්න රාශියේ අධිපති ග්‍රහයා — ඔබේ කේන්දරයේ ප්‍රධාන ග්‍රහයා."),
+    ("නැකත සහ පාදය", "උපන් මොහොතේ චන්ද්‍රයා සිටි තාරකා කොටස (27න් එකක්); පාදය එහි හතරෙන් කොටසක්."),
+    ("මහා දශාව / අන්තර් දශාව", "ජීවිතය කාල පරිච්ඡේද වලට බෙදා, එක් එක් කාලය එක් ග්‍රහයෙකුට දෙන ක්‍රමය. "
+     "මහා දශාව අවුරුදු ගණනක්; අන්තර් දශාව ඒ තුළ කෙටි කොටසක්; ප්‍රත්‍යන්තර ඊටත් කෙටි."),
+    ("ගෝචරය", "දැන් අහසේ ග්‍රහයන් සිටින තැන, ඔබේ කේන්දරයට සාපේක්ෂව."),
+    ("වක්‍ර (ව)", "පෘථිවියේ සිට බලන විට ග්‍රහයා පසුපසට යන ලෙස පෙනෙන කාලය."),
+    ("උච්ච / නීච / ස්වක්ෂේත්‍ර", "ග්‍රහයා ඉතා ශක්තිමත් වන රාශිය (උච්ච), දුර්වල වන රාශිය (නීච), සහ තමන්ගේම රාශිය (ස්වක්ෂේත්‍ර)."),
+    ("අස්තංගත", "ග්‍රහයා සූර්යයාට ඉතා ළං වී එහි බලය අඩු වීම."),
+    ("යෝගය / දෝෂය", "ග්‍රහයන්ගේ විශේෂ සංයෝග. යෝග බොහෝ විට ශුභ ප්‍රතිඵල පෙන්වයි; දෝෂ සැලකිලිමත් විය යුතු කරුණු පෙන්වයි — "
+     "බොහෝ දෝෂ වෙනත් ග්‍රහ ස්ථාන නිසා අඩු වේ හෝ නැති වේ."),
+    ("නවාංශකය (D9)", "එක් එක් රාශිය කොටස් 9කට බෙදා සාදන දෙවන කේන්දරය; විවාහය සහ ග්‍රහයන්ගේ සැබෑ බලය බැලීමට භාවිත වේ."),
+    ("වර්ගෝත්තම", "ග්‍රහයා D1 සහ D9 කේන්දර දෙකේම එකම රාශියේ සිටීම — එය ග්‍රහයා ශක්තිමත් කරයි."),
+    ("ඒරාෂ්ටක ශනි (සඩේ සති)", "ශනි ඔබේ චන්ද්‍ර රාශියට පෙර රාශිය, චන්ද්‍ර රාශිය සහ ඊළඟ රාශිය හරහා යන අවුරුදු 7½ක කාලය. "
+     "අෂ්ටම / අර්ධාෂ්ටම ශනි: චන්ද්‍රගෙන් 8 / 4 වැනි රාශියේ ශනි යන අවුරුදු 2½ක කාල. මේවා බිය විය යුතු කාල නොව, ඉවසීම සහ වගකීම වැඩෙන කාලයි."),
+]
+
+
+def glossary_html(terms=None):
+    """The glossary table (all terms, or just the named ones)."""
+    rows = [(t, m) for t, m in GLOSSARY_SI if terms is None or t in terms]
+    return ('<table class="gloss">' + "".join(f"<tr><td style='width:31%'><b>{esc(t)}</b></td><td>{esc(m)}</td></tr>"
+                                               for t, m in rows) + "</table>")
+
+
+def period_tone_si(P, lord):
+    """A dasha period's tone from where its lord sits: good houses (and not debilitated) or a time for care."""
+    good = P[lord]["house"] in (1, 2, 4, 5, 7, 9, 10, 11) and "නීච" not in si_dignity(P[lord]["dignity"])
+    return TONE_GOOD_SI if good else TONE_CARE_SI
+
+
+def transit_meaning_si(p, from_moon, from_lagna):
+    """What a slow planet's move means, in plain words (Saturn/Jupiter from the Moon, Rahu by house)."""
+    if p == "Sa":
+        return SATURN_FROM_MOON_SI[from_moon]
+    if p == "Ju":
+        return JUPITER_FROM_MOON_SI[from_moon]
+    return f"{HOUSE_AREA_SI[from_lagna]} සම්බන්ධ අලුත් අභිලාශ හෝ අනපේක්ෂිත වෙනස්කම්"
+
+
+def plain_summary_si(d, a, now_local, tr=None, compact=False):
+    """'In simple words': the chart's main points in everyday Sinhala, for readers who are not astrologers.
+    compact: smaller type and no closing line (the one-page G, whose disclaimer says it)."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    tz = ZoneInfo(a.tz)
+    now_utc = now_local.astimezone(timezone.utc)
+    md, ad = current_dashas(d, now_local)
+    ym = lambda x: datetime.fromisoformat(x).astimezone(tz).strftime("%Y-%m")  # noqa: E731
+    traits, tip = LAGNA_PLAIN_SI[ls]
+    L = [f"<li><b>ඔබේ ස්වභාවය:</b> {SIGN_SI[ls]} ලග්නය අනුව ඔබ {traits}. {tip}.</li>"]
+    if md:
+        h = P[md["lord"]]["house"]
+        L.append(f"<li><b>දැන් ගත වන කාලය:</b> {ym(md['start'])[:4]} සිට {ym(md['end'])[:4]} දක්වා ඔබ සිටින්නේ "
+                 f"{PLANET_SI[md['lord']]} මහා දශාවේ. මේ අවුරුදු වල ජීවිතයේ වැඩි අවධානය යොමු වන්නේ "
+                 f"{HOUSE_AREA_SI[h] if compact else HOUSE_PLAIN_SI[h]} වෙතයි.</li>")
+    if ad:
+        L.append(f"<li><b>{ym(ad['end'])} දක්වා:</b> {HOUSE_AREA_SI[P[ad['lord']]['house']]} සම්බන්ධ කාරණා ඉස්මතු වේ — "
+                 f"{period_tone_si(P, ad['lord'])}.</li>")
+    after = datetime.fromisoformat(ad["end"]) if ad else now_utc
+    for m in d["vimshottari"]["mahadashas"]:
+        nxt = next((x for x in m.get("sub", []) if datetime.fromisoformat(x["start"]) >= after
+                    and period_tone_si(P, x["lord"]) == TONE_GOOD_SI), None)
+        if nxt and datetime.fromisoformat(nxt["start"]) < now_utc + timedelta(days=6 * 365):
+            L.append(f"<li><b>ඉදිරියේ හොඳ කාලයක්:</b> {ym(nxt['start'])} සිට {ym(nxt['end'])} දක්වා — "
+                     f"{HOUSE_AREA_SI[P[nxt['lord']]['house']]}.</li>")
+            break
+    if tr:
+        L.append(f"<li><b>දැන් ශනි:</b> {SATURN_FROM_MOON_SI[tr['Sa']['from_moon']]}. "
+                 f"<b>ගුරු:</b> {JUPITER_FROM_MOON_SI[tr['Ju']['from_moon']]}.</li>")
+    if not compact:
+        L.append("<li>මේවා ප්‍රවණතා පමණි — ඔබේ උත්සාහය සහ හොඳ තීරණ ඊටත් වඩා වැදගත්.</li>")
+    return (f'<div class="box plain{" compact" if compact else ""}"><div class="lbl">සරලව කිවහොත්</div><ul>'
+            + "".join(L) + "</ul></div>")
+
+
 DIGNITY_SI = [("Uchcha", "උච්ච"), ("Neecha", "නීච"), ("Moolatrikona", "මූලත්‍රිකෝණ"), ("Swakshetra", "ස්වක්ෂේත්‍ර"), ("Own", "ස්වක්ෂේත්‍ර"),
               ("exalted", "උච්ච"), ("debilitated", "නීච"), ("friend", "මිත්‍ර ක්ෂේත්‍ර"), ("enemy", "සතුරු ක්ෂේත්‍ර"), ("neutral", "සම ක්ෂේත්‍ර")]
 YOGA_SI = {"Gaja-Kesari": "ගජකේසරී යෝගය — කීර්තිය, බුද්ධිය, ගුරු–චන්ද්‍ර සම්බන්ධය",
-           "Mangal dosha": "කුජ දෝෂ ඇඟවීම — විවාහ ගැලපීමේදී දෝෂය නිෂ්ප්‍රභ වන අවස්ථා පරීක්ෂා කළ යුතුයි",
-           "Kemadruma": "කේමද්‍රුම යෝගය — චන්ද්‍රට සහාය ග්‍රහ නැති බව; ශ්‍රමයෙන් ජය",
-           "Raja": "රාජ යෝගය — කේන්ද්‍ර–ත්‍රිකෝණ අධිපති සම්බන්ධය", "Dhana": "ධන යෝගය", "Budha-Aditya": "බුධාදිත්‍ය යෝගය — බුද්ධිය, දක්ෂතාව",
-           "Chandra-Mangala": "චන්ද්‍ර–මංගල යෝගය — ලෞකික සාර්ථකත්වය", "Kala Sarpa": "කාල සර්ප යෝග ඇඟවීම — රාහු–කේතු අක්ෂය",
+           "Mangal dosha": "කුජ දෝෂ ඇඟවීම — විවාහ ගැලපීමේදී (පොරොන්දම් බැලීමේදී) පමණක් සලකා බලන කරුණකි; බොහෝ විට වෙනත් ග්‍රහ ස්ථාන නිසා නිෂ්ප්‍රභ වේ",
+           "Kemadruma": "කේමද්‍රුම යෝගය — චන්ද්‍රයාට දෙපසින් ග්‍රහ සහාය නැත; තමන්ගේම උත්සාහයෙන් ජය ගන්නා බව",
+           "Raja": "රාජ යෝගය — තනතුර, බලය සහ සාර්ථකත්වය පෙන්වන ශුභ සංයෝගයක් (කේන්ද්‍ර–ත්‍රිකෝණ අධිපති සම්බන්ධය)", "Dhana": "ධන යෝගය", "Budha-Aditya": "බුධාදිත්‍ය යෝගය — බුද්ධිය, දක්ෂතාව",
+           "Chandra-Mangala": "චන්ද්‍ර–මංගල යෝගය — ලෞකික සාර්ථකත්වය", "Kala Sarpa": "කාල සර්ප යෝග ඇඟවීම — සියලු ග්‍රහයන් රාහු–කේතු අතර; ජීවිතයේ උස් පහත් වැඩි විය හැකි නමුත් මහන්සියෙන් ඉහළ යා හැක",
            "Neecha Bhanga": "නීච භංග රාජ යෝගය", "Vipareeta": "විපරීත රාජ යෝගය — බාධක වලින්ම ජය"}
 _YOGA_WHY_SI = [("Guru in kendra from Chandra", "චන්ද්‍රයාගෙන් කේන්ද්‍රයක ගුරු"),
                 ("no planets 2nd/12th from Chandra", "චන්ද්‍රයාගෙන් 2 සහ 12 වැන්නේ ග්‍රහයන් නැත"),
@@ -285,7 +401,8 @@ def transit_snapshot(when_utc, natal, lat, lon):
         s = jc.sign_of(pos[c]["lon"])
         out[c] = {"sign": s, "from_moon": jc.house_from(ms, s), "from_lagna": jc.house_from(ls, s), "retro": pos[c]["retro"]}
     hm = out["Sa"]["from_moon"]
-    out["sade_sati"] = "සඩේ සති" if hm in (12, 1, 2) else ("ධයියා (අර්ධාෂ්ටම)" if hm == 4 else "ධයියා (අෂ්ටම)" if hm == 8 else "නැත")
+    out["sade_sati"] = ("ඒරාෂ්ටක ශනි (සඩේ සති)" if hm in (12, 1, 2) else "අර්ධාෂ්ටම ශනි" if hm == 4
+                        else "අෂ්ටම ශනි" if hm == 8 else "නැත")
     return out
 
 
@@ -409,6 +526,10 @@ h3 { font-size: 11.5pt; color: #3b2f2f; margin: 12pt 0 4pt 0; page-break-after: 
 .box { border: 1px solid #d9cfa8; background: #fbf7ea; padding: 8pt 10pt; border-radius: 4pt; margin: 8pt 0; }
 .note { border-left: 4px solid #c9a24d; background: #fbf7ea; padding: 6pt 10pt; margin: 8pt 0; font-size: 10pt; }
 .note .lbl { font-weight: 700; color: #6b1010; font-size: 9.5pt; }
+.plain .lbl { font-weight: 700; color: #6b1010; font-size: 10.5pt; margin-bottom: 2pt; }
+.plain ul { margin: 2pt 0 0 0; padding-left: 13pt; } .plain li { margin: 2.5pt 0; }
+.plain.compact { padding: 6pt 9pt; margin: 6pt 0; } .plain.compact li { font-size: 9.6pt; margin: 1.5pt 0; }
+.gloss td { font-size: 8.6pt; line-height: 1.35; vertical-align: top; padding: 2.5pt 6pt; }
 .muted { color: #7a6f6f; font-size: 9pt; }
 table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt 0; font-size: 9.6pt; }
 thead { display: table-header-group; }
@@ -525,13 +646,15 @@ def build_a1(d, a, tr, changes, notes, now_local):
                 upcoming.append((m["lord"], s["lord"], st, en, s.get("sub", [])))
 
     # --- text pieces
-    lagna_txt = (f"ඔබේ ලග්නය <b>{SIGN_SI[ls]}</b> ({dms(d['lagna']['deg_in_sign'])}) — {LAGNA_NATURE_SI[ls]}. "
-                 f"ලග්නාධිපති <b>{PLANET_SI[lord]}</b> {SIGN_SI[P[lord]['sign_idx']]} රාශියේ, <b>{lord_house} වැන්නේ</b> ({HOUSE_SI[lord_house]}) සිටීම "
-                 f"ජීවිතයේ එම ක්ෂේත්‍රය කේන්ද්‍රීය වන ප්‍රවණතාවක් පෙන්වයි"
-                 + (f"; තත්ත්වය: {si_dignity(P[lord]['dignity'])}" if si_dignity(P[lord]['dignity']) != "—" else "") + ".")
-    moon_txt = (f"චන්ද්‍ර <b>{SIGN_SI[moon['sign_idx']]}</b> රාශියේ, <b>{NAK_SI[jc.NAKSHATRAS.index(moon['nakshatra'])]}</b> නැකතේ {moon['pada']} වන පාදයේ, "
-                f"{moon['house']} වැන්නේ ({HOUSE_SI[moon['house']]}). මනසේ ස්වභාවය සහ මානසික සුවය මේ ස්ථානයෙන් කියවේ"
-                + (f"; {si_dignity(moon['dignity'])}" if si_dignity(moon['dignity']) != "—" else "") + ".")
+    traits, tip = LAGNA_PLAIN_SI[ls]
+    lagna_txt = (f"ඔබේ ලග්නය — ඔබ උපන් මොහොතේ නැගෙනහිරින් උදා වෙමින් තිබූ රාශිය — <b>{SIGN_SI[ls]}</b> ({dms(d['lagna']['deg_in_sign'])}). "
+                 f"ස්වභාවයෙන් ඔබ {traits}; {tip}. "
+                 f"ලග්නයේ අධිපති ග්‍රහයා (ලග්නාධිපති) <b>{PLANET_SI[lord]}</b>, {SIGN_SI[P[lord]['sign_idx']]} රාශියේ <b>{lord_house} වන භාවයේ</b> සිටී; "
+                 f"එනිසා {HOUSE_PLAIN_SI[lord_house]} ඔබේ ජීවිතයේ වැදගත් තැනක් ගනී"
+                 + (f" (ග්‍රහයාගේ තත්ත්වය: {si_dignity(P[lord]['dignity'])})" if si_dignity(P[lord]['dignity']) != "—" else "") + ".")
+    moon_txt = (f"ඔබේ සිත සහ හැඟීම් පෙන්වන චන්ද්‍රයා <b>{SIGN_SI[moon['sign_idx']]}</b> රාශියේ, <b>{NAK_SI[jc.NAKSHATRAS.index(moon['nakshatra'])]}</b> නැකතේ "
+                f"{moon['pada']} වන පාදයේ, {moon['house']} වන භාවයේ ({HOUSE_PLAIN_SI[moon['house']]}) සිටී. ඔබේ සිතේ ස්වභාවය සහ මානසික සුවය මෙයින් කියවේ"
+                + (f" (තත්ත්වය: {si_dignity(moon['dignity'])})" if si_dignity(moon['dignity']) != "—" else "") + ".")
 
     # yogas
     yl = []
@@ -542,11 +665,11 @@ def build_a1(d, a, tr, changes, notes, now_local):
                   (f' <span class="muted">({esc(why)})</span>' if why else "") + "</li>")
     vt = d.get("vargottama", [])
     if vt:
-        yl.append(f"<li><b>වර්ගෝත්තම</b>: {esc(', '.join(pl_si(v) for v in vt))} — D1 සහ D9 දෙකේම එකම රාශියේ; ශක්තිමත්</li>")
+        yl.append(f"<li><b>වර්ගෝත්තම</b>: {esc(', '.join(pl_si(v) for v in vt))} — D1 සහ D9 කේන්දර දෙකේම එකම රාශියේ සිටින නිසා ශක්තිමත්</li>")
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]:
         dg = si_dignity(P[c]["dignity"])
         if "උච්ච" in dg or "නීච" in dg:
-            yl.append(f"<li>{PLANET_SI[c]} {dg} ({SIGN_SI[P[c]['sign_idx']]}, {P[c]['house']} වැන්න) — {PLANET_NATURE_SI[c]} සම්බන්ධ කාරණා {'ශක්තිමත්' if 'උච්ච' in dg else 'අභියෝගාත්මක, ඒත් නීච භංග තිබේද බලන්න'}</li>")
+            yl.append(f"<li>{PLANET_SI[c]} {dg} ({SIGN_SI[P[c]['sign_idx']]}, {P[c]['house']} වැන්න) — {PLANET_NATURE_SI[c]} සම්බන්ධ කාරණා {'ශක්තිමත්' if 'උච්ච' in dg else 'වැඩි උත්සාහයක් ඉල්ලයි (මෙම දුර්වලකම ඉවත් වන නීච භංග තත්ත්වයක් තිබේදැයි ජ්‍යොතිෂවේදියා බලයි)'}</li>")
     if not yl:
         yl.append("<li>ප්‍රධාන යෝග/දෝෂ ඇඟවීම් නැත (මූලික පරීක්ෂාව)</li>")
 
@@ -557,31 +680,32 @@ def build_a1(d, a, tr, changes, notes, now_local):
     md_txt = ""
     if md:
         L = md["lord"]
-        md_txt = (f"දැනට ක්‍රියාත්මක මහා දශාව <b>{PLANET_SI[L]}</b> ({fmt_date(md['start'], tz)} – {fmt_date(md['end'], tz)}). "
-                  f"{PLANET_SI[L]} — {PLANET_NATURE_SI[L]}; ජන්ම කේන්දරයේ {SIGN_SI[P[L]['sign_idx']]} රාශියේ {P[L]['house']} වැන්නේ ({HOUSE_SI[P[L]['house']]})"
-                  + (f", {si_dignity(P[L]['dignity'])}" if si_dignity(P[L]['dignity']) != "—" else "")
-                  + ". මේ දශාව පුරා එම භාවයේ කාරණා ප්‍රමුඛ වන ප්‍රවණතාවක් ඇත.")
+        md_txt = (f"දැන් ඔබ සිටින්නේ <b>{PLANET_SI[L]}</b> මහා දශාවේ ({fmt_date(md['start'], tz)} – {fmt_date(md['end'], tz)}). "
+                  f"{PLANET_SI[L]} ග්‍රහයා නියෝජනය කරන්නේ {PLANET_NATURE_SI[L]}. ඔබේ කේන්දරයේ එය {SIGN_SI[P[L]['sign_idx']]} රාශියේ "
+                  f"{P[L]['house']} වන භාවයේ ({HOUSE_PLAIN_SI[P[L]['house']]}) සිටින නිසා"
+                  + (f" ({si_dignity(P[L]['dignity'])})" if si_dignity(P[L]['dignity']) != "—" else "")
+                  + ", මේ දශාව පුරා එම කාරණා ඔබේ ජීවිතයේ ඉදිරියට එයි.")
         if ad:
             A = ad["lord"]
-            md_txt += (f" වත්මන් අන්තර් දශාව <b>{PLANET_SI[A]}</b> ({fmt_date(ad['start'], tz)} – {fmt_date(ad['end'], tz)}): {PLANET_SI[A]} {P[A]['house']} වැන්නේ — "
-                       f"{HOUSE_SI[P[A]['house']]} සම්බන්ධ සිදුවීම් මතුවීමට ඉඩ.")
+            md_txt += (f" දැනට ක්‍රියාත්මක අන්තර් දශාව <b>{PLANET_SI[A]}</b> ({fmt_date(ad['start'], tz)} – {fmt_date(ad['end'], tz)}): "
+                       f"මේ කාලයේ {HOUSE_PLAIN_SI[P[A]['house']]} සම්බන්ධ සිදුවීම් ඉස්මතු වීමට ඉඩ ඇත — {period_tone_si(P, A)}.")
 
     up_rows = []
     for m, s, st, en, subs in upcoming:
         up_rows.append(f"<tr{' class=cur' if st <= now_utc < en else ''}><td>{PLANET_SI[m]} / {PLANET_SI[s]}</td><td>{st.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td>"
-                       f"<td>{en.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td><td>{PLANET_SI[s]} {P[s]['house']} වැන්නේ ({SIGN_SI[P[s]['sign_idx']]}) — {HOUSE_SI[P[s]['house']].split(',')[0]}, {HOUSE_SI[P[s]['house']].split(',')[1].strip() if ',' in HOUSE_SI[P[s]['house']] else ''}</td></tr>")
+                       f"<td>{en.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td><td>{HOUSE_AREA_SI[P[s]['house']]} — {'හොඳයි' if period_tone_si(P, s) == TONE_GOOD_SI else 'සැලකිලිමත් වන්න'} <span class=muted>({PLANET_SI[s]} {P[s]['house']} වැන්නේ)</span></td></tr>")
 
     # transits
     sa, ju, ra = tr["Sa"], tr["Ju"], tr["Ra"]
     goch = [
         f"<li><b>ශනි</b> {SIGN_SI[sa['sign']]} රාශියේ{' (වක්‍ර)' if sa['retro'] else ''} — චන්ද්‍රගෙන් {sa['from_moon']} වැන්න, ලග්නයෙන් {sa['from_lagna']} වැන්න: {SATURN_FROM_MOON_SI[sa['from_moon']]}</li>",
         f"<li><b>ගුරු</b> {SIGN_SI[ju['sign']]} රාශියේ{' (වක්‍ර)' if ju['retro'] else ''} — චන්ද්‍රගෙන් {ju['from_moon']} වැන්න, ලග්නයෙන් {ju['from_lagna']} වැන්න: {JUPITER_FROM_MOON_SI[ju['from_moon']]}</li>",
-        f"<li><b>රාහු–කේතු</b> {SIGN_SI[ra['sign']]}–{SIGN_SI[(ra['sign'] + 6) % 12]} අක්ෂය — ලග්නයෙන් {ra['from_lagna']}/{(ra['from_lagna'] + 5) % 12 + 1} වැනි භාව: {HOUSE_SI[ra['from_lagna']].split(',')[0]} සහ {HOUSE_SI[(ra['from_lagna'] + 5) % 12 + 1].split(',')[0]} ක්ෂේත්‍ර වල අනපේක්ෂිත වෙනස්කම්/අභිලාශ</li>",
-        f"<li><b>සඩේ සති / ධයියා තත්ත්වය</b>: {tr['sade_sati']}</li>",
+        f"<li><b>රාහු–කේතු</b> {SIGN_SI[ra['sign']]}–{SIGN_SI[(ra['sign'] + 6) % 12]} අක්ෂය — ලග්නයෙන් {ra['from_lagna']}/{(ra['from_lagna'] + 5) % 12 + 1} වැනි භාව: {HOUSE_AREA_SI[ra['from_lagna']]} සහ {HOUSE_AREA_SI[(ra['from_lagna'] + 5) % 12 + 1]} සම්බන්ධ අලුත් අභිලාශ හෝ අනපේක්ෂිත වෙනස්කම්</li>",
+        f"<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි</b>: {tr['sade_sati']}</li>",
     ]
     ch_rows = "".join(f"<tr><td>{dt.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}{'<br><span class=muted>ස්ථිර ' + st.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d') + '</span>' if (st - dt).days > 20 else ''}</td><td>{PLANET_SI[p]}</td><td>{SIGN_SI[s]}</td>"
                       f"<td>චන්ද්‍රගෙන් {jc.house_from(moon['sign_idx'], s)}, ලග්නයෙන් {jc.house_from(ls, s)}</td>"
-                      f"<td>{(SATURN_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s)] if p == 'Sa' else JUPITER_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s)] if p == 'Ju' else HOUSE_SI[jc.house_from(ls, s)].split(',')[0] + ' ක්ෂේත්‍රයට රාහු')}</td></tr>"
+                      f"<td>{(transit_meaning_si(p, jc.house_from(moon['sign_idx'], s), jc.house_from(ls, s)))}</td></tr>"
                       for dt, p, s, st in changes)
 
     # planet table
@@ -598,7 +722,7 @@ def build_a1(d, a, tr, changes, notes, now_local):
 
     summary_auto = (f"{SIGN_SI[ls]} ලග්නය; ලග්නාධිපති {PLANET_SI[lord]} {lord_house} වැන්නේ. චන්ද්‍ර {SIGN_SI[moon['sign_idx']]} ({NAK_SI[jc.NAKSHATRAS.index(moon['nakshatra'])]}). "
                     + (f"වත්මන් දශාව {PLANET_SI[md['lord']]}" + (f"/{PLANET_SI[ad['lord']]}" if ad else "") + ". " if md else "")
-                    + f"ශනි ගෝචරය: {tr['sade_sati'] if tr['sade_sati'] != 'නැත' else 'සඩේ සති/ධයියා නැත'}; ගුරු චන්ද්‍රගෙන් {ju['from_moon']} වැන්නේ.")
+                    + f"ශනි ගෝචරය: {tr['sade_sati'] if tr['sade_sati'] != 'නැත' else 'ඒරාෂ්ටක / අෂ්ටම ශනි නැත'}; ගුරු චන්ද්‍රගෙන් {ju['from_moon']} වැන්නේ.")
 
     birth_rows = [("නම", a.name), ("උපන් දිනය", a.date), ("උපන් වේලාව", f"{a.time} ({'නිශ්චිත' if not approx else 'ආසන්න'})"),
                   ("ස්ථානය", a.place or "—"), ("අක්ෂාංශ / දේශාංශ", f"{a.lat:.4f}° N, {a.lon:.4f}° E"),
@@ -615,7 +739,8 @@ def build_a1(d, a, tr, changes, notes, now_local):
       <div style="margin:16pt auto 0 auto; width:116mm">{svg_d1}</div>
       <p class="muted" style="margin-top:12pt; font-size:8.5pt">පරාශර සහ ජෛමිනි සම්ප්‍රදාය · ලාහිරි අයනාංශය · සම්පූර්ණ රාශි භාව ක්‍රමය · මධ්‍යම රාහු-කේතු · Swiss Ephemeris</p></div>""")
     H.append('<div class="pb"></div><h2>1. සාරාංශය</h2>')
-    H.append(f'<div class="box">{esc(summary_auto)}</div>')
+    H.append(plain_summary_si(d, a, now_local, tr))
+    H.append(f'<p class="small muted"><b>ජ්‍යොතිෂ කෙටි සටහන:</b> {esc(summary_auto)}</p>')
     H.append(note_block(notes, "summary"))
     if approx:
         H.append('<div class="note"><div class="lbl">උපන් වේලාව ගැන</div><p>උපන් වේලාව ආසන්න වශයෙන් දී ඇති නිසා මේ වාර්තාවේ D1 කේන්දරය, දශා සහ ගෝචරය ප්‍රමුඛ කර ඇත; සියුම් වර්ග (D9, D10) කේන්දර වල ලග්නය මිනිත්තු කිහිපයකින් වෙනස් විය හැක.</p></div>')
@@ -625,21 +750,28 @@ def build_a1(d, a, tr, changes, notes, now_local):
     H.append("<h2>3. ලග්නය සහ ග්‍රහ ස්ථාන (D1)</h2>")
     H.append(f"<p>{lagna_txt}</p><p>{moon_txt}</p>")
     H.append("<table><tr><th>ග්‍රහයා</th><th>රාශිය</th><th>අංශක</th><th>භාවය</th><th>නැකත / පාදය</th><th>තත්ත්වය</th></tr>" + "".join(prow) + "</table>")
+    H.append('<p class="small muted">වගුව කියවන හැටි: <b>භාවය</b> = ග්‍රහයා බලපාන ජීවිත ක්ෂේත්‍රය (1–12); <b>වක්‍ර</b> = පසුපසට යන ලෙස පෙනෙන කාලය; '
+             '<b>උච්ච</b> = ඉතා ශක්තිමත්, <b>නීච</b> = දුර්වල, <b>ස්වක්ෂේත්‍ර</b> = තමන්ගේම රාශිය; <b>අස්තංගත</b> = සූර්යයාට ළං වී බලය අඩු වීම.</p>')
     H.append(note_block(notes, "lagna"))
     H.append('<h3>ජෛමිනි කාරක සහ ආරූඪ (සංක්ෂිප්ත)</h3>')
     H.append("<table><tr><th>ආත්මකාරක (AK)</th><th>අමාත්‍යකාරක (AmK)</th><th>දාරාකාරක (DK)</th><th>ආරූඪ ලග්නය (AL)</th><th>උපපද (UL)</th></tr>"
              f"<tr><td>{PLANET_SI[kk['AK']['planet']]}</td><td>{PLANET_SI[kk['AmK']['planet']]}</td><td>{PLANET_SI[kk['DK']['planet']]}</td>"
              f"<td>{SIGN_SI[inv[ar['AL']]]}</td><td>{SIGN_SI[inv[ar['UL']]]}</td></tr></table>")
-    H.append('<p class="small muted">AK = ආත්මයේ ගමන් මග; AL = සමාජය ඔබ දකින ආකාරය; UL = විවාහ/සහකරු සම්බන්ධ ආරූඪය. විස්තර විග්‍රහය A2/A3 වාර්තා වල.</p>')
+    H.append('<p class="small muted">ජෛමිනි ක්‍රමයේ දර්ශක: ආත්මකාරක (AK) = ජීවිතයේ ප්‍රධාන පාඩම් පෙන්වන ග්‍රහයා; අමාත්‍යකාරක (AmK) = රැකියාව සහ වෘත්තිය; '
+             'දාරාකාරක (DK) = සහකරු; ආරූඪ ලග්නය (AL) = සමාජය ඔබව දකින ආකාරය; උපපද (UL) = විවාහය. විස්තර A2/A3 වාර්තා වල.</p>')
 
     H.append('<div class="pb"></div><h2>4. නවාංශකය (D9) සහ යෝග</h2>')
     if svg_d9:
-        H.append(f'<div class="two"><div class="chart" style="width:90mm; flex: 0 0 90mm">{svg_d9}</div><div><p class="small">D9 — විවාහය, අභ්‍යන්තර ශක්තිය සහ ග්‍රහ බලය පෙන්වන වර්ග කේන්දරය. '
+        H.append(f'<div class="two"><div class="chart" style="width:90mm; flex: 0 0 90mm">{svg_d9}</div><div><p class="small">නවාංශකය (D9) යනු එක් එක් රාශිය කොටස් 9කට බෙදා සාදන දෙවන කේන්දරයයි — විවාහය, අභ්‍යන්තර ශක්තිය සහ ග්‍රහයන්ගේ සැබෑ බලය බැලීමට භාවිත වේ. '
                  f'D9 ලග්නය <b>{SIGN_SI[inv[d9["La"]]]}</b>.' + (' උපන් වේලාව ආසන්න නිසා D9 ලග්නය වෙනස් විය හැක.' if approx else '') + '</p></div></div>')
-    H.append("<h3>ප්‍රධාන යෝග / දෝෂ සහ තත්ත්ව</h3><ul>" + "".join(yl) + "</ul>")
+    H.append("<h3>ප්‍රධාන යෝග / දෝෂ සහ තත්ත්ව</h3>"
+             '<p class="small">යෝග යනු ග්‍රහයන්ගේ විශේෂ සංයෝග; දෝෂ යනු සැලකිලිමත් විය යුතු සංයෝග. තනි දෝෂයක් ගැන බිය විය යුතු නැත — '
+             'බොහෝ ඒවා වෙනත් ග්‍රහ ස්ථාන නිසා අඩු වේ හෝ නැති වේ.</p><ul>' + "".join(yl) + "</ul>")
     H.append(note_block(notes, "yogas"))
 
-    H.append("<h2>5. විම්ශෝත්තරී දශා</h2>")
+    H.append("<h2>5. විම්ශෝත්තරී දශා — ඔබේ ජීවිතයේ කාල පරිච්ඡේද</h2>")
+    H.append('<p class="small muted">දශා ක්‍රමයේදී ජීවිතය කාල පරිච්ඡේද වලට බෙදී, එක් එක් කාලය එක් ග්‍රහයෙකුගේ පාලනයට යටත් වේ. '
+             'මහා දශාව අවුරුදු ගණනක් පවතී; අන්තර් දශාව ඒ තුළ කෙටි කොටසක්; ප්‍රත්‍යන්තර දශාව ඊටත් කෙටි.</p>')
     H.append(f"<p>{md_txt}</p>")
     H.append("<table><tr><th>මහා දශාව</th><th>අන්තර්</th><th>ප්‍රත්‍යන්තර</th><th>ආරම්භය</th><th>අවසානය</th></tr>")
     if md:
@@ -654,7 +786,9 @@ def build_a1(d, a, tr, changes, notes, now_local):
              "".join(f"<tr{' class=cur' if md and m['lord'] == md['lord'] else ''}><td>{PLANET_SI[m['lord']]}</td><td>{fmt_date(m['start'], tz)}</td><td>{fmt_date(m['end'], tz)}</td></tr>" for m in vim["mahadashas"]) + "</table>")
     H.append(note_block(notes, "dasha"))
 
-    H.append('<div class="pb"></div><h2>6. ගෝචරය (වත්මන් ග්‍රහ සංචාරය)</h2>')
+    H.append('<div class="pb"></div><h2>6. ගෝචරය — දැන් ග්‍රහයන් ගමන් කරන තැන</h2>')
+    H.append('<p class="small">ශනි, ගුරු, රාහු වැනි සෙමින් ගමන් කරන ග්‍රහයන් දැන් ඔබේ කේන්දරයට සාපේක්ෂව සිටින තැනින් ඉදිරි මාස සහ අවුරුදු කිහිපයේ '
+             'ප්‍රවණතා කියවේ. “චන්ද්‍රගෙන් 4 වැන්න” යනු ඔබේ චන්ද්‍ර රාශියේ සිට ගණන් කළ විට ග්‍රහයා සිටින රාශියයි.</p>')
     H.append(f'<p class="small muted">{now_local.strftime("%Y-%m-%d")} දිනට</p><ul>' + "".join(goch) + "</ul>")
     if ch_rows:
         H.append("<h3>ඉදිරි වසර 3 තුළ ශනි / ගුරු / රාහු රාශි මාරු</h3><table><tr><th>දිනය</th><th>ග්‍රහයා</th><th>නව රාශිය</th><th>භාවය</th><th>ප්‍රවණතාව</th></tr>" + ch_rows + "</table>")
@@ -665,12 +799,12 @@ def build_a1(d, a, tr, changes, notes, now_local):
     for m, s, st, en, subs in upcoming:
         if en <= now_utc:
             continue
-        tone = "හිතකර" if P[s]["house"] in (1, 2, 4, 5, 7, 9, 10, 11) and "නීච" not in si_dignity(P[s]["dignity"]) else "අවධානය යොමු කළ යුතු"
         win.append(f"<li><b>{max(st, now_utc).astimezone(ZoneInfo(tz)).strftime('%Y-%m')} → {en.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</b> — {PLANET_SI[m]}/{PLANET_SI[s]}: "
-                   f"{HOUSE_SI[P[s]['house']].split(',')[0]} ක්ෂේත්‍රය ({tone} ප්‍රවණතාව)</li>")
+                   f"{HOUSE_AREA_SI[P[s]['house']]} — {period_tone_si(P, s)}</li>")
     for dt, p, s, st in changes:
         win.append(f"<li><b>{dt.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</b> — {PLANET_SI[p]} {SIGN_SI[s]} රාශියට"
-                   + (f" (වක්‍ර චලනයෙන් පසු ස්ථිර {st.astimezone(ZoneInfo(tz)).strftime('%Y-%m')})" if (st - dt).days > 20 else "") + ": ගෝචර වෙනස</li>")
+                   + (f" (වක්‍ර චලනයෙන් පසු ස්ථිර {st.astimezone(ZoneInfo(tz)).strftime('%Y-%m')})" if (st - dt).days > 20 else "")
+                   + f": {transit_meaning_si(p, jc.house_from(moon['sign_idx'], s), jc.house_from(ls, s))}</li>")
     H.append("<ul>" + "".join(sorted(win)) + "</ul>")
     H.append('<p class="small muted">වක්‍ර චලනය නිසා ග්‍රහයෙක් රාශියකට ඇතුළු වී ආපසු ගොස් නැවත ඇතුළු වන විට පළමු ඇතුළුවීමේ දිනයත්, ස්ථිර වන දිනයත් දෙකම දක්වා ඇත.</p>')
     H.append('<p class="small">දශාව, ගෝචරය සහ වාර්ෂික චක්‍රය එකට ගැලපෙන කාල කවුළු වඩාත් වැදගත්; තනි ඇඟවීමක් මත පමණක් තීරණ නොගන්න. සවිස්තර කාල නිර්ණය A2 වාර්තාවේත්, වර්ෂ කේන්දරය (වර්ෂඵල) C1 වාර්තාවේත් ඇත.</p>')
@@ -678,7 +812,8 @@ def build_a1(d, a, tr, changes, notes, now_local):
     if (notes or {}).get("remedies"):
         H.append("<h2>8. යෝජනා</h2>" + note_block(notes, "remedies", "ප්‍රතිකර්ම / ආකල්ප යෝජනා"))
 
-    H.append('<div class="pb"></div><h2>ක්‍රමවේදය සහ වගකීම් ප්‍රකාශය</h2>')
+    H.append('<div class="pb"></div><h2>වචන කිහිපයක තේරුම</h2>' + glossary_html())
+    H.append('<h2>ක්‍රමවේදය සහ වගකීම් ප්‍රකාශය</h2>')
     H.append('<div class="disc"><p><b>ක්‍රමවේදය:</b> පරාශර හෝරා ශාස්ත්‍රය සහ ජෛමිනි සම්ප්‍රදාය; P.V.R. Narasimha Rao ගේ <i>Vedic Astrology: An Integrated Approach</i> ප්‍රධාන යොමුව. '
              'ලාහිරි අයනාංශය, සම්පූර්ණ රාශි භාව ක්‍රමය, මධ්‍යම රාහු–කේතු, Swiss Ephemeris ගණනය. විම්ශෝත්තරී දශා සෞර වර්ෂ අනුව.</p>'
              '<p><b>වගකීම් ප්‍රකාශය:</b> මේ වාර්තාව ජ්‍යොතිෂ ශාස්ත්‍රය අනුව ප්‍රවණතා සහ කාල රටා ගැන ප්‍රතිබිම්බනාත්මක මගපෙන්වීමකි — ස්ථිර අනාවැකි නොවේ. '
@@ -1134,9 +1269,9 @@ def build_g(d, a, now_local):
     nak_si = NAK_SI[jc.NAKSHATRAS.index(moon["nakshatra"])]
     H = [f'''<div style="text-align:center">{LOGO_IMG_SMALL}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
-      <h1 style="margin-top:14pt; font-size:17pt">ඔබේ කේන්දරයේ මූලික තොරතුරු</h1>
+      <h1 style="margin-top:9pt; font-size:17pt">ඔබේ කේන්දරයේ මූලික තොරතුරු</h1>
       <div class="muted">{esc(a.name)} · {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div></div>''']
-    H.append(f'<div class="two" style="margin-top:10pt"><div style="flex:0 0 84mm">{south_indian_html_si(labels, "රාශි චක්‍රය", 84)}</div><div>')
+    H.append(f'<div class="two" style="margin-top:6pt"><div style="flex:0 0 76mm">{south_indian_html_si(labels, "රාශි චක්‍රය", 76)}</div><div>')
     H.append("<table>"
              f"<tr><td><b>ලග්නය</b></td><td>{SIGN_SI[ls]} ({dms(d['lagna']['deg_in_sign'])})</td></tr>"
              f"<tr><td><b>ලග්නාධිපති</b></td><td>{PLANET_SI[lord]} — {P[lord]['house']} වැන්නේ</td></tr>"
@@ -1148,15 +1283,14 @@ def build_g(d, a, now_local):
              + (f"<tr><td><b>අන්තර් දශාව</b></td><td>{PLANET_SI[ad['lord']]} ({fmt_date(ad['start'], a.tz)} – {fmt_date(ad['end'], a.tz)})</td></tr>" if ad else "")
              + f"<tr><td><b>පංචාංගය</b></td><td>{esc(pch_si(d['panchanga'])['vara'])} · {esc(pch_si(d['panchanga'])['tithi'])}</td></tr>"
              "</table></div></div>")
-    H.append(f'<div class="box"><b>{SIGN_SI[ls]} ලග්නය:</b> {LAGNA_NATURE_SI[ls]}.<br>'
-             f'<b>{PLANET_SI[md["lord"]] if md else "—"} මහා දශාව:</b> {PLANET_NATURE_SI[md["lord"]] if md else ""} — '
-             f'ජන්ම කේන්දරයේ {P[md["lord"]]["house"]} වැන්නේ ({HOUSE_SI[P[md["lord"]]["house"]]}) සිටී.</div>' if md else "")
-    H.append('<div class="note"><div class="lbl">මේක නොමිලේ ලැබෙන මූලික තොරතුරු පත්‍රිකාවක්</div>'
-             '<p>සම්පූර්ණ විග්‍රහයකට — යෝග/දෝෂ, නවාංශකය, දශා කාල සීමා, ගෝචරය සහ ඉදිරි වසර කිහිපයේ ප්‍රවණතා — '
-             'අපගේ <b>කේන්දර සාර (A1)</b> වාර්තාව බලන්න.</p></div>')
+    H.append(plain_summary_si(d, a, now_local, compact=True))
+    H.append('<p class="muted" style="font-size:8.3pt; margin:4pt 0"><b>ලග්නය</b> = ඔබ උපන් මොහොතේ නැගෙනහිරින් උදා වූ රාශිය · <b>ලග්නාධිපති</b> = ලග්න රාශියේ අධිපති ග්‍රහයා · '
+             '<b>නැකත</b> = උපන් මොහොතේ චන්ද්‍රයා සිටි තාරකා කොටස · <b>දශාව</b> = ජීවිතයේ මේ කාලය පාලනය කරන ග්‍රහයා.</p>')
+    H.append('<p class="small" style="margin:6pt 0"><b>මේක නොමිලේ ලැබෙන මූලික පත්‍රිකාවක්.</b> යෝග, දශා කාල, ගෝචරය සහ ඉදිරි අවුරුදු ගැන '
+             'සම්පූර්ණ විග්‍රහයකට අපගේ <b>කේන්දර සාර (A1)</b> වාර්තාව බලන්න.</p>')
     H.append('<p class="disc">ජ්‍යොතිෂය ප්‍රවණතා ගැන ප්‍රතිබිම්බනාත්මක මගපෙන්වීමකි; ස්ථිර අනාවැකි නොවේ. වෛද්‍ය, නීතිමය හෝ මූල්‍ය උපදෙස් නොවේ. '
-             'උපන් වේලාවේ නිරවද්‍යතාව ප්‍රතිඵල වලට බලපායි. ගණනය: ලාහිරි අයනාංශය · සම්පූර්ණ රාශි භාව ක්‍රමය · Swiss Ephemeris.</p>')
-    H.append(f'<div class="brandfoot"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
+             'උපන් වේලාවේ නිරවද්‍යතාව ප්‍රතිඵල වලට බලපායි. ගණනය: Swiss Ephemeris.</p>')
+    H.append(f'<div class="brandfoot" style="margin-top:6pt; padding-top:4pt"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
              + (f'<div class="muted">{esc(BRAND_CONTACT)}</div>' if BRAND_CONTACT else "") + "</div>")
     return "\n".join(H)
 
@@ -1249,12 +1383,12 @@ def build_c1(d, a, notes, now_local, year):
              f"<tr><td style='width:34%'><b>වර්ෂ ප්‍රවේශය</b></td><td>{esc(v['varsha_pravesha_local'])} ({esc(a.tz)}) — රවි ජන්ම ස්ථානයට පැමිණෙන මොහොත</td></tr>"
              f"<tr><td><b>වර්ෂ ලග්නය</b></td><td>{SIGN_SI[vls]} ({dms(v['lagna_deg'])})</td></tr>"
              f"<tr><td><b>මුන්ථා</b></td><td>{SIGN_SI[inv[v['muntha']]]} — වර්ෂ ලග්නයෙන් {jc.house_from(vls, inv[v['muntha']])} වැන්නේ, "
-             f"ජන්ම ලග්නයෙන් {jc.house_from(nls, inv[v['muntha']])} වැන්නේ ({HOUSE_SI[jc.house_from(nls, inv[v['muntha']])]})</td></tr>"
+             f"ජන්ම ලග්නයෙන් {jc.house_from(nls, inv[v['muntha']])} වැන්නේ ({HOUSE_PLAIN_SI[jc.house_from(nls, inv[v['muntha']])]})</td></tr>"
              f"<tr><td><b>වර්ෂේශ (වර්ෂාධිපති)</b></td><td>{PLANET_SI[vsh]} — {PLANET_NATURE_SI[vsh]}</td></tr>"
              f"<tr><td><b>දින/රාත්‍රී කේන්දරය</b></td><td>{'දිවා' if v['day_chart'] else 'රාත්‍රී'}</td></tr>"
              "</table>")
     H.append(f'<div class="box">මුන්ථා ජන්ම කේන්දරයේ {jc.house_from(nls, inv[v["muntha"]])} වැන්නට පැමිණීම මේ වර්ෂයේ '
-             f'{HOUSE_SI[jc.house_from(nls, inv[v["muntha"]])]} සම්බන්ධ කාරණා ඉදිරියට එන ප්‍රවණතාවක් පෙන්වයි. '
+             f'{HOUSE_PLAIN_SI[jc.house_from(nls, inv[v["muntha"]])]} සම්බන්ධ කාරණා ඉදිරියට එන ප්‍රවණතාවක් පෙන්වයි. '
              f'වර්ෂේශ {PLANET_SI[vsh]} වර්ෂය පුරා ප්‍රධාන ග්‍රහයා ලෙස ක්‍රියා කරයි.</div>')
     H.append(note_block(notes, "summary"))
     H.append("<h3>වර්ෂ කුණ්ඩලියේ ග්‍රහ ස්ථාන සහ බල</h3>")
@@ -1524,7 +1658,7 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
     else:
         H.append("<p>දෘෂ්ටි කක්ෂ තුළ ප්‍රධාන තාජක යෝග නොමැත.</p>")
     if matter:
-        H.append(f"<h2>3. කාරණය — {matter} වන භාවය ({HOUSE_SI[matter]})</h2><ul>"
+        H.append(f"<h2>3. කාරණය — {matter} වන භාවය ({HOUSE_PLAIN_SI[matter]})</h2><ul>"
                  + "".join(f"<li>{esc(si_text(x.strip()))}</li>" for x in d.get("matter_lines", [])) + "</ul>")
         H.append('<p class="small muted">ලග්නාධිපති, කාරණයේ භාවාධිපති, අදාළ සහමයේ අධිපති සහ ස්වාභාවික කාරකයා අතර ඉථසාල යෝගයක් '
                  'කාරණය ඉටුවීමට නැඹුරුව පෙන්වයි; ඊසර්ඵ ලිස්සා යාම පෙන්වයි (තාජක 29.2).</p>')
@@ -1815,10 +1949,10 @@ def p1_auto_summary(d, matter, shat_topic):
     if matter:
         ml = " ".join(d.get("matter_lines", []))
         if "ITHASALA" in ml:
-            bits.append(f"<b>{matter} වන භාවය</b> ({HOUSE_SI[matter]}) සම්බන්ධ කාරක ග්‍රහයන් අතර <b>ඉථසාල</b> යෝගයක් ඇත — "
+            bits.append(f"<b>{matter} වන භාවය</b> ({HOUSE_PLAIN_SI[matter]}) සම්බන්ධ කාරක ග්‍රහයන් අතර <b>ඉථසාල</b> යෝගයක් ඇත — "
                         "කාරණය ඉටුවීමට නැඹුරු ප්‍රවණතාවක්.")
         elif "EESARPHA" in ml:
-            bits.append(f"<b>{matter} වන භාවය</b> ({HOUSE_SI[matter]}) සම්බන්ධ කාරක ග්‍රහයන් අතර <b>ඊසර්ඵ</b> යෝගයක් ඇත — "
+            bits.append(f"<b>{matter} වන භාවය</b> ({HOUSE_PLAIN_SI[matter]}) සම්බන්ධ කාරක ග්‍රහයන් අතර <b>ඊසර්ඵ</b> යෝගයක් ඇත — "
                         "කාරණය ලිස්සා යාමට හෝ ප්‍රමාද වීමට නැඹුරු ප්‍රවණතාවක්; අමතර උත්සාහයක් අවශ්‍ය විය හැක.")
         else:
             bits.append(f"<b>{matter} වන භාවය</b> සම්බන්ධ කාරක ග්‍රහයන් අතර ඉථසාල/ඊසර්ඵ යෝගයක් නැත — "
@@ -1879,7 +2013,7 @@ def area_paragraph(d, key):
     lord = jc.SIGN_LORD[hs]
     occ = [c for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"] if P[c]["sign_idx"] == hs]
     kar = {"career": "Sa", "marriage": "Ve", "wealth": "Ju", "education": "Me", "family": "Mo"}[key]
-    bits = [f"<b>{house} වන භාවය</b> ({SIGN_SI[hs]}) — {HOUSE_SI[house]}."]
+    bits = [f"<b>{house} වන භාවය</b> ({SIGN_SI[hs]}) — {HOUSE_PLAIN_SI[house]}."]
     bits.append(f"අධිපති {PLANET_SI[lord]} {SIGN_SI[P[lord]['sign_idx']]} රාශියේ, {P[lord]['house']} වැන්නේ"
                 + (f" ({si_dignity(P[lord]['dignity'])})" if si_dignity(P[lord]["dignity"]) != "—" else "")
                 + (", වක්‍ර" if P[lord]["retro"] and lord not in ("Ra", "Ke") else "") + ".")
@@ -1913,7 +2047,7 @@ def sade_sati_timeline(natal_moon_sign, start_utc, years=15):
     for dd in range(0, int(years * 365.25), 10):
         s = jc.sign_of(jc.compute_positions(jd0 + dd)[0]["Sa"]["lon"])
         h = jc.house_from(natal_moon_sign, s)
-        tag = "සඩේ සති" if h in (12, 1, 2) else ("ධයියා" if h in (4, 8) else None)
+        tag = "ඒරාෂ්ටක ශනි" if h in (12, 1, 2) else ("අෂ්ටම ශනි" if h == 8 else "අර්ධාෂ්ටම ශනි" if h == 4 else None)
         key = (tag, h) if tag else None
         if key != prev:
             if rows and rows[-1][1] is None:
@@ -2103,7 +2237,7 @@ def kp_block(d):
     sig_rows = []
     for h, s in kp["significators"].items():
         ranked = list(dict.fromkeys(s["L1"] + s["L2"] + s["L3"] + s["L4"]))
-        sig_rows.append(f"<tr><td>{h}</td><td>{HOUSE_SI[int(h)].split(',')[0]}</td>"
+        sig_rows.append(f"<tr><td>{h}</td><td>{HOUSE_AREA_SI[int(h)]}</td>"
                         f"<td>{', '.join(PLANET_SI[p] for p in ranked)}</td></tr>")
     rp = kp["ruling_planets"]
     ruling = (f"දින අධිපති {PLANET_SI[rp['day_lord']]} · චන්ද්‍ර: රාශි {PLANET_SI[rp['moon_sign_lord']]}, "
@@ -2279,7 +2413,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
             sub = ", ".join(PLANET_SI[p] for p, _ in g["subha"]) or "—"
             pap = ", ".join(PLANET_SI[p] for p, _ in g["papa"]) or "—"
             vir = ", ".join(PLANET_SI[p] for p, _, _b in g["virodha"]) or "—"
-            rows.append(f"<tr><td>{h}</td><td>{HOUSE_SI[h].split(',')[0]}</td><td>{sub}</td><td>{pap}</td><td>{vir}</td></tr>")
+            rows.append(f"<tr><td>{h}</td><td>{HOUSE_AREA_SI[h]}</td><td>{sub}</td><td>{pap}</td><td>{vir}</td></tr>")
         H.append("<table><tr><th>භාවය</th><th>කාරණය</th><th>ශුභ අර්ගල</th><th>පාප අර්ගල</th><th>විරෝධාර්ගල</th></tr>" + "".join(rows) + "</table>")
         H.append('<p class="small muted">අර්ගල = භාවයකට බාහිරින් එන ආධාරය/බාධාව (2, 4, 11 වැනි ස්ථානවලින්); විරෝධාර්ගල ඒවා අවහිර කරයි.</p>')
         up = d.get("upagrahas", {})
@@ -2303,7 +2437,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     if md:
         L = md["lord"]
         H.append(f'<p>වත්මන් මහා දශාව <b>{PLANET_SI[L]}</b> ({fmt_date(md["start"], tz)} – {fmt_date(md["end"], tz)}): {PLANET_NATURE_SI[L]}; '
-                 f'ජන්ම කේන්දරයේ {SIGN_SI[P[L]["sign_idx"]]} රාශියේ {P[L]["house"]} වැන්නේ ({HOUSE_SI[P[L]["house"]]}).'
+                 f'ජන්ම කේන්දරයේ {SIGN_SI[P[L]["sign_idx"]]} රාශියේ {P[L]["house"]} වැන්නේ ({HOUSE_PLAIN_SI[P[L]["house"]]}).'
                  + (f' වත්මන් අන්තර් දශාව <b>{PLANET_SI[ad["lord"]]}</b> ({fmt_date(ad["start"], tz)} – {fmt_date(ad["end"], tz)})'
                     f' — {P[ad["lord"]]["house"]} වැන්න.' if ad else "")
                  + (f' ප්‍රත්‍යන්තර {PLANET_SI[pd_["lord"]]} ({fmt_date(pd_["start"], tz)} – {fmt_date(pd_["end"], tz)}).' if pd_ else "") + "</p>")
@@ -2316,7 +2450,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                 tone = "හිතකර" if P[s_["lord"]]["house"] in (1, 2, 4, 5, 7, 9, 10, 11) and "නීච" not in si_dignity(P[s_["lord"]]["dignity"]) else "අවධානය"
                 rows.append(f"<tr{' class=cur' if st <= now_utc < en else ''}><td>{PLANET_SI[m['lord']]}/{PLANET_SI[s_['lord']]}</td>"
                             f"<td>{st.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td><td>{en.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td>"
-                            f"<td>{PLANET_SI[s_['lord']]} {P[s_['lord']]['house']} වැන්නේ — {HOUSE_SI[P[s_['lord']]['house']].split(',')[0]} ({tone})</td></tr>")
+                            f"<td>{PLANET_SI[s_['lord']]} {P[s_['lord']]['house']} වැන්නේ — {HOUSE_AREA_SI[P[s_['lord']]['house']]} ({tone})</td></tr>")
     H.append(f"<h3>ඉදිරි වසර {10 if deep else 5} — අන්තර් දශා</h3><table><tr><th>දශාව</th><th>ආරම්භය</th><th>අවසානය</th><th>ප්‍රවණතාව</th></tr>" + "".join(rows) + "</table>")
     H.append("<h3>මහා දශා අනුපිළිවෙල</h3><table><tr><th>දශාව</th><th>ආරම්භය</th><th>අවසානය</th></tr>"
              + "".join(f"<tr{' class=cur' if md and m['lord'] == md['lord'] else ''}><td>{PLANET_SI[m['lord']]}</td>"
@@ -2346,7 +2480,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
              f'<li><b>ශනි</b> {SIGN_SI[sa["sign"]]}{" (වක්‍ර)" if sa["retro"] else ""} — චන්ද්‍රගෙන් {sa["from_moon"]}, ලග්නයෙන් {sa["from_lagna"]}: {SATURN_FROM_MOON_SI[sa["from_moon"]]}</li>'
              f'<li><b>ගුරු</b> {SIGN_SI[ju["sign"]]}{" (වක්‍ර)" if ju["retro"] else ""} — චන්ද්‍රගෙන් {ju["from_moon"]}, ලග්නයෙන් {ju["from_lagna"]}: {JUPITER_FROM_MOON_SI[ju["from_moon"]]}</li>'
              f'<li><b>රාහු–කේතු</b> {SIGN_SI[ra["sign"]]}–{SIGN_SI[(ra["sign"] + 6) % 12]} — ලග්නයෙන් {ra["from_lagna"]}/{(ra["from_lagna"] + 5) % 12 + 1} වැනි භාව</li>'
-             f'<li><b>සඩේ සති / ධයියා</b>: {tr["sade_sati"]}</li></ul>')
+             f'<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි</b>: {tr["sade_sati"]}</li></ul>')
     if av:
         sav = av["sav"]
         H.append("<p class='small'><b>අෂ්ටකවර්ග බින්දු ගෝචර ග්‍රහයන්ට:</b> "
@@ -2357,15 +2491,15 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                            + (f"<br><span class=muted>ස්ථිර {st.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</span>" if (st - dt).days > 20 else "")
                            + f"</td><td>{PLANET_SI[p]}</td><td>{SIGN_SI[s_]}</td>"
                            f"<td>චන්ද්‍රගෙන් {jc.house_from(moon['sign_idx'], s_)}, ලග්නයෙන් {jc.house_from(ls, s_)}</td>"
-                           f"<td>{SATURN_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s_)] if p == 'Sa' else JUPITER_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s_)] if p == 'Ju' else HOUSE_SI[jc.house_from(ls, s_)].split(',')[0] + ' ක්ෂේත්‍රයට රාහු'}</td></tr>"
+                           f"<td>{transit_meaning_si(p, jc.house_from(moon['sign_idx'], s_), jc.house_from(ls, s_))}</td></tr>"
                            for dt, p, s_, st in changes) + "</table>")
     ss = merge_spells(sade_sati_timeline(moon["sign_idx"], now_utc - timedelta(days=365 * 3), 18 if deep else 12))
     if ss:
-        H.append("<h3>සඩේ සති / ධයියා කාල රේඛාව</h3><table><tr><th>වර්ගය</th><th>ආරම්භය</th><th>අවසානය</th><th>භාවය (චන්ද්‍රගෙන්)</th></tr>"
+        H.append("<h3>ඒරාෂ්ටක / අෂ්ටම ශනි කාල රේඛාව</h3><table><tr><th>වර්ගය</th><th>ආරම්භය</th><th>අවසානය</th><th>භාවය (චන්ද්‍රගෙන්)</th></tr>"
                  + "".join(f"<tr{' class=cur' if s0 <= now_utc <= s1 else ''}><td>{tag}</td>"
                            f"<td>{s0.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</td><td>{s1.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</td><td>{h}</td></tr>"
                            for s0, s1, tag, h in ss) + "</table>")
-        H.append('<p class="small muted">සඩේ සති = ශනි චන්ද්‍රගෙන් 12, 1, 2 වැනි රාශිවලින් යන කාලය (වසර ~7½); ධයියා = 4 හෝ 8 වැන්නෙන් යන කාලය (~2½). '
+        H.append('<p class="small muted">ඒරාෂ්ටක ශනි (සඩේ සති) = ශනි චන්ද්‍රගෙන් 12, 1, 2 වැනි රාශිවලින් යන කාලය (වසර ~7½); අෂ්ටම / අර්ධාෂ්ටම ශනි = 8 හෝ 4 වැන්නෙන් යන කාලය (~2½). '
                  'මේවා බියවිය යුතු කාල නොව, වගකීම් සහ පරිණතභාවය වැඩෙන කාල ලෙස සලකනු ලැබේ.</p>')
     H.append(note_block(notes, "gochara"))
 
@@ -2380,7 +2514,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                 h = P[s_["lord"]]["house"]
                 tone = "හිතකර" if h in (1, 2, 4, 5, 7, 9, 10, 11) else "අවධානය යොමු කළ යුතු"
                 win.append((max(st, now_utc), f"<li><b>{max(st, now_utc).astimezone(ZoneInfo(tz)).strftime('%Y-%m')} → {en.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</b> — "
-                                              f"{PLANET_SI[m['lord']]}/{PLANET_SI[s_['lord']]}: {HOUSE_SI[h].split(',')[0]} ({tone})</li>"))
+                                              f"{PLANET_SI[m['lord']]}/{PLANET_SI[s_['lord']]}: {HOUSE_AREA_SI[h]} ({tone})</li>"))
     for dt, p, s_, st in changes:
         win.append((dt, f"<li><b>{dt.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</b> — {PLANET_SI[p]} {SIGN_SI[s_]} රාශියට: ගෝචර වෙනස</li>"))
     for s0, s1, tag, h in ss:
@@ -2477,7 +2611,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
     H.append("<table>"
              f"<tr><td style='width:34%'><b>ලග්නය</b></td><td>{SIGN_SI[ls]} — අධිපති {PLANET_SI[jc.SIGN_LORD[ls]]}, {P[jc.SIGN_LORD[ls]]['house']} වැන්නේ</td></tr>"
              f"<tr><td><b>චන්ද්‍ර</b></td><td>{SIGN_SI[P['Mo']['sign_idx']]} — {P['Mo']['house']} වැන්නේ, {NAK_SI[jc.NAKSHATRAS.index(P['Mo']['nakshatra'])]} නැකත</td></tr>"
-             f"<tr><td><b>ප්‍රධාන භාවය</b></td><td>{h} වැන්න ({SIGN_SI[hs]}) — {HOUSE_SI[h]}</td></tr>"
+             f"<tr><td><b>ප්‍රධාන භාවය</b></td><td>{h} වැන්න ({SIGN_SI[hs]}) — {HOUSE_PLAIN_SI[h]}</td></tr>"
              f"<tr><td><b>වාර්තා දිනය</b></td><td>{now_local.strftime('%Y-%m-%d')}</td></tr></table>")
 
     # --- 2 core analysis
@@ -2500,7 +2634,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
     H.append("<table>" + "".join(f"<tr><td style='width:30%'><b>{k}</b></td><td>{v}</td></tr>" for k, v in rows) + "</table>")
     good = P[hlord]["house"] in (1, 4, 5, 7, 9, 10, 11) and "නීච" not in si_dignity(P[hlord]["dignity"])
     H.append(f'<div class="box"><b>ප්‍රවණතාව:</b> භාවාධිපති {PLANET_SI[hlord]} {P[hlord]["house"]} වැන්නේ '
-             f'({HOUSE_SI[P[hlord]["house"]]}) සිටීම මේ ක්ෂේත්‍රය එම කාරණා සමඟ බැඳෙන බව පෙන්වයි. '
+             f'({HOUSE_PLAIN_SI[P[hlord]["house"]]}) සිටීම මේ ක්ෂේත්‍රය එම කාරණා සමඟ බැඳෙන බව පෙන්වයි. '
              + ("භාවාධිපති හිතකර ස්ථානයක සිටීම සහායකයි." if good else "ප්‍රතිඵල ශ්‍රමයෙන් සහ ඉවසීමෙන් ලැබෙන ප්‍රවණතාවක් ඇත.")
              + (f' භාවයේ {", ".join(PLANET_SI[c] for c in occ)} සිටීම එම ග්‍රහයන්ගේ ස්වභාවය මේ ක්ෂේත්‍රයට එකතු කරයි.' if occ else "")
              + "</div>")
@@ -2508,7 +2642,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
     for sh in spec["support"]:
         shs = (ls + sh - 1) % 12
         sl = jc.SIGN_LORD[shs]
-        sup.append(f"<tr><td>{sh}</td><td>{HOUSE_SI[sh].split(',')[0]}</td><td>{SIGN_SI[shs]}</td><td>{PLANET_SI[sl]} — {P[sl]['house']} වැන්නේ</td>"
+        sup.append(f"<tr><td>{sh}</td><td>{HOUSE_AREA_SI[sh]}</td><td>{SIGN_SI[shs]}</td><td>{PLANET_SI[sl]} — {P[sl]['house']} වැන්නේ</td>"
                    f"<td>{', '.join(PLANET_SI[c] for c in ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'] if P[c]['sign_idx'] == shs) or '—'}</td></tr>")
     H.append("<h3>සහායක භාව</h3><table><tr><th>භාවය</th><th>කාරණය</th><th>රාශිය</th><th>අධිපති</th><th>ග්‍රහයන්</th></tr>" + "".join(sup) + "</table>")
     H.append(note_block(notes, "lagna"))
@@ -2603,7 +2737,7 @@ def build_b(d, a, code, tr, changes, notes, now_local):
              f"<li><b>ගුරු</b> {SIGN_SI[ju['sign']]} — ලග්නයෙන් {ju['from_lagna']} වැන්න"
              + (" (මේ ක්ෂේත්‍රයට හිතකර ගෝචරයක්)" if ju["from_lagna"] in [h] + spec["support"] else "")
              + f"; චන්ද්‍රගෙන් {ju['from_moon']}: {JUPITER_FROM_MOON_SI[ju['from_moon']]}</li>"
-             f"<li><b>සඩේ සති / ධයියා</b>: {tr['sade_sati']}</li></ul>")
+             f"<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි</b>: {tr['sade_sati']}</li></ul>")
     rel_ch = [(dt, p, s_, st) for dt, p, s_, st in changes if jc.house_from(ls, s_) in [h] + spec["support"]]
     if rel_ch:
         H.append("<h3>මේ ක්ෂේත්‍රයට වැදගත් ගෝචර මාරු</h3><table><tr><th>දිනය</th><th>ග්‍රහයා</th><th>රාශිය</th><th>භාවය</th></tr>"
@@ -2643,8 +2777,8 @@ def build_b(d, a, code, tr, changes, notes, now_local):
 SS_PHASE_SI = {12: ("පළමු අවධිය (ආරෝහණ)", "වියදම්, නින්ද/විවේකය, විදේශ හෝ ස්ථාන වෙනස්කම්; අභ්‍යන්තර සූදානම"),
                1: ("මධ්‍ය අවධිය (ශිඛර)", "වගකීම් බර, ශරීර/මානසික ශක්තිය, පෞද්ගලික අනන්‍යතාවය පිළිබඳ ප්‍රශ්න"),
                2: ("තෙවන අවධිය (අවරෝහණ)", "ධන කටයුතු, පවුල, කථනය; ක්‍රමයෙන් සැහැල්ලු වීම"),
-               4: ("ධයියා (අර්ධාෂ්ටම)", "නිවස, මව, මානසික සතුට සහ දේපල සම්බන්ධ වගකීම්"),
-               8: ("ධයියා (අෂ්ටම)", "හදිසි වෙනස්කම්, වියදම්, සෞඛ්‍ය පුරුදු ගැන අවධානය")}
+               4: ("අර්ධාෂ්ටම ශනි", "නිවස, මව, මානසික සතුට සහ දේපල සම්බන්ධ වගකීම්"),
+               8: ("අෂ්ටම ශනි", "හදිසි වෙනස්කම්, වියදම්, සෞඛ්‍ය පුරුදු ගැන අවධානය")}
 SS_ADVICE = ["නියමිත වේලාවට වැඩ කිරීම සහ පොරොන්දු ඉටු කිරීම — ශනි විනය අගය කරයි",
              "නින්ද, ආහාර සහ ව්‍යායාම නිතිපතා තබා ගැනීම",
              "වැඩිහිටියන්, සේවකයන් සහ අඩු පහසුකම් ඇති අය සමඟ ඉවසීමෙන් සහ ගෞරවයෙන් කටයුතු කිරීම",
@@ -2672,13 +2806,13 @@ def build_c2(d, a, notes, now_local, year, tr, changes):
              f"<li><b>ශනි</b> {SIGN_SI[sa['sign']]} — චන්ද්‍රගෙන් {sa['from_moon']}, ලග්නයෙන් {sa['from_lagna']}: {SATURN_FROM_MOON_SI[sa['from_moon']]}</li>"
              f"<li><b>ගුරු</b> {SIGN_SI[ju['sign']]} — චන්ද්‍රගෙන් {ju['from_moon']}, ලග්නයෙන් {ju['from_lagna']}: {JUPITER_FROM_MOON_SI[ju['from_moon']]}</li>"
              f"<li><b>රාහු–කේතු</b> {SIGN_SI[ra['sign']]}–{SIGN_SI[(ra['sign'] + 6) % 12]} — ලග්නයෙන් {ra['from_lagna']}/{(ra['from_lagna'] + 5) % 12 + 1} වැනි භාව</li>"
-             f"<li><b>සඩේ සති / ධයියා</b>: {tr['sade_sati']}</li></ul>")
+             f"<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි</b>: {tr['sade_sati']}</li></ul>")
     yr_ch = [c for c in changes if y0 <= c[0].astimezone(timezone.utc) <= y1]
     if yr_ch:
         H.append("<h3>වර්ෂය තුළ රාශි මාරු</h3><table><tr><th>දිනය</th><th>ග්‍රහයා</th><th>නව රාශිය</th><th>භාවය</th><th>ප්‍රවණතාව</th></tr>"
                  + "".join(f"<tr><td>{dt.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td><td>{PLANET_SI[p]}</td><td>{SIGN_SI[s_]}</td>"
                            f"<td>චන්ද්‍රගෙන් {jc.house_from(moon['sign_idx'], s_)}, ලග්නයෙන් {jc.house_from(ls, s_)}</td>"
-                           f"<td>{SATURN_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s_)] if p == 'Sa' else JUPITER_FROM_MOON_SI[jc.house_from(moon['sign_idx'], s_)] if p == 'Ju' else HOUSE_SI[jc.house_from(ls, s_)].split(',')[0] + ' ක්ෂේත්‍රයට රාහු'}</td></tr>"
+                           f"<td>{transit_meaning_si(p, jc.house_from(moon['sign_idx'], s_), jc.house_from(ls, s_))}</td></tr>"
                            for dt, p, s_, st in yr_ch) + "</table>")
     # --- convergence calendar: month by month
     H.append('<div class="pb"></div><h2>7. මාසික සම්මුඛ දින දර්ශනය</h2>')
@@ -2717,7 +2851,7 @@ def build_c2(d, a, notes, now_local, year, tr, changes):
         if ev:
             score += 0
         tone = "හිතකර" if score >= 2 else ("අවධානය" if score <= -2 else "මිශ්‍ර")
-        focus = HOUSE_SI[P[pd_["lord"]]["house"]].split(",")[0] if pd_ else (HOUSE_SI[P[ad["lord"]]["house"]].split(",")[0] if ad else "—")
+        focus = HOUSE_AREA_SI[P[pd_["lord"]]["house"]] if pd_ else (HOUSE_AREA_SI[P[ad["lord"]]["house"]] if ad else "—")
         rows.append(f"<tr><td>{cur.astimezone(ZoneInfo(tz)).strftime('%Y-%m')}</td><td>{dash}</td>"
                     f"<td>{PLANET_SI[mud['lord']] if mud else '—'}</td><td>{focus}</td><td>{', '.join(ev) or '—'}</td><td>{tone}</td></tr>")
         cur += timedelta(days=30.44)
@@ -2745,17 +2879,17 @@ def build_c3(d, a, notes, now_local, tr):
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
     status = (f"දැනට <b>{cur_sp[2]}</b> කාලය තුළ ({cur_sp[0].astimezone(ZoneInfo(tz)).strftime('%Y-%m')} – {cur_sp[1].astimezone(ZoneInfo(tz)).strftime('%Y-%m')})"
-              if cur_sp else (f"දැනට සඩේ සති හෝ ධයියා නැත. ඊළඟ කාලය <b>{nxt[2]}</b> — {nxt[0].astimezone(ZoneInfo(tz)).strftime('%Y-%m')} සිට" if nxt else "දැනට සඩේ සති හෝ ධයියා නැත."))
+              if cur_sp else (f"දැනට ඒරාෂ්ටක (සඩේ සති), අෂ්ටම හෝ අර්ධාෂ්ටම ශනි නැත. ඊළඟ කාලය <b>{nxt[2]}</b> — {nxt[0].astimezone(ZoneInfo(tz)).strftime('%Y-%m')} සිට" if nxt else "දැනට ඒරාෂ්ටක (සඩේ සති), අෂ්ටම හෝ අර්ධාෂ්ටම ශනි නැත."))
     H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
-      <h1 style="margin-top:18pt">සඩේ සති වාර්තාව</h1><div class="sub">ශනි ගෝචරය සහ ධයියා කාල (C3)</div>
+      <h1 style="margin-top:18pt">සඩේ සති වාර්තාව</h1><div class="sub">ඒරාෂ්ටක, අෂ්ටම සහ අර්ධාෂ්ටම ශනි කාල (C3)</div>
       <div class="name">{esc(a.name)}</div>
       <div class="muted">{esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div>
       <div style="margin:12pt auto 0 auto; width:100mm">{south_indian_html_si(labels, "D1 · රාශි චක්‍රය", 100)}</div>
       <p style="margin-top:10pt">{status}</p></div>''']
     H.append('<div class="pb"></div><h2>1. සඩේ සති යනු මොකක්ද?</h2>')
     H.append('<div class="box">ශනි ඔබේ ජන්ම චන්ද්‍ර රාශියෙන් 12, 1, 2 යන රාශි තුන හරහා ගමන් කරන කාලය <b>සඩේ සති</b> ලෙස හැඳින්වේ — '
-             'රාශියකට වසර 2½ බැගින්, මුළු කාලය වසර 7½ක් පමණ. ශනි 4 හෝ 8 වැනි රාශියේ සිටින වසර 2½ <b>ධයියා</b> ලෙස හැඳින්වේ.<br><br>'
+             'රාශියකට වසර 2½ බැගින්, මුළු කාලය වසර 7½ක් පමණ. ලංකාවේ මෙය <b>ඒරාෂ්ටක ශනි</b> ලෙසද හැඳින්වේ. ශනි 8 හෝ 4 වැනි රාශියේ සිටින වසර 2½ <b>අෂ්ටම / අර්ධාෂ්ටම ශනි</b> ලෙස හැඳින්වේ.<br><br>'
              'මේ කාල "අසුබ" ලෙස පොදුවේ කථා කළත්, සම්භාව්‍ය ග්‍රන්ථවල දැක්වෙන්නේ මේවා <b>වගකීම්, විනය සහ පරිණතභාවය</b> වැඩෙන කාල ලෙසයි. '
              'ශනි ශ්‍රමයට ප්‍රතිඵල දෙන ග්‍රහයා; කලින් නොසලකා හැරි කාරණා මතු වී, ඒවා විසඳා ගැනීමට බල කරන ප්‍රවණතාවක් ඇති කරයි. '
              'ජන්ම කේන්දරයේ ශනිගේ තත්ත්වය අනුව මේ කාලයේ බර වැඩි හෝ අඩු විය හැක.</div>')
@@ -2767,7 +2901,7 @@ def build_c3(d, a, notes, now_local, tr):
              f"<tr><td><b>ජන්ම ශනි</b></td><td>{SIGN_SI[sa_n['sign_idx']]} {dms(sa_n['deg_in_sign'])}, {sa_n['house']} වැන්නේ"
              + (f", {si_dignity(sa_n['dignity'])}" if si_dignity(sa_n["dignity"]) != "—" else "")
              + (", වක්‍ර" if sa_n["retro"] else "") + "</td></tr>"
-             f"<tr><td><b>ශනි අධිපති භාව</b></td><td>{', '.join(str(x) + ' වැන්න' for x in own)} — {'; '.join(HOUSE_SI[x].split(',')[0] for x in own)}</td></tr>"
+             f"<tr><td><b>ශනි අධිපති භාව</b></td><td>{', '.join(str(x) + ' වැන්න' for x in own)} — {'; '.join(HOUSE_AREA_SI[x] for x in own)}</td></tr>"
              f"<tr><td><b>චන්ද්‍රගෙන් ශනි</b></td><td>{jc.house_from(ms, sa_n['sign_idx'])} වැන්නේ</td></tr>"
              + (f"<tr><td><b>ශනිගේ අෂ්ටකවර්ග බින්දු</b></td><td>{sum(sat_bav)} (සියලු රාශිවල එකතුව)</td></tr>" if sat_bav else "")
              + "</table>")
@@ -2775,7 +2909,7 @@ def build_c3(d, a, notes, now_local, tr):
     H.append(f'<div class="box"><b>ප්‍රවණතාව:</b> ' + ("ජන්ම කේන්දරයේ ශනි ශක්තිමත් ස්ථානයක සිටීම මේ කාලවල බර සාපේක්ෂව අඩු කරන සාධකයකි."
                                                        if good_sa else "ජන්ම ශනිගේ ස්ථානය අනුව මේ කාලවලදී ඉවසීම සහ ක්‍රමවත් බව වැඩිපුර අවශ්‍ය විය හැක.")
              + " ශනි අධිපති භාවවල කාරණා මේ කාලවලදී ප්‍රමුඛ වේ.</div>")
-    H.append('<div class="pb"></div><h2>3. ඔබේ සඩේ සති / ධයියා කාල රේඛාව</h2>')
+    H.append('<div class="pb"></div><h2>3. ඔබේ ඒරාෂ්ටක / අෂ්ටම ශනි කාල රේඛාව</h2>')
     rows = []
     for s0, s1, tag, h in spells:
         ph = SS_PHASE_SI.get(h, ("", ""))
@@ -2848,8 +2982,8 @@ def build_c4(d, a, notes, now_local, tr):
     H.append("<h2>2. ග්‍රහයන් දෙදෙනා</h2><table><tr><th></th><th>ග්‍රහයා</th><th>ස්ථානය</th><th>තත්ත්වය</th><th>අධිපති භාව</th><th>කාරකත්වය</th></tr>"
              + "".join(rows) + "</table>")
     ha, hb = P[A]["house"], P[B]["house"]
-    H.append(f'<div class="box"><b>වෙනස:</b> {PLANET_SI[A]} දශාවේදී {HOUSE_SI[ha]} සම්බන්ධ කාරණා ප්‍රමුඛ වූ බව පෙනේ. '
-             f'{PLANET_SI[B]} දශාවේදී අවධානය {HOUSE_SI[hb]} දෙසට හැරෙන ප්‍රවණතාවක් ඇත. '
+    H.append(f'<div class="box"><b>වෙනස:</b> {PLANET_SI[A]} දශාවේදී {HOUSE_PLAIN_SI[ha]} සම්බන්ධ කාරණා ප්‍රමුඛ වූ බව පෙනේ. '
+             f'{PLANET_SI[B]} දශාවේදී අවධානය {HOUSE_PLAIN_SI[hb]} දෙසට හැරෙන ප්‍රවණතාවක් ඇත. '
              + ("නව දශාධිපති හිතකර ස්ථානයක සිටීම මාරුව සාපේක්ෂව පහසු කරයි."
                 if hb in (1, 2, 4, 5, 7, 9, 10, 11) and "නීච" not in si_dignity(P[B]["dignity"])
                 else "නව දශාධිපතිගේ ස්ථානය අනුව මුල් කාලයේ ගැලපීමට කාලයක් ගත විය හැක.") + "</div>")
@@ -2864,7 +2998,7 @@ def build_c4(d, a, notes, now_local, tr):
             hh = P[s_["lord"]]["house"]
             rows.append(f"<tr{' class=cur' if st <= now_utc < en else ''}><td>{PLANET_SI[m['lord']]}/{PLANET_SI[s_['lord']]}</td>"
                         f"<td>{st.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td><td>{en.astimezone(ZoneInfo(tz)).strftime('%Y-%m-%d')}</td>"
-                        f"<td>{PLANET_SI[s_['lord']]} {hh} වැන්නේ — {HOUSE_SI[hh].split(',')[0]}</td></tr>")
+                        f"<td>{PLANET_SI[s_['lord']]} {hh} වැන්නේ — {HOUSE_AREA_SI[hh]}</td></tr>")
     H.append("<table><tr><th>දශාව</th><th>ආරම්භය</th><th>අවසානය</th><th>ප්‍රවණතාව</th></tr>" + "".join(rows) + "</table>")
     H.append(f'<p class="small">මාරු දිනය <b>{change.astimezone(ZoneInfo(tz)).strftime("%Y-%m-%d")}</b>. '
              f'ඊට කලින් අවසන් අන්තර් දශාව සහ පසුව පළමු අන්තර් දශාව මාරුවේ ස්වභාවය තීරණය කරයි.</p>')
@@ -2873,10 +3007,10 @@ def build_c4(d, a, notes, now_local, tr):
     H.append("<ul>"
              f"<li><b>ශනි</b> {SIGN_SI[sa['sign']]} — චන්ද්‍රගෙන් {sa['from_moon']}: {SATURN_FROM_MOON_SI[sa['from_moon']]}</li>"
              f"<li><b>ගුරු</b> {SIGN_SI[ju['sign']]} — චන්ද්‍රගෙන් {ju['from_moon']}: {JUPITER_FROM_MOON_SI[ju['from_moon']]}</li>"
-             f"<li><b>සඩේ සති / ධයියා</b>: {tr['sade_sati']}</li></ul>")
+             f"<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි</b>: {tr['sade_sati']}</li></ul>")
     H.append("<h2>5. ප්‍රායෝගිකව</h2><ul>"
              f"<li>නව දශාධිපති {PLANET_SI[B]} නියෝජනය කරන කාරණා ({PLANET_NATURE_SI[B]}) ක්‍රමයෙන් ඉදිරියට එනවා — ඒවාට කලින් සූදානම් වීම ප්‍රයෝජනවත්.</li>"
-             f"<li>{HOUSE_SI[hb]} සම්බන්ධ දේවල් නව අවධියේ තේමාව වීමට ඉඩ ඇත.</li>"
+             f"<li>{HOUSE_PLAIN_SI[hb]} සම්බන්ධ දේවල් නව අවධියේ තේමාව වීමට ඉඩ ඇත.</li>"
              "<li>මාරු කාලයේ ලොකු, ආපසු හැරවිය නොහැකි තීරණ ගැනීමට කලින් කරුණු ලියා තබා ගෙන සලකා බලන්න.</li>"
              "<li>පැරණි දශාවේ ඉතිරි වී ඇති කටයුතු (ණය, පොරොන්දු, අවසන් නොකළ වැඩ) මාරුවට කලින් අවසන් කර ගැනීම ප්‍රයෝජනවත්.</li></ul>")
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ විග්‍රහය"))
@@ -2913,7 +3047,7 @@ def build_c6(d, a, notes, now_local, year, month):
              f"<tr><td><b>සුදර්ශන චක්‍ර අන්තර් රාශිය</b></td><td>{SIGN_SI[inv[m['sc_antar_sign']]]} — මේ මාසයේ ග්‍රහයන් මේ රාශියෙන් බලන්න</td></tr>"
              "</table>")
     H.append(f'<div class="box">මාසේශ <b>{PLANET_SI[m["masesha"]]}</b> මේ මාසයේ ප්‍රධාන ග්‍රහයා. '
-             f'ජන්ම කේන්දරයේ එය {P[m["masesha"]]["house"]} වැන්නේ ({HOUSE_SI[P[m["masesha"]]["house"]]}) සිටී — '
+             f'ජන්ම කේන්දරයේ එය {P[m["masesha"]]["house"]} වැන්නේ ({HOUSE_PLAIN_SI[P[m["masesha"]]["house"]]}) සිටී — '
              f'මාසය පුරා එම කාරණා ඉදිරියට එන ප්‍රවණතාවක් ඇත.</div>')
     rows = []
     for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"]:
