@@ -1317,6 +1317,55 @@ def pch_en(p):
     return {"vara": out, "tithi": str(p.get("tithi", ""))}
 
 
+# Plain English for the English G (the Sinhala G's LAGNA_PLAIN_SI / HOUSE_AREA_SI in English)
+LAGNA_PLAIN_EN = [
+    ("active, quick to decide and happy to lead", "learning patience will help you"),
+    ("steady, patient and fond of life's comforts", "being a little more open to change helps"),
+    ("clever, a good talker and keen to learn new things", "finish one task before starting the next"),
+    ("sensitive, loving towards your family and in need of security", "think things through rather than deciding on feelings alone"),
+    ("confident, dignified and generous", "keeping pride in balance works in your favour"),
+    ("careful with detail, orderly and glad to help others", "go easy on criticism, of yourself and of others"),
+    ("balanced, warm in relationships and fond of beautiful things", "make decisions on time instead of putting them off"),
+    ("deep-thinking, deeply committed and drawn to explore", "let trust and flexibility grow"),
+    ("honest, principled, far-sighted and philosophical", "think carefully before taking big risks"),
+    ("disciplined, practical and willing to work your way up", "let the people close to you see your feelings too"),
+    ("full of new ideas, humane and independent", "stay close to the people around you"),
+    ("compassionate, artistic and spiritually inclined", "keep practical limits and plans"),
+]
+HOUSE_AREA_EN = {1: "yourself, your health and personality", 2: "money and family", 3: "effort and siblings",
+                 4: "home and mother", 5: "children and education", 6: "work, health habits and competition",
+                 7: "marriage and partnerships", 8: "sudden changes and inheritance", 9: "fortune and father",
+                 10: "career and position", 11: "income and gains", 12: "expenses and foreign lands"}
+
+
+def plain_summary_en(d, a, now_local):
+    """'In simple words' for the English G (same points as plain_summary_si, compact)."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    tz = ZoneInfo(a.tz)
+    now_utc = now_local.astimezone(timezone.utc)
+    md, ad = current_dashas(d, now_local)
+    ym = lambda x: datetime.fromisoformat(x).astimezone(tz).strftime("%Y-%m")  # noqa: E731
+    tone = lambda lord: "a good time" if period_tone_si(P, lord) == TONE_GOOD_SI else "a time for patience and care"  # noqa: E731
+    traits, tip = LAGNA_PLAIN_EN[ls]
+    L = [f"<li><b>Your nature:</b> with {esc(sign_en(ls))} Lagna you are {traits}. {tip[0].upper() + tip[1:]}.</li>"]
+    if md:
+        L.append(f"<li><b>The period you are in:</b> from {ym(md['start'])[:4]} to {ym(md['end'])[:4]} you are in the "
+                 f"{PLANET_EN[md['lord']]} Maha Dasha; in these years life's main focus is "
+                 f"{HOUSE_AREA_EN[P[md['lord']]['house']]}.</li>")
+    if ad:
+        L.append(f"<li><b>Until {ym(ad['end'])}:</b> {HOUSE_AREA_EN[P[ad['lord']]['house']]} come to the fore, "
+                 f"{tone(ad['lord'])}.</li>")
+    after = datetime.fromisoformat(ad["end"]) if ad else now_utc
+    for m in d["vimshottari"]["mahadashas"]:
+        nxt = next((x for x in m.get("sub", []) if datetime.fromisoformat(x["start"]) >= after
+                    and period_tone_si(P, x["lord"]) == TONE_GOOD_SI), None)
+        if nxt and datetime.fromisoformat(nxt["start"]) < now_utc + timedelta(days=6 * 365):
+            L.append(f"<li><b>A good time ahead:</b> {ym(nxt['start'])} to {ym(nxt['end'])}, for "
+                     f"{HOUSE_AREA_EN[P[nxt['lord']]['house']]}.</li>")
+            break
+    return '<div class="box plain compact"><div class="lbl">In simple words</div><ul>' + "".join(L) + "</ul></div>"
+
+
 def build_g_en(d, a, now_local):
     """The free one-page summary (G) in English: the same facts and wording as build_g."""
     P, ls = d["planets"], d["lagna"]["sign_idx"]
@@ -1330,10 +1379,10 @@ def build_g_en(d, a, now_local):
     span = lambda x: f" ({fmt_date(x['start'], a.tz)} – {fmt_date(x['end'], a.tz)})"  # noqa: E731
     H = [f'''<div style="text-align:center">{LOGO_IMG_SMALL}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE_EN)}</div>
-      <h1 style="margin-top:14pt; font-size:17pt">Your Birth Chart at a Glance</h1>
+      <h1 style="margin-top:9pt; font-size:17pt">Your Birth Chart at a Glance</h1>
       <div class="muted">{esc(a.name)} · {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div></div>''']
-    H.append(f'<div class="two" style="margin-top:10pt"><div style="flex:0 0 84mm">'
-             f'{south_indian_html_si(labels, "Rasi chart", 84, lang="en")}</div><div>')
+    H.append(f'<div class="two" style="margin-top:6pt"><div style="flex:0 0 76mm">'
+             f'{south_indian_html_si(labels, "Rasi chart", 76, lang="en")}</div><div>')
     H.append("<table>"
              f"<tr><td><b>Lagna (Ascendant)</b></td><td>{sign_en(ls)} {dms(d['lagna']['deg_in_sign'])}</td></tr>"
              f"<tr><td><b>Lagna lord</b></td><td>{PLANET_EN[lord]}, in house {P[lord]['house']}</td></tr>"
@@ -1344,17 +1393,15 @@ def build_g_en(d, a, now_local):
              + (f"<tr><td><b>Antar Dasha</b></td><td>{PLANET_EN[ad['lord']]}{span(ad)}</td></tr>" if ad else "")
              + f"<tr><td><b>Panchanga</b></td><td>{esc(pch['vara'])} · {esc(pch['tithi'])}</td></tr>"
              "</table></div></div>")
-    H.append(f'<div class="box"><b>{jc.SIGNS[ls]} Lagna:</b> {LAGNA_NATURE_EN[ls]}.'
-             + (f'<br><b>{PLANET_EN[md["lord"]]} Maha Dasha:</b> {PLANET_NATURE_EN[md["lord"]]}. '
-                f'{PLANET_EN[md["lord"]]} sits in house {P[md["lord"]]["house"]} of the birth chart '
-                f'({HOUSE_EN[P[md["lord"]]["house"]]}).' if md else "") + "</div>")
-    H.append('<div class="note"><div class="lbl">This is a free summary sheet</div>'
-             '<p>For a full reading (yogas and doshas, the Navamsa chart, dasha periods, transits and the trends '
-             'of the next few years), see our <b>Kendra Sara (A1)</b> report, written in Sinhala.</p></div>')
+    H.append(plain_summary_en(d, a, now_local))
+    H.append('<p class="muted" style="font-size:8.3pt; margin:4pt 0"><b>Lagna</b> = the sign rising in the east at your birth · '
+             '<b>Lagna lord</b> = the planet that rules it · <b>Nakshatra</b> = the star the Moon was in · '
+             '<b>Dasha</b> = the planet that governs this part of your life.</p>')
+    H.append('<p class="small" style="margin:6pt 0"><b>This is a free summary sheet.</b> For a full reading (yogas, dasha '
+             'periods, transits and the years ahead), see our <b>Kendra Sara (A1)</b> report, written in Sinhala.</p>')
     H.append('<p class="disc">Astrology offers reflective guidance on tendencies, not fixed predictions, and is not '
-             'medical, legal or financial advice. Results depend on an accurate birth time. Calculation: Lahiri '
-             'ayanamsa · whole-sign houses · Swiss Ephemeris.</p>')
-    H.append(f'<div class="brandfoot"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
+             'medical, legal or financial advice. Results depend on an accurate birth time. Calculation: Swiss Ephemeris.</p>')
+    H.append(f'<div class="brandfoot" style="margin-top:6pt; padding-top:4pt"><div class="brandmark" style="font-size:11pt">{esc(BRAND)}</div>'
              + (f'<div class="muted">{esc(BRAND_CONTACT)}</div>' if BRAND_CONTACT else "") + "</div>")
     return "\n".join(H)
 
