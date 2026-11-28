@@ -90,7 +90,7 @@ def test_note_keys_match_what_each_report_prints():
     import re
     from web import catalog
     jr = web.jr
-    builders = {"A1": [jr.build_a1], "A2": [jr.build_a2], "A3": [jr.build_a2], "C1": [jr.build_c1],
+    builders = {"A1": [jr.build_a1], "A2": [jr.build_a2], "A3": [jr.build_a3], "C1": [jr.build_c1],
                 "C2": [jr.build_c2, jr.build_c1], "C3": [jr.build_c3], "C4": [jr.build_c4], "C6": [jr.build_c6],
                 "N": [jr.build_n], "E1": [jr.build_e1], "D1": [jr.build_d1], "D2": [jr.build_d2],
                 "D3": [jr.build_d3], "P1": [jr.build_p1], "P2": [jr.build_p1], "M1": [jr.build_m1],

@@ -56,6 +56,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import jyotisha_calc as jc  # noqa: E402
 import jyotisha_pdftext  # noqa: E402
+import jyotisha_deep_texts as deep  # noqa: E402  (A3's descriptive Sinhala)
 
 # ---------------------------------------------------------------- Sinhala vocabulary
 SIGN_SI = ["මේෂ", "වෘෂභ", "මිථුන", "කටක", "සිංහ", "කන්‍යා", "තුලා", "වෘශ්චික", "ධනු", "මකර", "කුම්භ", "මීන"]
@@ -529,6 +530,10 @@ h3 { font-size: 11.5pt; color: #3b2f2f; margin: 12pt 0 4pt 0; page-break-after: 
 .plain .lbl { font-weight: 700; color: #6b1010; font-size: 10.5pt; margin-bottom: 2pt; }
 .plain ul { margin: 2pt 0 0 0; padding-left: 13pt; } .plain li { margin: 2.5pt 0; }
 .plain.compact { padding: 6pt 9pt; margin: 6pt 0; } .plain.compact li { font-size: 9.6pt; margin: 1.5pt 0; }
+.area h3 { margin-bottom: 2pt; } .area .dot { display: inline-block; width: 6.5pt; height: 6.5pt; border-radius: 50%; border: 1px solid #b8862f; margin-right: 1.5pt; vertical-align: middle; }
+.area .dot.on { background: #b8862f; }
+.area .lvl { font-size: 9.5pt; color: #6b1010; font-weight: 600; } .area ul { margin-top: 2pt; }
+.area { page-break-inside: avoid; } table.tl tr.md td { background: #f3ead2; }
 .gloss td { font-size: 8.6pt; line-height: 1.35; vertical-align: top; padding: 2.5pt 6pt; }
 .muted { color: #7a6f6f; font-size: 9pt; }
 table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt 0; font-size: 9.6pt; }
@@ -3202,6 +3207,389 @@ def plain_b_ab(d, a, code, tr, now_local):
     return '<div class="box plain"><div class="lbl">සරලව කිවහොත්</div><ul>' + "".join(L) + "</ul></div>"
 
 
+# ================================================================ A3 — the deep reading
+# A3 reads the chart for a person who is not an astrologer: who you are, how strong each area of life is and
+# why, when it comes alive, what suits you, and the next twenty years. Every point is from the computed chart
+# (house lords, dignity, Shadbala, occupants, aspects, Ashtakavarga, the area's varga, Jaimini karakas, yogas);
+# the astrologer's tables (build_a2 deep) follow as an appendix. No medical, longevity or money advice.
+_BENEFIC_A3 = {"Ju", "Ve", "Me", "Mo"}
+_MALEFIC_A3 = {"Sa", "Ma", "Ra", "Ke", "Su"}
+_UPACHAYA_A3 = {3, 6, 10, 11}
+_DUSTHANA_A3 = {6, 8, 12}
+_ASPECTS_A3 = {"Ju": (5, 7, 9), "Sa": (3, 7, 10), "Ma": (4, 7, 8)}   # special aspects, counted from the planet
+DEEP_AREAS = [
+    dict(key="career", title="රැකියාව සහ වෘත්තිය", house=10, more=[6, 11], karaka=["Sa", "Su"], varga="D10", ck="AmK",
+         yogas=("Raja", "Mahapurusha", "Vipareeta")),
+    dict(key="wealth", title="ධනය සහ ආදායම", house=2, more=[11], karaka=["Ju"], varga="D2", ck=None,
+         yogas=("Dhana", "Lakshmi", "Vasumati")),
+    dict(key="marriage", title="විවාහය සහ සහකරු", house=7, more=[2], karaka=["Ve"], varga="D9", ck="DK", yogas=()),
+    dict(key="education", title="අධ්‍යාපනය සහ ඉගෙනීම", house=5, more=[4, 9], karaka=["Me", "Ju"], varga="D24", ck=None,
+         yogas=("Saraswati", "Budha-Aditya")),
+    dict(key="children", title="දරුවන්", house=5, more=[9], karaka=["Ju"], varga="D7", ck="PK", yogas=()),
+    dict(key="home", title="නිවස, දේපල සහ වාහන", house=4, more=[2, 11], karaka=["Ma", "Ve"], varga="D4", ck=None, yogas=()),
+    dict(key="foreign", title="විදේශ ගමන් සහ අවස්ථා", house=12, more=[9, 3], karaka=["Ra"], varga=None, ck=None, yogas=()),
+    dict(key="parents", title="දෙමව්පියන් සමඟ සම්බන්ධතාව", house=4, more=[9], karaka=["Mo", "Su"], varga="D12", ck=None, yogas=()),
+    dict(key="vitality", title="ශක්තිය සහ සෞඛ්‍ය පුරුදු", house=1, more=[6], karaka=["Su"], varga=None, ck=None, yogas=()),
+    dict(key="fortune", title="වාසනාව සහ අධ්‍යාත්මික ජීවිතය", house=9, more=[12], karaka=["Ju", "Ke"], varga="D9", ck="AK",
+         yogas=("Gaja-Kesari",)),
+]
+_VARGA_NAME_A3 = {"D2": "හෝරා (D2 — ධනය)", "D4": "චතුර්ථාංශ (D4 — දේපල)", "D7": "සප්තාංශ (D7 — දරුවන්)",
+                  "D9": "නවාංශ (D9 — විවාහය සහ ධර්මය)", "D10": "දශාංශ (D10 — රැකියාව)", "D12": "ද්වාදශාංශ (D12 — දෙමව්පියන්)",
+                  "D24": "චතුර්විංශාංශ (D24 — අධ්‍යාපනය)"}
+_CK_NAME_A3 = {"AmK": "අමාත්‍යකාරක (වෘත්තිය පෙන්වන ග්‍රහයා)", "DK": "දාරාකාරක (සහකරු පෙන්වන ග්‍රහයා)",
+               "PK": "පුත්‍රකාරක (දරුවන් පෙන්වන ග්‍රහයා)", "AK": "ආත්මකාරක (ආත්මයේ ග්‍රහයා)"}
+_YOGA_KIND_A3 = {"Dhana": "ධන යෝගයක්", "Raja": "රාජ යෝගයක්", "Mahapurusha": "පංච මහාපුරුෂ යෝගයක්"}
+# Calibrated on 120 random charts: each area's average score (some houses score higher by nature: the 10th
+# likes malefics, Raja yogas are common), and the levels on the score above that average, so that across
+# people each area is "5" for about the top tenth and "1" for about the bottom tenth.
+_BASE_A3 = {"career": 3.25, "wealth": 1.56, "marriage": 0.87, "education": 1.23, "children": 1.01, "home": 1.29,
+            "foreign": 1.01, "parents": 0.97, "vitality": 1.03, "fortune": 1.2}
+_LEVELS_A3 = [(2.1, 5, "ඉතා ශක්තිමත්"), (0.7, 4, "ශක්තිමත්"), (-0.55, 3, "හොඳ, සමබර"),
+              (-2.25, 2, "මධ්‍යම — උත්සාහයෙන් දියුණු වේ"), (-99, 1, "වැඩි උත්සාහයක් ඉල්ලන")]
+# what to do, by area and level (strong 4-5 / middle 3 / effort 1-2), where the area has no chart-made advice
+_GUIDE_A3 = {
+    "children": ("දරුවන් සම්බන්ධ කාරණා ඔබේ කේන්දරයේ ආශීර්වාදයක් ලෙස පෙනේ; ඔවුන්ගේ අධ්‍යාපනයට සහ හැඩගැසීමට ඔබට ලොකු දායකත්වයක් දිය හැක.",
+                 "දරුවන් සම්බන්ධ කාරණා සාමාන්‍ය ලෙස ගලා යයි; ඉවසීම සහ ආදරය සමඟ ඔවුන්ට කාලය දීම වැදගත්.",
+                 "දරුවන් සම්බන්ධ කාරණාවලදී ඉවසීම සහ කාලය අවශ්‍ය විය හැක; සෞඛ්‍ය කාරණා ඇත්නම් වෛද්‍ය උපදෙස් ගන්න."),
+    "home": ("නිවසක්, ඉඩමක් හෝ වාහනයක් ලැබීමට කේන්දරය හිතකරයි; පවුලේ සහාය ද ලැබේ.",
+             "දේපල කටයුතු සැලසුම් සහිතව, පියවරෙන් පියවර කරන විට හොඳින් සාර්ථක වේ.",
+             "දේපල කටයුතුවලදී ලේඛන හොඳින් පරීක්ෂා කර, ඉක්මන් තීරණ නොගෙන කටයුතු කරන්න."),
+    "foreign": ("විදේශ අධ්‍යාපනය, රැකියා හෝ ගමන් සඳහා කේන්දරය හොඳ අවස්ථා පෙන්වයි.",
+                "විදේශ අවස්ථා ඇති විය හැකි නමුත් ඒවා ලැබෙන්නේ සැලසුම් සහ උත්සාහය සමඟයි.",
+                "ඔබේ දියුණුව බොහෝ විට උපන් රට තුළම වඩා ස්ථාවරයි; විදේශ ගමන් සඳහා හොඳින් සූදානම් වන්න."),
+    "parents": ("දෙමව්පියන්ගෙන් ලැබෙන සහාය සහ ආශීර්වාදය ඔබේ ජීවිතයේ ශක්තියකි.",
+                "දෙමව්පියන් සමඟ සම්බන්ධතාව සාමාන්‍යයෙන් හොඳයි; එකිනෙකා තේරුම් ගැනීමට කාලය දෙන්න.",
+                "දෙමව්පියන් සමඟ සම්බන්ධතාවේ ඉවසීම සහ සන්නිවේදනය වැදගත්; ඔවුන්ගේ අදහස්ද අහන්න."),
+    "vitality": ("ශරීර ශක්තිය සහ ප්‍රතිරෝධය හොඳයි; හොඳ පුරුදු පවත්වා ගන්නා තරමට එය දිගු කල් රැකේ.",
+                 "ශක්තිය සාමාන්‍යයි; නියමිත නින්ද, ආහාර සහ ව්‍යායාම ඔබේ ශක්තිය වැඩි කරයි.",
+                 "ශක්තිය රැකගැනීමට නියමිත දිනචරියාවක් වැදගත්; අවශ්‍ය විට වෛද්‍ය උපදෙස් ලබා ගන්න."),
+    "fortune": ("වාසනාව සහ ගුරුවරුන්ගේ ආශීර්වාදය ඔබට පහසුවෙන් ලැබේ; ධර්මය සහ දානය ඔබේ ජීවිතය තවත් ශක්තිමත් කරයි.",
+                "වාසනාව ලැබෙන්නේ ඔබේ උත්සාහයත් සමඟයි; ආධ්‍යාත්මික පුරුදු සිතට සැනසීම ගෙන එයි.",
+                "වාසනාව ගොඩනැගෙන්නේ ක්‍රමයෙන්, ඔබේම උත්සාහයෙනි; භාවනාව සහ දානය සිතට ශක්තිය දෙයි."),
+}
+
+
+def _house_sign_a3(ls, h):
+    return (ls + h - 1) % 12
+
+
+def _dig_a3(P, c):
+    """+1 exalted / own / moolatrikona, -1 debilitated, 0 otherwise, with the Sinhala word."""
+    dg = str(P[c].get("dignity", ""))
+    if dg.startswith(("Uchcha", "Swakshetra", "Moolatrikona")):
+        return 1, si_dignity(dg)
+    if dg.startswith("Neecha"):
+        return -1, si_dignity(dg)
+    return 0, ""
+
+
+def _ratio_a3(d, c):
+    sb = (d.get("shadbala") or {}).get(c)
+    return sb.get("ratio") if sb else None
+
+
+def area_reading_a3(d, area):
+    """One life area: (score, [(points, plain reason)], facts) from the chart. Positive reasons strengthen it."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    h = area["house"]
+    lord = jc.SIGN_LORD[_house_sign_a3(ls, h)]
+    R = []
+    lh = P[lord]["house"]
+    if lh == h:
+        R.append((1.0, f"මේ ක්ෂේත්‍රයේ අධිපති {PLANET_SI[lord]} තමන්ගේම භාවයේ සිටී — ක්ෂේත්‍රය තමන්ම ආරක්ෂා කරයි"))
+    elif lh in (1, 4, 7, 10, 5, 9):
+        R.append((1.0, f"මේ ක්ෂේත්‍රයේ අධිපති {PLANET_SI[lord]} ශක්තිමත් තැනක ({lh} වන භාවයේ — {HOUSE_AREA_SI[lh]}) සිටී"))
+    elif lh in (2, 11):
+        R.append((0.5, f"මේ ක්ෂේත්‍රයේ අධිපති {PLANET_SI[lord]} {lh} වන භාවයේ ({HOUSE_AREA_SI[lh]}) සිටී — ලාභදායී තැනක්"))
+    elif lh in _DUSTHANA_A3 and h not in _DUSTHANA_A3:
+        R.append((-1.0, f"මේ ක්ෂේත්‍රයේ අධිපති {PLANET_SI[lord]} {lh} වන භාවයේ ({HOUSE_AREA_SI[lh]}) සිටීම නිසා ප්‍රතිඵල ලැබෙන්නේ "
+                        "වැඩි මහන්සියකින්"))
+    pts, word = _dig_a3(P, lord)
+    if pts:
+        R.append((pts, f"අධිපති {PLANET_SI[lord]} {word} තත්ත්වයේ — " + ("ඉතා ශක්තිමත්" if pts > 0 else "දුර්වලයි")))
+    r = _ratio_a3(d, lord)
+    if r is not None:
+        if r >= 1.3:
+            R.append((0.75, f"අධිපති {PLANET_SI[lord]}ට ෂඩ්බල ක්‍රමයට ඉහළ ශක්තියක් ඇත"))
+        elif r < 1.0:
+            R.append((-0.5, f"අධිපති {PLANET_SI[lord]}ගේ ෂඩ්බල ශක්තිය අවශ්‍ය මට්ටමට වඩා අඩුයි"))
+    for c in ["Ju", "Ve", "Me", "Mo", "Sa", "Ma", "Ra", "Ke", "Su"]:
+        if c == lord or P[c]["house"] != h:
+            continue
+        if c in _BENEFIC_A3:
+            R.append((0.5, f"{PLANET_SI[c]} (ශුභ ග්‍රහයෙක්) මේ භාවයේම සිටී"))
+        elif h in _UPACHAYA_A3:
+            R.append((0.25, f"{PLANET_SI[c]} මේ භාවයේ සිටී — මෙවැනි භාවයක එය උත්සාහයට ශක්තියක්"))
+        else:
+            R.append((-0.5, f"{PLANET_SI[c]} මේ භාවයේ සිටීම නිසා ඉවසීම අවශ්‍යයි"))
+    for c, offs in _ASPECTS_A3.items():
+        if P[c]["house"] == h or c == lord:
+            continue
+        if jc.house_from(P[c]["sign_idx"], _house_sign_a3(ls, h)) in offs:
+            if c == "Ju":
+                R.append((0.75, "ගුරුගේ දෘෂ්ටිය මේ භාවයට ලැබේ — ආරක්ෂාව සහ වාසනාව"))
+            elif h not in _UPACHAYA_A3:
+                R.append((-0.25, f"{PLANET_SI[c]}ගේ දෘෂ්ටිය නිසා මෙහි බාධා හෝ ප්‍රමාද ඇති විය හැක"))
+    sav = (d.get("ashtakavarga") or {}).get("sav")
+    if sav:
+        n = sav[_house_sign_a3(ls, h)]
+        if n >= 30:
+            R.append((1.0, f"අෂ්ටකවර්ග ලකුණු {n}ක් — සාමාන්‍යයට (28) වඩා වැඩියි"))
+        elif n <= 24:
+            R.append((-1.0, f"අෂ්ටකවර්ග ලකුණු {n}ක් — සාමාන්‍යයට (28) වඩා අඩුයි"))
+    kwt = 1 / len(area["karaka"])   # two karakas share one karaka's weight
+    for k in area["karaka"]:
+        if k in ("Ra", "Ke"):
+            kh = P[k]["house"]
+            if kh in (h, *area["more"]):
+                R.append((0.5 * kwt, f"{PLANET_SI[k]} (මේ ක්ෂේත්‍රය පෙන්වන ග්‍රහයා) අදාළ භාවයක සිටී"))
+            continue
+        kp, kw = _dig_a3(P, k)
+        kr = _ratio_a3(d, k)
+        if kp > 0:
+            R.append((0.75 * kwt, f"මේ ක්ෂේත්‍රය පෙන්වන {PLANET_SI[k]} {kw} — ශක්තිමත්"))
+        elif kp < 0:
+            R.append((-0.75 * kwt, f"මේ ක්ෂේත්‍රය පෙන්වන {PLANET_SI[k]} {kw} — දුර්වලයි"))
+        if kr is not None and kr >= 1.3 and kp >= 0:
+            R.append((0.5 * kwt, f"මේ ක්ෂේත්‍රය පෙන්වන {PLANET_SI[k]}ට ෂඩ්බල ශක්තිය ඉහළයි"))
+        elif kr is not None and kr < 1.0:
+            R.append((-0.5 * kwt, f"මේ ක්ෂේත්‍රය පෙන්වන {PLANET_SI[k]}ගේ ශක්තිය අඩුයි"))
+    for m in area["more"]:
+        ml = jc.SIGN_LORD[_house_sign_a3(ls, m)]
+        mh = P[ml]["house"]
+        if mh in _DUSTHANA_A3 and m not in _DUSTHANA_A3:
+            R.append((-0.25, f"{m} වන භාවයේ ({HOUSE_AREA_SI[m]}) අධිපති අපහසු තැනක සිටී"))
+        elif mh in (1, 4, 5, 7, 9, 10):
+            R.append((0.25, f"{m} වන භාවයේ ({HOUSE_AREA_SI[m]}) අධිපති ශක්තිමත් තැනක සිටී"))
+    vg = (d.get("vargas") or {}).get(area["varga"]) if area["varga"] else None
+    if vg:
+        inv = {v: i for i, v in enumerate(jc.SIGNS)}
+        vl = jc.SIGN_LORD[inv[vg["La"]]]
+        vh = vg.get("_houses_from_varga_lagna", {}).get(vl)
+        if vh in (1, 4, 5, 7, 9, 10):
+            R.append((0.5, f"{_VARGA_NAME_A3[area['varga']]} කේන්දරයේ අධිපති ශක්තිමත් තැනක සිටී"))
+        elif vh in _DUSTHANA_A3:
+            R.append((-0.5, f"{_VARGA_NAME_A3[area['varga']]} කේන්දරයේ අධිපති අපහසු තැනක සිටී"))
+    ck = (d.get("chara_karakas") or {}).get(area["ck"]) if area["ck"] else None
+    if ck:
+        c = ck["planet"]
+        if P[c]["house"] in (1, 4, 5, 7, 9, 10):
+            R.append((0.5, f"{_CK_NAME_A3[area['ck']]} {PLANET_SI[c]} ශක්තිමත් තැනක සිටී"))
+        elif P[c]["house"] in _DUSTHANA_A3:
+            R.append((-0.25, f"{_CK_NAME_A3[area['ck']]} {PLANET_SI[c]} අපහසු තැනක සිටී"))
+    n_yoga = 0
+    for y in d.get("yogas_full") or []:
+        nm, cat = str(y.get("name", "")), str(y.get("category", ""))
+        if "unmet" in nm or "partly" in nm:
+            continue
+        if n_yoga < 2 and any(w.lower() in (nm + " " + cat).lower() for w in area["yogas"]):
+            kind = _YOGA_KIND_A3.get(cat, "ශුභ යෝගයක්")
+            name = "" if re.search(r"\d", nm) else f" ({si_yoga_name(nm).replace(' යෝගය', '')})"
+            R.append((1.0 if n_yoga == 0 else 0.5, f"{kind}{name} මේ ක්ෂේත්‍රයට ශක්තියක්"))
+            n_yoga += 1
+        if area["key"] == "wealth" and cat == "Daridra":
+            R.append((-0.5, "මුදල් කළමනාකරණයට වැඩි සැලකිල්ලක් අවශ්‍ය බව පෙන්වන සංයෝගයක් ඇත"))
+    if area["key"] == "marriage" and P["Sa"]["house"] == 7:
+        R.append((-0.25, "ශනි 7 වන භාවයේ — විවාහය ටිකක් ප්‍රමාද විය හැකි නමුත් ස්ථාවරයි"))
+    seen, uniq = set(), []
+    for pt, why in R:   # a yoga can match two names; say each reason once
+        if why not in seen:
+            seen.add(why)
+            uniq.append((pt, why))
+    return sum(pt for pt, _ in uniq), uniq, lord
+
+
+def _level_a3(score, key):
+    """(1-5, word) for an area's score, measured against that area's average (_BASE_A3)."""
+    return next((n, w) for t, n, w in _LEVELS_A3 if score - _BASE_A3[key] >= t)
+
+
+def area_windows_a3(d, area, lord, now_local, years=20, most=3):
+    """The coming antar dashas (next `years`) whose lord rules the area, sits in it, is its karaka or chara karaka."""
+    P = d["planets"]
+    keys = {lord, *[k for k in area["karaka"]], *[c for c in P if P[c]["house"] == area["house"]]}
+    ck = (d.get("chara_karakas") or {}).get(area["ck"]) if area["ck"] else None
+    if ck:
+        keys.add(ck["planet"])
+    now_utc = now_local.astimezone(timezone.utc)
+    end = now_utc + timedelta(days=int(years * 365.25))
+    out = []
+    for m in d["vimshottari"]["mahadashas"]:
+        for x in m.get("sub", []):
+            st, en = datetime.fromisoformat(x["start"]), datetime.fromisoformat(x["end"])
+            if en > now_utc and st < end and x["lord"] in keys:
+                out.append((max(st, now_utc), en, m["lord"], x["lord"]))
+    return out[:most]
+
+
+def _area_advice_a3(d, area, lvl):
+    """What suits the person in this area: from the chart where the classics give it, otherwise by strength."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    lord_of = lambda h: jc.SIGN_LORD[_house_sign_a3(ls, h)]  # noqa: E731
+    def uniq(xs):
+        out = []
+        for x in xs:
+            if x and x not in out:
+                out.append(x)
+        return out
+    key = area["key"]
+    if key == "career":
+        inv = {v: i for i, v in enumerate(jc.SIGNS)}
+        v10 = (d.get("vargas") or {}).get("D10")
+        amk = ((d.get("chara_karakas") or {}).get("AmK") or {}).get("planet")
+        pl = uniq([lord_of(10), *[c for c in P if P[c]["house"] == 10], jc.SIGN_LORD[inv[v10["La"]]] if v10 else None, amk])[:3]
+        fields = uniq([f.strip() for c in pl for f in deep.CAREER_FIELDS_SI[c].split(",")])[:9]
+        return ("<b>ඔබට ගැලපෙන ක්ෂේත්‍ර:</b> " + ", ".join(fields)
+                + f" <span class=muted>({', '.join(PLANET_SI[c] for c in pl)} අනුව)</span>")
+    if key == "wealth":
+        h11 = P[lord_of(11)]["house"]
+        return f"<b>ආදායම ලැබීමේ ප්‍රවණතාව:</b> ඔබේ ආදායම බොහෝ විට {deep.INCOME_FROM_SI[h11]} ලැබේ. මෙය මූල්‍ය උපදෙසක් නොවේ."
+    if key == "marriage":
+        dk = ((d.get("chara_karakas") or {}).get("DK") or {}).get("planet")
+        pl = uniq([lord_of(7), "Ve", dk])[:2]
+        return ("<b>සහකරුගේ ස්වභාවය (ප්‍රවණතාව):</b> ඔබේ සහකරු "
+                + " හෝ ".join(deep.PARTNER_NATURE_SI[c] for c in pl) + " වීමට ඉඩ ඇත.")
+    if key == "education":
+        strong = max(["Me", "Ju"], key=lambda c: _ratio_a3(d, c) or 0)
+        pl = uniq([lord_of(5), strong])
+        fields = uniq([f.strip() for c in pl for f in deep.STUDY_FIELDS_SI[c].split(",")])[:8]
+        return "<b>ගැලපෙන විෂය ක්ෂේත්‍ර:</b> " + ", ".join(fields) + "."
+    g = _GUIDE_A3[key]
+    return g[0] if lvl >= 4 else g[1] if lvl == 3 else g[2]
+
+
+def areas_html_a3(d, a, now_local):
+    """The ten life areas, each: strength (dots + word), why, when, what suits you. Returns (html, [(score, title)])."""
+    tz = ZoneInfo(a.tz)
+    ym = lambda t: t.astimezone(tz).strftime("%Y-%m")  # noqa: E731
+    H, scores = [], []
+    for area in DEEP_AREAS:
+        score, R, lord = area_reading_a3(d, area)
+        lvl, word = _level_a3(score, area["key"])
+        scores.append((score - _BASE_A3[area["key"]], area["title"], word))
+        good = [w for pt, w in sorted(R, key=lambda t: -t[0]) if pt > 0][:3]
+        care = [w for pt, w in sorted(R, key=lambda t: t[0]) if pt < 0][:2]
+        dots = "".join(f'<span class="dot{" on" if i < lvl else ""}"></span>' for i in range(5))
+        win = area_windows_a3(d, area, lord, now_local)
+        when = ("; ".join(f"{ym(st)} – {ym(en)} ({PLANET_SI[m]}/{PLANET_SI[x]})" for st, en, m, x in win)
+                if win else "ඉදිරි අවුරුදු 20 තුළ මේ ක්ෂේත්‍රයට විශේෂ දශා කාලයක් නැත — එය ස්ථාවරව ගලා යයි")
+        H.append(f'<div class="area"><h3>{area["title"]} <span class="dots">{dots}</span> <span class="lvl">{word}</span></h3><ul>'
+                 + (f"<li><b>ශක්තිය දෙන දේ:</b> {'; '.join(good)}.</li>" if good else "")
+                 + (f"<li><b>සැලකිලිමත් විය යුතු දේ:</b> {'; '.join(care)}.</li>" if care else "")
+                 + f"<li><b>ඉස්මතු වන කාල:</b> {when}.</li>"
+                 + f"<li>{_area_advice_a3(d, area, lvl)}</li></ul></div>")
+    return "\n".join(H), scores
+
+
+def personality_html_a3(d):
+    """Who you are: Lagna, its lord's house, the Moon's sign and nakshatra, the Atmakaraka, strongest/weakest planet."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    lord = jc.SIGN_LORD[ls]
+    mo = P["Mo"]
+    nk = jc.NAKSHATRAS.index(mo["nakshatra"])
+    ak = ((d.get("chara_karakas") or {}).get("AK") or {}).get("planet")
+    H = [f"<h3>{SIGN_SI[ls]} ලග්නය — ඔබ ලෝකයට පෙනෙන ආකාරය</h3><p>{deep.LAGNA_DEEP_SI[ls]}</p>",
+         f"<p><b>ඔබේ ජීවිතයේ අවධානය:</b> ලග්නාධිපති {PLANET_SI[lord]} {P[lord]['house']} වන භාවයේ — "
+         f"{deep.LAGNA_LORD_HOUSE_SI[P[lord]['house']]}</p>",
+         f"<h3>{SIGN_SI[mo['sign_idx']]} චන්ද්‍රයා — ඔබේ සිත සහ හැඟීම්</h3><p>{deep.MOON_SIGN_SI[mo['sign_idx']]}</p>",
+         f"<p><b>{NAK_SI[nk]} නැකත:</b> {deep.NAKSHATRA_SI[nk]}</p>"]
+    if ak in deep.AK_SI:
+        H.append(f"<h3>ආත්මකාරක {PLANET_SI[ak]} — ඔබේ ජීවිතයේ ප්‍රධාන පාඩම</h3><p>{deep.AK_SI[ak]}</p>")
+    sb = {c: v["ratio"] for c, v in (d.get("shadbala") or {}).items() if v.get("ratio") is not None}
+    if sb:
+        hi, lo = max(sb, key=sb.get), min(sb, key=sb.get)
+        H.append(f"<h3>ඔබේ ශක්තිමත්ම සහ දුර්වලම ග්‍රහයා</h3><p><b>{PLANET_SI[hi]}:</b> {deep.PLANET_STRONG_SI[hi]} "
+                 f"<b>{PLANET_SI[lo]}:</b> {deep.PLANET_WEAK_SI[lo]}</p>")
+    return "\n".join(H)
+
+
+def timeline_html_a3(d, a, now_local, years=20):
+    """The next twenty years, one row per antar dasha: what comes forward (where its lord sits and what it rules)."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    tz = ZoneInfo(a.tz)
+    ym = lambda t: t.astimezone(tz).strftime("%Y-%m")  # noqa: E731
+    now_utc = now_local.astimezone(timezone.utc)
+    end = now_utc + timedelta(days=int(years * 365.25))
+    rows, last_md = [], None
+    for m in d["vimshottari"]["mahadashas"]:
+        for x in m.get("sub", []):
+            st, en = datetime.fromisoformat(x["start"]), datetime.fromisoformat(x["end"])
+            if en <= now_utc or st >= end:
+                continue
+            if m["lord"] != last_md:
+                last_md = m["lord"]
+                rows.append(f"<tr class='md'><td colspan='3'><b>{PLANET_SI[m['lord']]} මහා දශාව</b> "
+                            f"({ym(datetime.fromisoformat(m['start']))} – {ym(datetime.fromisoformat(m['end']))}): "
+                            f"{PLANET_NATURE_SI[m['lord']]}</td></tr>")
+            L = x["lord"]
+            rules = [h for h in range(1, 13) if jc.SIGN_LORD[_house_sign_a3(ls, h)] == L and h != P[L]["house"]]
+            areas = [HOUSE_AREA_SI[P[L]["house"]]] + [HOUSE_AREA_SI[h] for h in rules]
+            rows.append(f"<tr><td>{ym(max(st, now_utc))} – {ym(en)}</td><td>{PLANET_SI[m['lord']]}/{PLANET_SI[L]}</td>"
+                        f"<td>{'; '.join(areas)} — <b>{period_tone_si(P, L)}</b></td></tr>")
+    return ("<table class='tl'><tr><th style='width:22%'>කාලය</th><th style='width:16%'>දශාව</th><th>ඉස්මතු වන කාරණා</th></tr>"
+            + "".join(rows) + "</table>")
+
+
+def build_a3(d, a, tr, changes, notes, now_local):
+    """A3, the deep reading: the reading first (summary and strengths, personality, ten life areas, twenty years,
+    the sky now), then the astrologer's tables from build_a2(deep=True) as an appendix."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    tech = build_a2(d, a, tr, changes, None, now_local, deep=True)
+    cover = tech[:tech.index("<!--a3:cover-end-->")]
+    part1 = tech[tech.index("<!--a3:tech-->"):tech.index("<!--a3:areas-->")]
+    part2 = tech[tech.index("<!--a3:dasha-->"):tech.index("<!--a3:windows-->")]
+    n = [0]
+    def renum(m):
+        n[0] += 1
+        return f"{m.group(1)}ඇමුණුම {n[0]} — "
+    appendix = re.sub(r"(<h2[^>]*>)\d+\. ", renum, part1 + part2)
+    areas, scores = areas_html_a3(d, a, now_local)
+    best = sorted(scores, key=lambda t: -t[0])
+    H = [cover]
+    H.append('<div class="pb"></div><h2>1. සාරාංශය</h2>')
+    H.append(plain_a2_ab(d, a, now_local, tr))
+    H.append('<div class="two"><div class="box plain" style="flex:1"><div class="lbl">ඔබේ ශක්තිමත්ම ක්ෂේත්‍ර</div><ul>'
+             + "".join(f"<li>{t} — <b>{w}</b></li>" for _, t, w in best[:3]) + "</ul></div>"
+             '<div class="box plain" style="flex:1"><div class="lbl">වැඩි අවධානයක් ඉල්ලන ක්ෂේත්‍ර</div><ul>'
+             + "".join(f"<li>{t} — <b>{w}</b></li>" for _, t, w in best[-2:]) + "</ul></div></div>")
+    H.append(note_block(notes, "summary"))
+    if a.time_exact != "yes":
+        H.append('<div class="note"><div class="lbl">උපන් වේලාව ගැන</div><p>උපන් වේලාව ආසන්න බැවින් ලග්නය, භාව සහ වර්ග කේන්දර මත පදනම් '
+                 'වූ කොටස් (ජීවිත ක්ෂේත්‍ර, ලග්නය) වෙනස් විය හැක; චන්ද්‍රයා සහ දශා බොහෝ දුරට ස්ථාවරයි.</p></div>')
+    H.append('<h2>2. ඔබ කවුද — ගැඹුරින්</h2>')
+    H.append(personality_html_a3(d))
+    H.append(note_block(notes, "lagna"))
+    H.append('<h2>3. ඔබේ ජීවිතයේ ක්ෂේත්‍ර දහය</h2>')
+    H.append('<p class="small">එක් එක් ක්ෂේත්‍රය කේන්දරයේ කාරණා කිහිපයක් එකට ගෙන කියවා ඇත: එහි භාවය සහ අධිපති, ග්‍රහයන්ගේ ශක්තිය (ෂඩ්බල), '
+             'දෘෂ්ටි, අෂ්ටකවර්ග ලකුණු, ඊට අදාළ වර්ග කේන්දරය සහ යෝග. ● ලකුණු පහෙන් ශක්තිය පෙන්වයි; "ඉස්මතු වන කාල" යනු ඉදිරි අවුරුදු '
+             '20 තුළ ඒ ක්ෂේත්‍රය ක්‍රියාත්මක වන දශා කාලයි.</p>')
+    H.append(areas)
+    H.append(note_block(notes, "yogas"))
+    H.append(note_block(notes, "areas"))
+    H.append('<div class="pb"></div><h2>4. ඉදිරි අවුරුදු 20 — කාලයෙන් කාලයට</h2>')
+    H.append('<p class="small">එක් එක් පේළිය එක් අන්තර් දශාවකි: ඒ කාලය පාලනය කරන ග්‍රහයා සිටින භාවයේ සහ එය අධිපති වන භාවවල කාරණා '
+             'එකල ඉස්මතු වේ. තද අකුරින් ඇත්තේ එම කාලයේ සාමාන්‍ය ස්වභාවයයි.</p>')
+    H.append(timeline_html_a3(d, a, now_local))
+    H.append(note_block(notes, "dasha"))
+    H.append(note_block(notes, "upcoming"))
+    H.append('<h2>5. දැන් අහසේ — ශනි, ගුරු සහ රාහු</h2><ul>'
+             f"<li><b>ශනි:</b> {transit_meaning_si('Sa', tr['Sa']['from_moon'], tr['Sa']['from_lagna'])}.</li>"
+             f"<li><b>ගුරු:</b> {transit_meaning_si('Ju', tr['Ju']['from_moon'], tr['Ju']['from_lagna'])}.</li>"
+             f"<li><b>රාහු:</b> {transit_meaning_si('Ra', tr['Ra']['from_moon'], tr['Ra']['from_lagna'])}.</li>"
+             f"<li><b>ඒරාෂ්ටක / අෂ්ටම ශනි:</b> {tr['sade_sati']}.</li></ul>")
+    H.append(note_block(notes, "gochara"))
+    if (notes or {}).get("remedies"):
+        H.append("<h2>යෝජනා</h2>" + note_block(notes, "remedies", "ප්‍රතිකර්ම / ආකල්ප යෝජනා"))
+    H.append('<div class="pb"></div><h2>ඇමුණුම — ජ්‍යොතිෂවේදීන් සඳහා තාක්ෂණික විස්තර</h2>'
+             '<p class="small">ඉහත විග්‍රහය සඳහා භාවිත කළ ගණනය කිරීම් සහ වගු මෙහි ඇත — ඔබේ ජ්‍යොතිෂවේදියාට හෝ වෙනත් ජ්‍යොතිෂවේදියෙකුට '
+             'පරීක්ෂා කිරීමට. සාමාන්‍ය පාඨකයෙකුට මෙය කියවීම අවශ්‍ය නැත.</p>')
+    H.append(appendix)
+    H.append(gloss_disc_ab(None, GLOSS_A3_AB,
+                           "පරාශර හෝරා ශාස්ත්‍රය සහ ජෛමිනි සම්ප්‍රදාය; P.V.R. Narasimha Rao ගේ Vedic Astrology: An Integrated Approach "
+                           "ප්‍රධාන යොමුව. වාර්තා වර්ගය A3. විම්ශෝත්තරී දශා සෞර වර්ෂ අනුව."))
+    return "\n".join(H)
+
+
 def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     """A2 (standard) and A3 (deep, deep=True). Extends the A1 structure."""
     P, ls = d["planets"], d["lagna"]["sign_idx"]
@@ -3234,6 +3622,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     md = cur(vim["mahadashas"])
     ad = cur(md["sub"]) if md and md.get("sub") else None
     pd_ = cur(ad["sub"]) if ad and ad.get("sub") else None
+    H.append("<!--a3:cover-end-->")
     H.append('<div class="pb"></div><h2>1. සාරාංශය</h2>')
     H.append(plain_a2_ab(d, a, now_local, tr))
     H.append(f'<p class="small muted"><b>ජ්‍යොතිෂ කෙටි සටහන:</b> {SIGN_SI[ls]} ලග්නය; ලග්නාධිපති {PLANET_SI[lord]} {P[lord]["house"]} වැන්නේ. '
@@ -3249,6 +3638,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                   ("කාල කලාපය", f"{a.tz} (UTC{utc_offset_txt(d['birth']['utc_offset'])})"), ("අයනාංශය", f"ලාහිරි {dms(d['ayanamsa'])} (රාශි චක්‍රය ගණන් කරන ආරම්භක ලක්ෂ්‍යය)"),
                   ("පංචාංගය", f"{pch_si(d['panchanga'])['vara']} · {pch_si(d['panchanga'])['tithi']} · {pch_si(d['panchanga'])['yoga']} යෝග · {pch_si(d['panchanga'])['karana']} කරණ · හිරු උදාව {d['panchanga']['sunrise']}"),
                   ("වාර්තා දිනය", now_local.strftime("%Y-%m-%d"))]
+    H.append("<!--a3:tech-->")
     H.append("<h2>2. උපන් දත්ත</h2><table>" + "".join(f"<tr><td style='width:34%'><b>{k}</b></td><td>{esc(v)}</td></tr>" for k, v in birth_rows) + "</table>")
 
     # ---- 3 planets
@@ -3395,6 +3785,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
                           'තද අකුරින් ඇති උප අධිපති; මුලින් ඇති කාරක ග්‍රහයන්ගේ දශාවලදී එම භාවයේ කාරණා සිදුවීමට ඉඩ වැඩියි.</p>' if kp_ab else ""))
 
     # ---- 9 life areas
+    H.append("<!--a3:areas-->")
     H.append('<h2 style="page-break-before:auto">' + ("9" if deep else "8") + '. ජීවන ක්ෂේත්‍ර</h2>')
     H.append('<p class="small">එක් එක් ක්ෂේත්‍රයට භාවය, එහි අධිපති, කාරකයා සහ වර්ග කේන්දරය; අවසාන <b>ප්‍රවණතාව</b> සරල නිගමනයයි.</p>')
     for k in ["career", "marriage", "wealth", "education", "family"]:
@@ -3403,6 +3794,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     H.append(note_block(notes, "areas") or note_block(notes, "lagna2"))
 
     # ---- 10 dashas
+    H.append("<!--a3:dasha-->")
     n = "10" if deep else "9"
     H.append(f'<h2 class="sec">{n}. දශා</h2>')
     H.append('<p class="small muted">දශා = ජීවිතය ග්‍රහයන්ට බෙදූ කාල; ඒ ග්‍රහයා සිටින භාවයේ කාරණා එම කාලයේ ඉස්මතු වේ.</p>')
@@ -3482,6 +3874,7 @@ def build_a2(d, a, tr, changes, notes, now_local, deep=False):
     H.append(note_block(notes, "gochara"))
 
     # ---- 12 convergence
+    H.append("<!--a3:windows-->")
     n3 = "12" if deep else "11"
     H.append(f'<h2>{n3}. ඉදිරි කාලය — සම්මුඛ වන කවුළු</h2>')
     H.append('<p class="small">දශා, රාශි මාරු සහ ශනි කාල දින අනුව; කිහිපයක් එකට ගැලපෙන කාල වඩා වැදගත් (රාශි මාරුවල අර්ථය ඉහත).</p>')
@@ -5095,7 +5488,8 @@ def main():
         tr = transit_snapshot(now_local.astimezone(timezone.utc), d, a.lat, a.lon)
         changes = sign_changes(now_local.astimezone(timezone.utc), yrs)
         body = (build_a1(d, a, tr, changes, notes, now_local) if a.report == "A1"
-                else build_a2(d, a, tr, changes, notes, now_local, deep=(a.report == "A3")))
+                else build_a2(d, a, tr, changes, notes, now_local) if a.report == "A2"
+                else build_a3(d, a, tr, changes, notes, now_local))
     elif a.report.startswith("B"):
         tr = transit_snapshot(now_local.astimezone(timezone.utc), d, a.lat, a.lon)
         changes = sign_changes(now_local.astimezone(timezone.utc), 7.0)
