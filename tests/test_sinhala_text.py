@@ -117,3 +117,17 @@ def test_prashna_verdicts_carry_their_tone():
     assert jr.si_shat_verdict("VICTORY to the querent")[1] == 1
     assert jr.si_shat_verdict("they will fight")[1] == -1
     assert jr.si_shat_verdict("opponent arrives within ~3 days") == ("දින 3ක් පමණ ඇතුළත ප්‍රතිවාදියා පැමිණේ", 0)
+
+
+def test_muhurta_rows_are_read_by_name_not_by_gaps():
+    """"Mangala" is exactly as wide as the engine's vara column and "Uttara Bhadrapada" overflows the nakshatra
+    one, so a single space can separate two columns: Tuesday windows once came out as "Mangala Magha" in English."""
+    text = ("TOP 3 WINDOWS (score = soft points; higher is better):\n"
+            "  date       start-end    lagna      tithi                  vara    nakshatra        hora         score  notes\n"
+            "  2026-12-01 07:17-09:10  Dhanu      Krishna Ashtami        Mangala Magha            Surya/Shukr      3  a\n"
+            "  2026-12-02 07:17-09:10  Dhanu      Krishna Navami         Budha   Uttara Bhadrapada Budha           2  b\n"
+            "  2026-12-04 07:05-09:13  Dhanu      Krishna Ekadashi       Shukra  Hasta            Budha/Chand/Shani     5  c\n")
+    rows, _, _ = jr.parse_muhurta_output(text)
+    assert [(r["vara"], r["nak"], r["hora"], r["score"]) for r in rows] == [
+        ("Mangala", "Magha", "Surya/Shukr", 3), ("Budha", "Uttara Bhadrapada", "Budha", 2),
+        ("Shukra", "Hasta", "Budha/Chand/Shani", 5)]

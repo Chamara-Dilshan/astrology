@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -55,9 +56,13 @@ def copy_check(pdf, page_html):
     src = html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<style.*?</style>", " ", src, flags=re.S)))
     want = set(SINHALA.findall(src)) | {"පිටුව"}   # the page-number footer comes from the stylesheet
     bad = set()
-    for page in pdfium.PdfDocument(pdf):
-        bad |= {w for w in SINHALA.findall(page.get_textpage().get_text_range()) if w not in want}
+    with PDFIUM_LOCK:     # PDFium is not thread-safe: parallel builds read one PDF at a time
+        for page in pdfium.PdfDocument(pdf):
+            bad |= {w for w in SINHALA.findall(page.get_textpage().get_text_range()) if w not in want}
     return [f"copied Sinhala is not the report's text: {', '.join(sorted(bad)[:8])}"] if bad else []
+
+
+PDFIUM_LOCK = threading.Lock()
 
 
 def build(tag, code, out, script="jyotisha_report.py"):

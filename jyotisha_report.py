@@ -1670,6 +1670,231 @@ def porondam_block(comp, heading="h2", title="විසි පොරොන්ද
 
 
 # ================================================================ P1 — Prashna
+# ---------------------------------------------------------------- plain words for P1/P2, M1 and E1
+# The "සරලව කිවහොත්" boxes say what each report found, in everyday Sinhala; the glossaries explain the
+# words the reports use. The boxes only restate the signs the reports already weigh (p1_auto_summary's
+# ithasala / eesarpha and Shatpanchasika tones, the muhurta scores, the rectification scores).
+GLOSS_P1_SHARED_PME = ("රාශිය", "භාවය", "ලග්නාධිපති", "වක්‍ර (ව)", "නවාංශකය (D9)")
+GLOSS_P1_PME = [
+    ("ප්‍රශ්න කේන්දරය", "ප්‍රශ්නය අසන මොහොතට සාදන කේන්දරය. උපන් වේලාවක් අවශ්‍ය නැත."),
+    ("ප්‍රශ්න ලග්නය", "ප්‍රශ්නය ඇසූ මොහොතේ නැගෙනහිරින් උදා වෙමින් තිබූ රාශිය; එය ප්‍රශ්නකරු (ඔබ) නියෝජනය කරයි."),
+    ("කේන්ද්‍ර / ත්‍රිකෝණ / දුස්ථාන", "කේන්දරයේ කොටු වර්ග: කේන්ද්‍ර (1, 4, 7, 10) සහ ත්‍රිකෝණ (1, 5, 9) ශක්තිමත් තැන්; "
+     "දුස්ථාන (6, 8, 12) අපහසු තැන්."),
+    ("ශුභ / පාප ග්‍රහයන්", "සාමාන්‍යයෙන් හිතකර ග්‍රහයන් (ගුරු, ශුක්‍ර, බුධ, චන්ද්‍ර) සහ අභියෝග ගෙන එන ග්‍රහයන් "
+     "(ශනි, කුජ, රවි, රාහු, කේතු)."),
+    ("තාජක", "ග්‍රහයන් එකිනෙකා දකින කෝණ (දෘෂ්ටි) සහ අංශක මත පදනම් වූ ක්‍රමය; ප්‍රශ්න සහ වර්ෂ ඵල සඳහා භාවිත වේ."),
+    ("ඉථසාල / ඊසර්ඵ", "ඉථසාල: ග්‍රහයන් දෙදෙනෙකු එකිනෙකා වෙත ළං වීම — කාරණය ඉටුවීමේ ලකුණ. "
+     "ඊසර්ඵ: ඔවුන් ඈත් වීම — ලිස්සා යාමේ හෝ ප්‍රමාදයේ ලකුණ."),
+    ("දෘෂ්ටිය / පරතරය", "දෘෂ්ටිය: ග්‍රහයන් එකිනෙකා දකින කෝණය (ත්‍රිකෝණ, චතුරස්‍ර ආදී). පරතරය: ඔවුන්ගේ අංශක අතර වෙනස."),
+    ("හර්ෂ බල / පංච වර්ගීය බල", "ග්‍රහයෙකුගේ ශක්තිය 0–20 පරිමාණයෙන් මනින තාජක ක්‍රම දෙකක්."),
+    ("සහමය", "කාරණයකට (විවාහය, වාසනාව ආදී) අදාළව ග්‍රහ හෝ ලග්න ස්ථාන තුනකින් ගණනය කරන සංවේදී ලක්ෂ්‍යයක්."),
+    ("කාරකයා", "යම් කාරණයක් ස්වභාවයෙන්ම පෙන්වන ග්‍රහයා (උදා: විවාහයට ශුක්‍ර)."),
+    ("ෂට්පංචාශිකා", "ප්‍රිථුයශස් රචිත, ප්‍රශ්න ජ්‍යොතිෂය ගැන ශ්ලෝක 56කින් යුත් පැරණි ග්‍රන්ථය."),
+    ("හෝරාධිපති", "ප්‍රශ්නය ඇසූ පැයට අධිපති ග්‍රහයා."),
+    ("තිථිය / කරණය", "තිථිය: චන්ද්‍ර දිනය (පුර හෝ අව පක්ෂයේ දින). කරණය: තිථියෙන් භාගයක්."),
+]
+GLOSS_M1_SHARED_PME = ("රාශිය", "භාවය", "වක්‍ර (ව)")
+GLOSS_M1_PME = [
+    ("මුහූර්තය (නැකත)", "වැදගත් කටයුත්තක් ආරම්භ කිරීමට තෝරා ගන්නා සුබ මොහොත."),
+    ("සුබ කවුළුව", "මූලික නියම සියල්ල සපුරන අඛණ්ඩ කාලයක්; කටයුත්ත ඒ තුළ ඕනෑම මොහොතක ආරම්භ කළ හැක."),
+    ("ලකුණු", "මූලික නියමවලට අමතර හොඳ ලක්ෂණ සඳහා එකතු වී, අඩුපාඩු සඳහා අඩු වන අගය; වැඩි තරමට වඩාත් සුබයි."),
+    ("ලග්නය", "යම් මොහොතක නැගෙනහිරින් උදා වෙමින් තිබෙන රාශිය; පැය දෙකකට පමණ වරක් මාරු වේ."),
+    ("තිථිය", "චන්ද්‍ර දිනය — පුර පක්ෂයේ සහ අව පක්ෂයේ දින 15 බැගින්."),
+    ("වාරය", "සතියේ දවස (ඉරිදා, සඳුදා ආදී)."),
+    ("නැකත (නක්ෂත්‍රය)", "චන්ද්‍රයා ගමන් කරන තාරකා කොටස — 27න් එකක්; දිනකට පමණ වරක් මාරු වේ."),
+    ("තාරා බලය", "එදින නැකත ඔබේ උපන් නැකතේ සිට ගණන් කළ විට ලැබෙන තත්ත්වය (සම්පත්, ක්ෂේම, මිත්‍ර ආදී); "
+     "හිතකර තාරාවක් ලකුණු වැඩි කරයි."),
+    ("හෝරාව / හෝරාධිපති", "දවසේ සෑම පැයක්ම එක් ග්‍රහයෙකුට අයත් වේ; ඒ පැයට අධිපති ග්‍රහයා හෝරාධිපතියි."),
+    ("කරණය", "තිථියෙන් භාගයක්; සමහර කරණ (උදා: විෂ්ටි) ආරම්භයන්ට නුසුදුසු ලෙස සැලකේ."),
+    ("D-9, D-10 ආදී කේන්දර", "රාශි කුඩා කොටස් වලට බෙදා සාදන සියුම් කේන්දර; කාර්යයට අදාළ එක (විවාහයට D-9, රැකියාවට D-10) බලා ඇත."),
+    ("ලිත් නැකත", "ලංකාවේ පාරම්පරික නැකත් ක්‍රමය (රාහු කාලය, සුබ දිශාව ආදිය සහිතව)."),
+]
+GLOSS_E1_SHARED_PME = ("ලග්නය", "රාශිය", "භාවය", "මහා දශාව / අන්තර් දශාව", "නවාංශකය (D9)")
+GLOSS_E1_PME = [
+    ("ජන්ම කාල ශුද්ධිය", "ජීවිතයේ සිදු වූ සිදුවීම් භාවිත කර උපන් වේලාව නිවැරදි කිරීම."),
+    ("දශාංශකය (D10)", "රාශිය කොටස් 10කට බෙදා සාදන කේන්දරය; රැකියාව බැලීමට භාවිත වේ. එහි ලග්නය මිනිත්තු කිහිපයකින් වෙනස් වේ."),
+    ("MD / AD / PD", "මහා දශාව / අන්තර් දශාව / ප්‍රත්‍යන්තර දශාව — සිදුවීම් දිනයේ ක්‍රියාත්මක වූ ඒවා."),
+    ("දශාධිපති", "යම් දශා කාලයක් පාලනය කරන ග්‍රහයා."),
+    ("කාරක ග්‍රහයා", "සිදුවීමක් ස්වභාවයෙන්ම පෙන්වන ග්‍රහයා — උදා: විවාහයට ශුක්‍ර, දරුවන්ට ගුරු."),
+    ("ගැලපීම් ලකුණු", "සිදුවීම් දිනවල ක්‍රියාත්මක දශාධිපතීන් එම සිදුවීමේ භාවවලට සම්බන්ධ වන ගණන "
+     "(අන්තර් දශාවට 2, අනෙක් දෙකට 1)."),
+    ("කාල කවුළුව", "ඉහළම ලකුණු ලැබෙන අඛණ්ඩ වේලා පරාසය."),
+]
+_M1_TARA_PME = {"Janma": "ජන්ම", "Sampat": "සම්පත්", "Kshema": "ක්ෂේම", "Sadhana": "සාධන", "Mitra": "මිත්‍ර",
+                "Parama": "පරම මිත්‍ර"}
+
+
+def plain_box_pme(items):
+    """The simple-words box (same HTML as plain_summary_si)."""
+    return ('<div class="box plain"><div class="lbl">සරලව කිවහොත්</div><ul>'
+            + "".join(f"<li>{x}</li>" for x in items) + "</ul></div>")
+
+
+def disc_nopb_pme(method_line):
+    """disclaimer_block without its page break: the glossary opens that page and the method note follows it."""
+    return disclaimer_block(method_line).replace('<div class="pb"></div>', "", 1)
+
+
+def plain_p1_pme(d, a, matter, shat_topic, notes):
+    """P1/P2 in simple words: the answer from the same signs p1_auto_summary weighs (the matter's
+    significators in ithasala or eesarpha, the count of Tajaka yogas, the Shatpanchasika tones)."""
+    P, ls = d["planets"], d["lagna"]["sign_idx"]
+    lh = P[jc.SIGN_LORD[ls]]["house"]
+    ty = d.get("tajaka_yogas", {})
+    ith, ees = len(ty.get("ithasala", [])), len(ty.get("eesarpha", []))
+    lean = ("කාරණය ඉටුවීම පෙන්වන ලකුණු වැඩියි" if ith > ees else "ප්‍රමාද හෝ බාධා පෙන්වන ලකුණු වැඩියි" if ees > ith
+            else "දෙපැත්තම සමානයි")
+    q = str(getattr(a, "question", "") or "").strip()
+    L = [(f"<b>ඔබේ ප්‍රශ්නය:</b> “{esc(q)}” — " if q else "")
+         + "පිළිතුර කියවන්නේ ඔබ ප්‍රශ්නය ඇසූ මොහොතේ ග්‍රහ පිහිටීමෙනි"
+         + (f", විශේෂයෙන් {matter} වන භාවයෙන් ({HOUSE_PLAIN_SI[matter]})" if matter else "") + "."]
+    slip = False
+    if matter:
+        ml = " ".join(d.get("matter_lines", []))
+        if "ITHASALA" in ml:
+            ans = ("<b>කෙටි පිළිතුර: හිතකරයි.</b> ප්‍රශ්නයට අදාළ ග්‍රහයන් එකිනෙකා වෙත ළං වෙමින් සිටී (ඉථසාල යෝගය) — "
+                   "කාරණය ඉටුවීමට නැඹුරු හොඳ ලකුණකි.")
+        elif "EESARPHA" in ml:
+            slip = True
+            ans = ("<b>කෙටි පිළිතුර: ප්‍රමාද විය හැක.</b> ප්‍රශ්නයට අදාළ ග්‍රහයන් එකිනෙකාගෙන් ඈත් වෙමින් සිටී (ඊසර්ඵ යෝගය) — "
+                   "කාරණය ප්‍රමාද වීමට හෝ අතින් ගිලිහී යාමට ඉඩ ඇත; අමතර උත්සාහයක් අවශ්‍ය විය හැක.")
+        else:
+            ans = ("<b>කෙටි පිළිතුර: පැහැදිලි “ඔව්” හෝ “නැහැ” නැත.</b> ප්‍රශ්නයට අදාළ ප්‍රධාන ග්‍රහයන් අතර ළං වීමක් නැති නිසා "
+                   "මේ ක්‍රමයෙන් ශක්තිමත් පිළිතුරක් නොලැබේ; අනෙක් ලකුණු පහතින්.")
+    else:
+        ans = f"<b>කෙටි පිළිතුර:</b> කේන්දරයේ ළං වීම් (ඉථසාල) {ith}ක් සහ ඈත් වීම් (ඊසර්ඵ) {ees}ක් ඇත — {lean}."
+    if lh in (1, 4, 5, 7, 9, 10):
+        ans += " ඔබව නියෝජනය කරන ග්‍රහයා (ප්‍රශ්න ලග්නයේ අධිපති) ශක්තිමත් තැනක සිටින නිසා, කාරණය ඉදිරියට ගෙන යාමට ඔබට ශක්තිය ඇත."
+    L.append(ans)
+    other, neg = [], 0
+    if matter:
+        other.append(f"මුළු කේන්දරයේම ළං වීම් (ඉථසාල) {ith}ක් සහ ඈත් වීම් (ඊසර්ඵ) {ees}ක් ඇත — {lean}.")
+    sh = d.get("shatpanchasika") or []
+    if sh:
+        tones = [si_shat_verdict(r["verdict"])[1] for r in sh]
+        pos, neg = tones.count(1), tones.count(-1)
+        other.append(f"පැරණි ෂට්පංචාශිකා ග්‍රන්ථයේ නියම අනුව හිතකර ලකුණු {pos}ක් සහ සැලකිලිමත් විය යුතු ලකුණු {neg}ක් ඇත — "
+                     + ("සමස්තයක් ලෙස හිතකර පැත්තට බර වැඩියි." if pos > neg
+                        else "සමස්තයක් ලෙස සැලකිලිමත් විය යුතු පැත්තට බර වැඩියි." if neg > pos else "ලකුණු මිශ්‍රයි."))
+    if other:
+        L.append("<b>අනෙක් ලකුණු:</b> " + " ".join(other))
+    watch = []
+    if lh in (6, 8, 12):
+        watch.append("ඔබව නියෝජනය කරන ග්‍රහයා අපහසු තැනක සිටින නිසා ඔබේ පැත්තෙන් වැඩි උත්සාහයක් අවශ්‍යයි")
+    if slip or ees > ith:
+        watch.append("ප්‍රමාද හෝ බාධා ඇති විය හැක — ඉක්මන් ප්‍රතිඵල බලාපොරොත්තු නොවී, ඉවසීමෙන් සහ සැලැස්මකින් කටයුතු කරන්න")
+    if neg:
+        watch.append(f"ග්‍රන්ථයේ අවවාද {neg}ක් (4 වන කොටස) ස්ථිර අනාවැකි නොව, සැලකිලිමත් විය යුතු කරුණු පමණි")
+    L.append("<b>සැලකිලිමත් විය යුතු දේ:</b> " + ("; ".join(watch) + "." if watch else
+                                                 "විශේෂ අවවාදයක් නැත; එහෙත් කාරණය සාර්ථක කර ගැනීමට අවශ්‍ය පියවර ඔබම ගත යුතුයි."))
+    L.append("මේ ලකුණු ප්‍රවණතා පමණි; සමහර ඒවා එකිනෙකට පරස්පර විය හැක. අවසන් තීරණය ඔබේ විචාරය මතයි."
+             + (" කාලය ගැන ජ්‍යොතිෂවේදියාගේ සටහන 5 වන කොටසේ ඇත." if (notes or {}).get("upcoming") else ""))
+    return plain_box_pme(L)
+
+
+def _m1_why_pme(notes):
+    """The engine's reasons for one muhurta window (English, '; '-separated) in plain Sinhala:
+    (good points, small drawbacks). Reasons it does not know are left out, never shown in English."""
+    good, less = [], []
+    for x in (y.strip() for y in notes.split(";")):
+        m = re.fullmatch(r"lagna lord (\w+) in kendra/trikona", x)
+        if m:
+            good.append(f"එම වේලාවේ ලග්නයේ අධිපති ({pl_si(m[1])}) ශක්තිමත් තැනක සිටී")
+            continue
+        m = re.fullmatch(r"tara (\w+)", x)
+        if m and m[1] in _M1_TARA_PME:
+            if m[1] == "Janma":
+                less.append("එදින නැකත ඔබේ උපන් නැකතේ කාණ්ඩයේම වීම (ජන්ම තාරාව — මිශ්‍ර ලෙස සැලකේ)")
+            else:
+                good.append(f"එදින නැකත ඔබේ උපන් නැකතට හිතකරයි ({_M1_TARA_PME[m[1]]} තාරාව)")
+            continue
+        m = re.fullmatch(r"malefic ([A-Za-z/]+) in house (\d+)", x)
+        if m:
+            less.append(f"{m[2]} වන භාවයේ {'/'.join(pl_si(p) for p in m[1].split('/'))} සිටීම")
+            continue
+        if x == "Chandra in 6/8/12 from lagna":
+            less.append("චන්ද්‍රයා ලග්නයෙන් 6, 8 හෝ 12 වැනි තැනක සිටීම")
+            continue
+        m = re.fullmatch(r"karana (.+) \(unfavorable\)", x)
+        if m and m[1] in KARANA_SI:
+            less.append(f"{KARANA_SI[m[1]]} කරණය")
+            continue
+        if re.fullmatch(r"nakshatra .+ \(secondary\)", x):
+            less.append("නැකත දෙවන පෙළේ එකක් වීම")
+    return good, less
+
+
+def plain_m1_pme(a, rows, best, tsi):
+    """M1 in simple words: the best window (the engine's: highest score, earliest first) and why, the next
+    choices, and how to use the list."""
+    if not rows:
+        return plain_box_pme([
+            f"{esc(a.muhurta_from)} සිට {esc(a.muhurta_to)} දක්වා, {esc(tsi)} සඳහා මූලික නියම සියල්ල සපුරන කාලයක් හමු නොවීය.",
+            "දින පරාසය පුළුල් කර, හෝ උදේ සහ රාත්‍රී වේලාවන් ද ඇතුළත් කර නැවත සෙවීමට ජ්‍යොතිෂවේදියාගෙන් ඉල්ලන්න.",
+            "ලිත් නැකතක් ද බලනවා නම්, එය සමඟ සසඳා බලන්න."])
+    top = max(r["score"] for r in rows)
+    b = next(r for r in rows if r["score"] == top)
+    # the weekday from the date itself (a Tuesday row's vara column is not parsed cleanly)
+    day = lambda r: f"{r['date']} {WEEKDAY_SI[datetime.strptime(r['date'], '%Y-%m-%d').weekday()]}"  # noqa: E731
+    when = re.search(r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})", best[0]) if best else None
+    mid = (f" — මැද කාලය, {when[2]} පමණ, වඩාත් සුදුසුයි" if when and when[1] == b["date"] else "")
+    L = [f"<b>හොඳම කාලය:</b> {day(b)}, {b['t0']} – {b['t1']}{mid}."]
+    ties = sum(r["score"] == top for r in rows)
+    why = (f"කවුළු {len(rows)} අතරින් වැඩිම ලකුණු ({top}) මෙයටයි" if ties == 1
+           else f"ඉහළම ලකුණු ({top}) ලැබුණු කවුළු {ties}ක් ඇත; ඒවායින් මුලින්ම එන්නේ මෙයයි")
+    good, less = _m1_why_pme(b["notes"])
+    why += ": මූලික නියම සියල්ල සපුරන අතර" + (", " + "; ".join(good) if good else " ලකුණු ලැබුණේ ග්‍රහ ශක්තියෙනි") + "."
+    if less:
+        why += " සුළු අඩුපාඩු: " + "; ".join(less) + "."
+    L.append(f"<b>ඇයි?</b> {why}")
+    alts = sorted((r for r in rows if r is not b), key=lambda r: -r["score"])[:2]
+    if alts:
+        L.append("<b>ඊළඟ හොඳම විකල්ප:</b> "
+                 + "; ".join(f"{day(r)}, {r['t0']} – {r['t1']} (ලකුණු {r['score']})" for r in alts) + ".")
+    L.append("<b>ලැයිස්තුව භාවිත කරන හැටි:</b> 2 වන කොටසේ ඇත්තේ මූලික නියම සපුරන කාල පමණි; ලකුණු වැඩි තරමට වඩාත් සුබයි. "
+             "ඔබට පහසු කවුළුවක් තෝරා, කටයුත්ත එය තුළ <b>ආරම්භ</b> කළ විට ප්‍රමාණවත්.")
+    L.append("මෙය ලිත් නැකතට <b>දෙවන මතයකි</b>; ලිත් නැකතක් ද ගන්නවා නම් දෙකටම ගැලපෙන කාලයක් තෝරන්න.")
+    return plain_box_pme(L)
+
+
+def plain_e1_pme(a, scan, wins, best):
+    """E1 in simple words: which time fits the events best, how far to trust it, what to do next.
+    The trust line only restates the scores (best, next best, the most an event list can score)."""
+    if not scan:
+        return ""
+    given = next((s for s in scan if s["off"] == 0), None)
+    n = len(scan[0]["detail"])
+    span = max(abs(s["off"]) for s in scan)
+    win = lambda w: f"{w[0]['time']} – {w[-1]['time']}" if len(w) > 1 else w[0]["time"]  # noqa: E731
+    lag = lambda w: SIGN_SI[w[0]["lagna"]] + (f" / {SIGN_SI[w[-1]['lagna']]}" if w[-1]["lagna"] != w[0]["lagna"] else "")  # noqa: E731
+    L = [f"<b>මේ වාර්තාව කළේ:</b> ඔබ දුන් වේලාවට ({esc(a.time)}) පෙර සහ පසු මිනිත්තු {span} ඇතුළත වේලාවන් {len(scan)}ක්, "
+         f"ඔබේ ජීවිතයේ සිදුවීම් {n} සමඟ සසඳා බැලුවා."]
+    if given and given["score"] == best:
+        wg = next((w for w in wins if given in w), wins[0])
+        t = (f"ඔබ දුන් වේලාව ({given['time']}) දැනටමත් වඩාත්ම ගැලපෙන කවුළුවේ ({win(wg)}, {lag(wg)} ලග්නය) ඇත. "
+             "එබැවින් වේලාව වෙනස් කිරීමට අවශ්‍ය නැත.")
+    else:
+        w0 = wins[0]
+        t = f"ඔබ දුන් සිදුවීම් වලට වඩාත්ම ගැලපෙන්නේ {win(w0)} අතර උපන් වේලාවකි ({lag(w0)} ලග්නය)."
+        if given:
+            t += (f" ඔබ දුන් වේලාව {given['time']} ({SIGN_SI[given['lagna']]} ලග්නය)"
+                  + ("; ලග්නය ද වෙනස් වන නිසා මෙය කේන්දරය කියවීමට බලපාන වැදගත් වෙනසකි."
+                     if given["lagna"] != w0[0]["lagna"] else "; ලග්නය දෙකේම එකමයි."))
+    if len(wins) > 1:
+        t += f" ඉහළම ලකුණු ලැබෙන කවුළු {len(wins)}ක් ඇත (4 වන කොටස)."
+    L.append(f"<b>වඩාත්ම ගැලපෙන වේලාව:</b> {t}")
+    lower = [s["score"] for s in scan if s["score"] < best]
+    c = f"මෙය ඇස්තමේන්තුවකි. සිදුවීම් {n}කින් ලැබිය හැකි උපරිම ලකුණු {4 * n}යි; හොඳම වේලාවට {best}ක්"
+    if lower:
+        c += f", ඊළඟ හොඳම වේලාවන්ට {max(lower)}ක්"
+        if best - max(lower) == 1:
+            c += " — වෙනස ලකුණු 1ක් පමණක් නිසා අවට වේලාවන් ද බැහැර කළ නොහැක"
+    L.append(f"<b>කෙතරම් විශ්වාස කළ හැකිද:</b> {c}.")
+    L.append("<b>ඊළඟට කළ යුත්තේ:</b> උපන් සහතිකයේ හෝ රෝහල් වාර්තාවේ වේලාවක් ඇත්නම් එය සසඳා බලන්න — එය හොඳම සාක්ෂියයි. "
+             "නැත්නම්, දිනය හරියටම මතක ඇති තවත් සිදුවීම් 3–5ක් ජ්‍යොතිෂවේදියාට දෙන්න; සිදුවීම් වැඩි වන තරමට ප්‍රතිඵලය විශ්වාසදායකයි.")
+    return plain_box_pme(L)
+
+
 def build_p1(d, a, notes, now_local, shat_topic, matter):
     P, ls = d["planets"], d["lagna"]["sign_idx"]
     labels = {ls: ["ලග්න"]}
@@ -1677,11 +1902,12 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
         labels.setdefault(P[c]["sign_idx"], []).append(PLANET_SI[c] + (" (ව)" if P[c]["retro"] and c not in ("Ra", "Ke") else ""))
     H = [f'''<div class="cover" style="padding-top:12mm">{LOGO_IMG}<div class="brandmark">{esc(BRAND)}</div><div class="brandline"></div>
       <div class="brandtag">{esc(BRAND_TAGLINE)}</div>
-      <h1 style="margin-top:18pt">ප්‍රශ්න වාර්තාව</h1><div class="sub">ප්‍රශ්න ජ්‍යොතිෂය (P1) — තාජක සහ ෂට්පංචාශිකා</div>
+      <h1 style="margin-top:18pt">ප්‍රශ්න වාර්තාව</h1><div class="sub">ප්‍රශ්න ජ්‍යොතිෂය ({esc(a.report)}) — තාජක සහ ෂට්පංචාශිකා</div>
       <div class="name" style="font-size:14pt">{esc(a.question or a.name)}</div>
       <div class="muted">ප්‍රශ්න මොහොත: {esc(a.date)} · {esc(a.time)} · {esc(a.place or "")}</div>
       <div style="margin:14pt auto 0 auto; width:112mm">{south_indian_html_si(labels, "ප්‍රශ්න කේන්දරය", 112)}</div></div>''']
-    H.append('<div class="pb"></div><h2>1. ප්‍රශ්න කේන්දරයේ මූලික තොරතුරු</h2>')
+    H.append('<div class="pb"></div>' + plain_p1_pme(d, a, matter, shat_topic, notes)
+             + '<h2>1. ප්‍රශ්න කේන්දරයේ මූලික තොරතුරු</h2>')
     lord = jc.SIGN_LORD[ls]
     H.append("<table>"
              f"<tr><td style='width:34%'><b>ප්‍රශ්න ලග්නය</b></td><td>{SIGN_SI[ls]} ({dms(d['lagna']['deg_in_sign'])}) — අධිපති {PLANET_SI[lord]}, {P[lord]['house']} වැන්නේ</td></tr>"
@@ -1689,38 +1915,55 @@ def build_p1(d, a, notes, now_local, shat_topic, matter):
              f"<tr><td><b>හෝරාධිපති</b></td><td>{esc(si_text(d.get('hora', '')))}</td></tr>"
              f"<tr><td><b>පංචාංගය</b></td><td>{esc(pch_si(d['panchanga'])['vara'])} · {esc(pch_si(d['panchanga'])['tithi'])} · {esc(pch_si(d['panchanga'])['karana'])} කරණ</td></tr>"
              "</table>")
+    H.append('<p class="small muted">වගුව කියවන හැටි: <b>ප්‍රශ්න ලග්නය</b> = ප්‍රශ්නය ඇසූ මොහොතේ නැගෙනහිරින් උදා වෙමින් තිබූ රාශිය — '
+             'එය ඔබ (ප්‍රශ්නකරු) නියෝජනය කරයි, එහි අධිපති ඔබේ ග්‍රහයායි; <b>චන්ද්‍ර</b> = ප්‍රශ්නකරුගේ සිත; '
+             '<b>හෝරාධිපති</b> = ඒ පැයට අධිපති ග්‍රහයා; <b>පංචාංගය</b> = දවස, තිථිය (චන්ද්‍ර දිනය) සහ කරණය (තිථියෙන් භාගයක්).</p>')
     ps = d.get("prashna_strengths", {})
     if ps:
         H.append("<h3>ග්‍රහ බල (තාජක)</h3><table><tr><th>ග්‍රහයා</th>"
                  + "".join(f"<th>{PLANET_SI[c]}</th>" for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]) + "</tr>"
                  + "<tr><td>හර්ෂ බල</td>" + "".join(f"<td>{ps['harsha'][c]}</td>" for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]) + "</tr>"
                  + "<tr><td>පංච වර්ගීය</td>" + "".join(f"<td>{ps['pvb'][c]}</td>" for c in ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa"]) + "</tr></table>")
+        H.append('<p class="small muted">වගුව කියවන හැටි: ග්‍රහයෙකුගේ ශක්තිය මනින තාජක ක්‍රම දෙකක් — <b>හර්ෂ බල</b> සහ '
+                 '<b>පංච වර්ගීය බල</b> (දෙකම 0–20). අගය වැඩි තරමට ග්‍රහයා ශක්තිමත්.</p>')
     ty = d.get("tajaka_yogas", {})
     lines = [("ඉථසාල", ty.get("ithasala", [])), ("ඊසර්ඵ", ty.get("eesarpha", [])), ("වෙනත්", ty.get("general", []) + ty.get("nakta_yamaya", []))]
     H.append("<h2>2. තාජක යෝග</h2>")
+    H.append('<p class="small">තාජක යෝග යනු ග්‍රහයන් දෙදෙනෙකු එකිනෙකා දකින (දෘෂ්ටි) සම්බන්ධතා. <b>ඉථසාල</b> = වේගයෙන් යන ග්‍රහයා '
+             'සෙමින් යන ග්‍රහයා වෙත ළං වෙමින් සිටීම — කාරණය ඉටුවීමේ ලකුණක්. <b>ඊසර්ඵ</b> = ඔවුන් එකිනෙකාගෙන් ඈත් වෙමින් සිටීම — '
+             'කාරණය ලිස්සා යාමේ හෝ ප්‍රමාද වීමේ ලකුණක්.</p>')
     if any(l for _, l in lines):
         for t, l in lines:
             if l:
                 H.append(f"<h3>{t}</h3><ul>" + "".join(f"<li>{esc(si_text(x))}</li>" for x in l) + "</ul>")
+        H.append('<p class="small muted">කියවන හැටි: වරහන් තුළ = ග්‍රහයා සිටින රාශිය සහ අංශකය (R = වක්‍ර); '
+                 '<b>පරතරය</b> = ග්‍රහයන් දෙදෙනාගේ අංශක අතර වෙනස; <b>පූර්ණ</b> = අංශක 1ක් ඇතුළත, <b>වර්තමාන</b> = දැන් ළං වෙමින්, '
+                 '<b>භවිෂ්‍ය</b> = ළඟදීම ළං වේ.</p>')
     else:
-        H.append("<p>දෘෂ්ටි කක්ෂ තුළ ප්‍රධාන තාජක යෝග නොමැත.</p>")
+        H.append("<p>දෘෂ්ටි කක්ෂ තුළ (ග්‍රහයන් එකිනෙකාට බලපාන අංශක සීමාව තුළ) ප්‍රධාන තාජක යෝග නොමැත.</p>")
     if matter:
         H.append(f"<h2>3. කාරණය — {matter} වන භාවය ({HOUSE_PLAIN_SI[matter]})</h2><ul>"
                  + "".join(f"<li>{esc(si_text(x.strip()))}</li>" for x in d.get("matter_lines", [])) + "</ul>")
-        H.append('<p class="small muted">ලග්නාධිපති, කාරණයේ භාවාධිපති, අදාළ සහමයේ අධිපති සහ ස්වාභාවික කාරකයා අතර ඉථසාල යෝගයක් '
-                 'කාරණය ඉටුවීමට නැඹුරුව පෙන්වයි; ඊසර්ඵ ලිස්සා යාම පෙන්වයි (තාජක 29.2).</p>')
+        H.append('<p class="small muted">කියවන හැටි: ලග්නාධිපති (ඔබ), කාරණයේ භාවාධිපති (කාරණය), අදාළ සහමයේ '
+                 '(කාරණයට අදාළව ගණනය කරන සංවේදී ලක්ෂ්‍යයේ) අධිපති සහ ස්වාභාවික කාරකයා (කාරණය ස්වභාවයෙන් පෙන්වන ග්‍රහයා) '
+                 'අතර ඉථසාල යෝගයක් කාරණය ඉටුවීමට නැඹුරුව පෙන්වයි; ඊසර්ඵ ලිස්සා යාම පෙන්වයි (තාජක 29.2). (R) = වක්‍ර.</p>')
     if d.get("shatpanchasika"):
-        H.append(f'<div class="pb"></div><h2>4. ෂට්පංචාශිකා — {PRASHNA_TOPIC_SI.get(shat_topic, shat_topic)}</h2>')
+        H.append(f'<h2>4. ෂට්පංචාශිකා — {PRASHNA_TOPIC_SI.get(shat_topic, shat_topic)}</h2>')
+        H.append('<p class="small">ෂට්පංචාශිකා (“පනස් හය”) යනු ප්‍රශ්න ජ්‍යොතිෂය ගැන ශ්ලෝක 56කින් යුත් පැරණි ග්‍රන්ථයකි. '
+                 'මෙහි ඇත්තේ මේ ප්‍රශ්න කේන්දරයට අදාළ වන ශ්ලෝක සහ ඒවා පෙන්වන දේයි.</p>')
         H.append("<table><tr><th style='width:8%'>ශ්ලෝකය</th><th>නියමය</th><th>ඇඟවීම</th></tr>"
                  + "".join(f"<tr><td>{r['stanza']}</td><td>{esc(si_shat_rule(r['rule']))}</td><td>{esc(si_shat_verdict(r['verdict'])[0])}</td></tr>"
                            for r in d["shatpanchasika"]) + "</table>")
+        H.append('<p class="small muted">වගුව කියවන හැටි: <b>නියමය</b> = කේන්දරයේ දකින තත්ත්වය; <b>ඇඟවීම</b> = ග්‍රන්ථය අනුව '
+                 'එහි තේරුම. එක් ඇඟවීමක් තනිව නොගෙන, සියල්ල එකට බලන්න.</p>')
         H.append('<p class="small muted">මූලාශ්‍රය: ප්‍රිථුයශස් ගේ ෂට්පංචාශිකා (චප්පන්න), B. Suryanarain Rao ගේ 1946 ඉංග්‍රීසි පරිවර්තනය. '
                  'නූපන් දරුවාගේ ලිංගය, ලිංගික හැසිරීම සහ මරණය පිළිබඳ ශ්ලෝක මෙහි ඉදිරිපත් නොකෙරේ.</p>')
     H.append("<h2>5. විග්‍රහය</h2>")
     H.append(f'<div class="box">{p1_auto_summary(d, matter, shat_topic)}</div>')
     H.append(note_block(notes, "summary"))
     H.append(note_block(notes, "upcoming", "කාල සීමා"))
-    H.append(disclaimer_block("ප්‍රශ්න ජ්‍යොතිෂය — තාජක ක්‍රමය (P.V.R. Narasimha Rao ch. 27–29) සහ ෂට්පංචාශිකා. "
+    H.append('<div class="pb"></div><h2>වචන කිහිපයක තේරුම</h2>' + glossary_html(GLOSS_P1_SHARED_PME, GLOSS_P1_PME))
+    H.append(disc_nopb_pme("ප්‍රශ්න ජ්‍යොතිෂය — තාජක ක්‍රමය (P.V.R. Narasimha Rao ch. 27–29) සහ ෂට්පංචාශිකා. "
                               "ප්‍රශ්න කේන්දරය සෑදෙන්නේ ප්‍රශ්නය අසන මොහොතටයි; එම මොහොත වැරදි නම් ප්‍රතිඵලයද වෙනස් වේ. "
                               "මේ ඇඟවීම් ප්‍රවණතා පෙන්වන අතර, ඔබේ තීරණය ඔබේ විචාරය මතයි."))
     return "\n".join(H)
@@ -3429,18 +3672,22 @@ def build_e1(d, a, notes, now_local, events, scan):
       <div class="name">{esc(a.name)}</div>
       <div class="muted">දෙන ලද වේලාව {esc(a.time)} · {esc(a.date)} · {esc(a.place or "")}</div>
       <div style="margin:12pt auto 0 auto; width:100mm">{south_indian_html_si(labels, "දෙන ලද වේලාවට D1", 100)}</div></div>''']
-    H.append('<div class="pb"></div><h2>1. ක්‍රමවේදය</h2>')
-    H.append('<div class="box">උපන් වේලාව මිනිත්තු කිහිපයකින් වෙනස් වූ විට ලග්නය, නවාංශක ලග්නය සහ දශා ආරම්භය වෙනස් වේ. '
+    H.append('<div class="pb"></div>' + plain_e1_pme(a, scan, wins, best) + '<h2>1. ක්‍රමවේදය</h2>')
+    H.append('<div class="box">උපන් වේලාව මිනිත්තු කිහිපයකින් වෙනස් වූ විට ලග්නය (උපන් මොහොතේ නැගෙනහිරින් උදා වූ රාශිය), '
+             'නවාංශක ලග්නය (D9 — රාශිය 9කට බෙදූ සියුම් කේන්දරයේ ලග්නය) සහ දශා (ජීවිතයේ කාල පරිච්ඡේද) ආරම්භය වෙනස් වේ. '
              'මේ වාර්තාවේ කරන්නේ: (1) දෙන ලද වේලාව වටා නියමිත පරාසයක සෑම වේලාවක්ම පරීක්ෂා කර, (2) ඔබ දුන් පසුගිය සිදුවීම් එක් එක් '
              'වේලාවකට අදාළ දශා සමඟ ගැලපේද බලා, (3) වැඩිම ගැලපීම ලැබෙන කාල කවුළු ඉදිරිපත් කිරීමයි.<br><br>'
              '<b>වැදගත්:</b> විම්ශෝත්තරී දශා ආරම්භය චන්ද්‍රගේ ස්ථානය මත රඳා පවතින නිසා පැයක් ඇතුළත එය බොහෝ දුරට එකමයි. '
-             'වෙනස් වන්නේ <b>ලග්නය</b> — එබැවින් දශාධිපතීන් කුමන භාවවලට අධිපති වෙනවාද, කුමන භාවවල සිටිනවාද යන්නයි. '
+             'වෙනස් වන්නේ <b>ලග්නය</b> — එබැවින් දශාධිපතීන් (දශා කාලය පාලනය කරන ග්‍රහයන්) කුමන භාවවලට (ජීවිත ක්ෂේත්‍රවලට) '
+             'අධිපති වෙනවාද, කුමන භාවවල සිටිනවාද යන්නයි. '
              'ලකුණු වෙනස්කම් එන්නේ එතැනින්.<br><br>'
              '<b>මෙය ඇස්තමේන්තුවක්</b> — රෝහල් වාර්තාවක් තරම් නිශ්චිත නොවේ. සිදුවීම් වැඩි වන තරමට නිරවද්‍යතාව වැඩි වේ.</div>')
     H.append("<h2>2. ඔබ දුන් සිදුවීම්</h2><table><tr><th>#</th><th>සිදුවීම</th><th>දිනය</th><th>අදාළ භාව</th></tr>"
              + "".join(f"<tr><td>{i + 1}</td><td>{EVENT_TYPES[e['type']][0]}{(' — ' + esc(e['note'])) if e.get('note') else ''}</td>"
                        f"<td>{esc(e['date'])}</td><td>{', '.join(str(h) for h in EVENT_TYPES[e['type']][1])}</td></tr>"
                        for i, e in enumerate(events)) + "</table>")
+    H.append('<p class="small muted">වගුව කියවන හැටි: <b>අදාළ භාව</b> = ඒ සිදුවීම කේන්දරයේ පෙන්වන ජීවිත ක්ෂේත්‍ර '
+             '(උදා: 7 = විවාහය, 10 = රැකියාව).</p>')
     H.append('<div class="pb"></div><h2>3. වේලා පරීක්ෂාව</h2>')
     rows = []
     for s in scan:
@@ -3449,7 +3696,9 @@ def build_e1(d, a, notes, now_local, events, scan):
                     f"<td>{SIGN_SI[s['d9']]}</td><td>{SIGN_SI[s['d10']]}</td><td><b>{s['score']}</b></td></tr>")
     H.append("<table><tr><th>වේලාව</th><th>වෙනස</th><th>ලග්නය</th><th>D9 ලග්නය</th><th>D10 ලග්නය</th><th>ගැලපීම් ලකුණු</th></tr>"
              + "".join(rows) + "</table>")
-    H.append('<p class="small muted">ලකුණු = සිදුවීම් දිනවලදී ක්‍රියාත්මක වූ මහා/අන්තර්/ප්‍රත්‍යන්තර දශාධිපතීන් එම සිදුවීමට අදාළ '
+    H.append('<p class="small muted">වගුව කියවන හැටි: <b>වෙනස</b> = ඔබ දුන් වේලාවට වඩා මිනිත්තු කීයක් පසු (+) හෝ පෙර (−)ද; '
+             '<b>D9 / D10 ලග්නය</b> = විවාහය සහ රැකියාව බලන සියුම් කේන්දරවල ලග්නය; තද පසුබිම් පේළි = ඉහළම ලකුණු. '
+             'ලකුණු = සිදුවීම් දිනවලදී ක්‍රියාත්මක වූ මහා/අන්තර්/ප්‍රත්‍යන්තර දශාධිපතීන් එම සිදුවීමට අදාළ '
              'භාවවලට සම්බන්ධ වන ගණන (අන්තර් දශාවට බර 2, අනෙක් දෙකට 1).</p>')
     H.append("<h2>4. වඩාත් ගැලපෙන කාල කවුළු</h2>")
     if wins:
@@ -3477,13 +3726,18 @@ def build_e1(d, a, notes, now_local, events, scan):
         H.append("<table><tr><th>සිදුවීම</th><th>දිනය</th><th>ලකුණු</th><th>ගැලපෙන දශාධිපතීන්</th></tr>"
                  + "".join(f"<tr><td>{EVENT_TYPES[t][0]}</td><td>{dt}</td><td>{hit}</td><td>{esc(why)}</td></tr>"
                            for t, dt, hit, why in s["detail"]) + "</table>")
+    if show:
+        H.append('<p class="small muted">වගුව කියවන හැටි: <b>MD / AD / PD</b> = සිදුවීම් දිනයේ ක්‍රියාත්මක වූ මහා / අන්තර් / '
+                 'ප්‍රත්‍යන්තර දශාවේ අධිපති ග්‍රහයා, ඒ සිදුවීමේ භාවයකට අධිපති වීම හෝ එහි සිටීම; <b>(කාරක)</b> = ඒ සිදුවීම '
+                 'ස්වභාවයෙන්ම පෙන්වන ග්‍රහයා (උදා: විවාහයට ශුක්‍ර); “—” = ගැලපීමක් නැත.</p>')
     H.append("<h2>6. ඊළඟ පියවර</h2><ul>"
              "<li>හැකි නම් රෝහල් උපන් සහතිකයේ වේලාව සොයා ගන්න — එය හොඳම මූලාශ්‍රයයි.</li>"
              "<li>තවත් පැහැදිලි දින සහිත සිදුවීම් 3–5ක් එකතු කළොත් කවුළුව පටු කර ගත හැක.</li>"
              "<li>වේලාව නිශ්චිත වන තුරු D9, D10, D60 මත පදනම් වූ අර්ථකථන ප්‍රවේශමෙන් කියවන්න; "
              "D1, දශා සහ ගෝචරය සාපේක්ෂව ස්ථාවරයි.</li></ul>")
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ විග්‍රහය"))
-    H.append(disclaimer_block("ජන්ම කාල ශුද්ධි — විම්ශෝත්තරී දශා සහ භාව කාරකත්ව මත පදනම් වූ ඇස්තමේන්තු ක්‍රමයක්. "
+    H.append('<div class="pb"></div><h2>වචන කිහිපයක තේරුම</h2>' + glossary_html(GLOSS_E1_SHARED_PME, GLOSS_E1_PME))
+    H.append(disc_nopb_pme("ජන්ම කාල ශුද්ධි — විම්ශෝත්තරී දශා සහ භාව කාරකත්ව මත පදනම් වූ ඇස්තමේන්තු ක්‍රමයක්. "
                               "වාර්තා වර්ගය E1. මෙය සම්භාවිතාව මත පදනම් වූ යෝජනාවක් මිස නිශ්චිත වේලාවක් නොවේ."))
     return "\n".join(H)
 
@@ -3496,6 +3750,10 @@ MUHURTA_TASK_SI = {
     "job": "නව රැකියාවක් ආරම්භය", "business": "ව්‍යාපාරයක් ආරම්භය", "vehicle": "වාහනයක් ගැනීම/පාවිච්චිය",
     "property": "දේපලක් මිලදී ගැනීම", "travel": "ගමනක් ආරම්භය", "general": "සාමාන්‍ය සුබ ආරම්භයක්",
 }
+
+
+_MUHURTA_MID = re.compile(r"(\S+)\s+(.+?)\s+(" + "|".join(jc.VARA) + r")\s+("
+                          + "|".join(sorted(map(re.escape, jc.NAKSHATRAS), key=len, reverse=True)) + r")\s*(.*)$")
 
 
 def parse_muhurta_output(text):
@@ -3516,7 +3774,10 @@ def parse_muhurta_output(text):
                 continue
             m = re.match(r"\s{2}(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})-(\d{2}:\d{2})\s+(.*?)\s\s+(-?\d+)\s\s(.*)$", ln)
             if m:
-                mid = re.split(r"\s{2,}", m.group(4).strip())
+                # by name, not by gaps: "Mangala" fills the vara column and "Uttara Bhadrapada" overflows the
+                # nakshatra one, so a single space can separate two columns
+                named = _MUHURTA_MID.match(m.group(4).strip())
+                mid = list(named.groups()) if named else re.split(r"\s{2,}", m.group(4).strip())
                 while len(mid) < 4:
                     mid.append("")
                 rows.append(dict(date=m.group(1), t0=m.group(2), t1=m.group(3), lagna=mid[0], tithi=mid[1],
@@ -3569,10 +3830,12 @@ def build_m1(a, notes, now_local, task, out_text, natal=None):
       <div class="name" style="font-size:15pt">{esc(a.name)}</div>
       <div class="muted">පරාසය: {esc(a.muhurta_from)} සිට {esc(a.muhurta_to)} දක්වා · {esc(a.place or "")}</div>
       <div style="margin-top:18pt" class="muted">සොයාගත් සුබ කවුළු: <b>{len(rows)}</b></div></div>''']
-    H.append('<div class="pb"></div><h2>1. ක්‍රමවේදය</h2>')
+    H.append('<div class="pb"></div>' + plain_m1_pme(a, rows, best, tsi) + '<h2>1. ක්‍රමවේදය</h2>')
     H.append('<div class="box">මෙහි භාවිත කර ඇත්තේ පරාශර සම්ප්‍රදායේ මුහූර්ත නියම (P.V.R. Narasimha Rao, ch. 36, වගුව 79) ය: '
-             'කාර්යයට ගැලපෙන තිථි, වාර, නක්ෂත්‍ර සහ ලග්න; අදාළ භාවය හිස්ව තිබීම. ඊට අමතරව තාරා බලය (වගුව 64), '
-             'හෝරාධිපති, කරණය සහ අදාළ භාවවල ග්‍රහ ශක්තිය අනුව ලකුණු දී ඇත.<br><br>'
+             'කාර්යයට ගැලපෙන තිථි (චන්ද්‍ර දින), වාර (සතියේ දවස්), නක්ෂත්‍ර (චන්ද්‍රයා සිටින තාරකා කොටස්) සහ ලග්න '
+             '(නැගෙනහිරින් උදා වන රාශිය); අදාළ භාවය හිස්ව තිබීම. ඊට අමතරව තාරා බලය (එදින නැකත ඔබේ උපන් නැකතට '
+             'ගැලපීම — වගුව 64), හෝරාධිපති (ඒ පැයේ අධිපති ග්‍රහයා), කරණය (තිථියෙන් භාගයක්) සහ අදාළ භාවවල ග්‍රහ ශක්තිය '
+             'අනුව ලකුණු දී ඇත.<br><br>'
              '<b>වැදගත්:</b> ලංකාවේ පාරම්පරික ලිත් නැකත් ක්‍රමය මෙයට වඩා වෙනස් ක්‍රමයකි (රාහු කාලය, සුබ දිශාව ආදිය). '
              'මේ වාර්තාව ලිත් නැකතට <b>දෙවන මතයක්</b> ලෙස සලකන්න; දෙකම එකට බැලීම හොඳයි.</div>')
     if note:
@@ -3588,23 +3851,27 @@ def build_m1(a, notes, now_local, task, out_text, natal=None):
                            f"<td>{esc(si_text(r['tithi']))}</td><td>{esc(si_text(r['nak']))}</td>"
                            f"<td>{esc(si_text(r['hora']))}</td><td>{r['score']}</td>"
                            # one reason per line, each whole (cutting Sinhala mid-word can break a letter)
-                           f"<td class='small'>{'<br>'.join(esc(si_text(x)) for x in r['notes'].split('; ') if x)}</td></tr>"
+                           f"<td class='small'>{'<br>'.join(esc(si_text(x)).replace('(අශුභ)', '(නුසුදුසු)') for x in r['notes'].split('; ') if x)}</td></tr>"
                            for r in rows) + "</table>")
-        H.append('<p class="small muted">ලකුණු වැඩි කවුළු වඩාත් සුබ ලෙස සලකනු ලැබේ. කවුළුවක් තුළ ඕනෑම මොහොතක් ගත හැක; '
+        H.append('<p class="small muted">වගුව කියවන හැටි: <b>සටහන්</b> = ලකුණු වැඩි/අඩු වූ හේතු; '
+                 'තද පසුබිම = ඉහළම ලකුණු; හෝරා කිහිපයක් = කවුළුව පැය කිහිපයක් දිගුයි. '
+                 'ලකුණු වැඩි කවුළු වඩාත් සුබ ලෙස සලකනු ලැබේ. කවුළුවක් තුළ ඕනෑම මොහොතක් ගත හැක; '
                  'කවුළුවේ මැද වඩාත් ආරක්ෂිතයි (ලග්න මාරුවෙන් දුරින්).</p>')
     else:
         H.append("<p>දෙන ලද පරාසය තුළ සියලු නියම සපුරන කවුළුවක් හමු නොවීය. දින පරාසය පුළුල් කිරීම හෝ "
                  "වේලා පරාසය 0–24 දක්වා විහිදුවීම උත්සාහ කරන්න.</p>")
     when = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2})", best[0]) if best else None
+    H.append('<div class="vblock">')
     if when:
         H.append("<h2>3. හොඳම කවුළුවේ කේන්දරය</h2>")
         H.append(muhurta_chart_html(a, when.group(1), best))
     H.append("<h2>4. ප්‍රායෝගිකව</h2><ul>"
              "<li>කවුළුව තුළ කාර්යය <b>ආරම්භ</b> කිරීම ප්‍රමාණවත් — මුළු කාර්යයම එතුළ අවසන් විය යුතු නැත.</li>"
              "<li>දින දෙකක් සමාන ලකුණු ගත්තොත්, ඔබට ප්‍රායෝගිකව පහසු දිනය තෝරන්න.</li>"
-             "<li>ලිත් නැකතක් ද ගන්නවා නම්, දෙකේම පොදු කාලයක් තෝරා ගැනීම හොඳයි.</li></ul>")
+             "<li>ලිත් නැකතක් ද ගන්නවා නම්, දෙකේම පොදු කාලයක් තෝරා ගැනීම හොඳයි.</li></ul></div>")
     H.append(note_block(notes, "summary", "ජ්‍යොතිෂවේදියාගේ සටහන"))
-    H.append(disclaimer_block("මුහූර්ත (නැකත්) — P.V.R. Narasimha Rao, ch. 36, වගුව 79 සහ 64. වාර්තා වර්ගය M1. "
+    H.append('<div class="pb"></div><h2>වචන කිහිපයක තේරුම</h2>' + glossary_html(GLOSS_M1_SHARED_PME, GLOSS_M1_PME))
+    H.append(disc_nopb_pme("මුහූර්ත (නැකත්) — P.V.R. Narasimha Rao, ch. 36, වගුව 79 සහ 64. වාර්තා වර්ගය M1. "
                               "මෙය පාරම්පරික ලිත් නැකතට විකල්ප දෙවන මතයකි."))
     return "\n".join(H)
 
