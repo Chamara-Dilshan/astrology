@@ -144,3 +144,17 @@ def test_coordinates_say_north_south_east_west():
     assert jr.latlon_txt(6.9271, 79.8612) == "6.9271° N, 79.8612° E"
     assert jr.latlon_txt(-33.8688, 151.2093) == "33.8688° S, 151.2093° E"
     assert jr.latlon_txt(40.7128, -74.006) == "40.7128° N, 74.0060° W"
+
+
+def test_a_moon_only_ithasala_with_the_matter_counts_as_kamboola():
+    """P1: the Moon (the one who asks) in ithasala with one of the matter's planets is a weaker yes; with the lagna
+    lord alone it is not (that links the asker only to themself). Mesha lagna, matter 10: Makara's lord Shani,
+    karaka Surya, Rajya saham lord Surya; Kuja is only the lagna lord."""
+    d = {"lagna": {"sign_idx": 0}, "matter_lines": [
+        "  Rajya (position) saham at Simha 05°00′ (house 5), lord Surya",
+        "  Chandra ithasala (vartamana) with Kuja — Kamboola support (29.2)",
+        "  Chandra ithasala (bhavishya) with Shani — Kamboola support (29.2)"]}
+    assert jr.p1_kamboola(d, 10) == ["Sa"]
+    assert jr.p1_kamboola(d, None) == []
+    d["matter_lines"] = d["matter_lines"][:2]
+    assert jr.p1_kamboola(d, 10) == []
